@@ -1,5 +1,7 @@
 import localFont from "next/font/local";
 import "./globals.css";
+import Providers from "@/components/Providers";
+import Navigation from "@/components/Navigation";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -17,7 +19,7 @@ export const metadata = {
   description: "Fresh Produce Direct from Farmers",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children, modal }) {
   return (
     <html lang="en" className="scroll-smooth">
       <head>
@@ -29,7 +31,11 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300`}
       >
-        {children}
+        <Providers>
+          <Navigation />
+          {children}
+          {modal}
+        </Providers>
       </body>
     </html>
   );

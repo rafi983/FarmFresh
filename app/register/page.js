@@ -1,11 +1,106 @@
-import AuthNavigation from "../components/AuthNavigation";
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 
 export default function Register() {
+  const router = useRouter();
+  const { login } = useAuth();
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    bio: "",
+    password: "",
+    confirmPassword: "",
+    userType: "customer",
+    farmName: "",
+    specialization: "",
+    farmSize: "",
+    farmSizeUnit: "acres",
+    profilePicture: null,
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Redirect to login page after successful registration
+        router.push(
+          "/login?message=Registration successful! Please sign in with your credentials.",
+        );
+      } else {
+        setError(data.error || "Registration failed");
+      }
+    } catch (error) {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    await signIn("google", { callbackUrl: "/" });
+  };
+
+  const handleProfilePictureChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData({ ...formData, profilePicture: file });
+      // Preview the image
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById("profilePreview").src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUserTypeChange = (type) => {
+    setFormData({ ...formData, userType: type });
+    // Show/hide farmer fields
+    const farmerFields = document.getElementById("farmerFields");
+    if (type === "farmer") {
+      farmerFields.classList.remove("hidden");
+    } else {
+      farmerFields.classList.add("hidden");
+    }
+  };
+
+  const handleBioChange = (e) => {
+    const value = e.target.value;
+    if (value.length <= 250) {
+      setFormData({ ...formData, bio: value });
+      document.getElementById("bioCounter").textContent = `${value.length}/250`;
+    }
+  };
+
   return (
     <>
-      <AuthNavigation />
-
       {/* Registration Form Section */}
       <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
@@ -27,7 +122,13 @@ export default function Register() {
           {/* Registration Form */}
           <div className="max-w-4xl mx-auto">
             <div className="bg-white dark:bg-gray-800 py-8 px-8 shadow-xl rounded-2xl">
-              <form className="space-y-6">
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Account Type - Full Width */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -39,8 +140,9 @@ export default function Register() {
                         type="radio"
                         name="userType"
                         value="customer"
+                        checked={formData.userType === "customer"}
+                        onChange={(e) => handleUserTypeChange(e.target.value)}
                         className="sr-only peer"
-                        defaultChecked
                       />
                       <div className="p-4 border-2 border-gray-200 dark:border-gray-600 rounded-lg cursor-pointer peer-checked:border-primary-500 peer-checked:bg-primary-50 dark:peer-checked:bg-primary-900 hover:border-primary-300 dark:hover:border-primary-400 transition-all duration-200">
                         <div className="text-center">
@@ -59,6 +161,8 @@ export default function Register() {
                         type="radio"
                         name="userType"
                         value="farmer"
+                        checked={formData.userType === "farmer"}
+                        onChange={(e) => handleUserTypeChange(e.target.value)}
                         className="sr-only peer"
                       />
                       <div className="p-4 border-2 border-gray-200 dark:border-gray-600 rounded-lg cursor-pointer peer-checked:border-primary-500 peer-checked:bg-primary-50 dark:peer-checked:bg-primary-900 hover:border-primary-300 dark:hover:border-primary-400 transition-all duration-200">
@@ -107,6 +211,7 @@ export default function Register() {
                           type="file"
                           className="sr-only"
                           accept="image/*"
+                          onChange={handleProfilePictureChange}
                         />
                       </label>
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 text-center">
@@ -133,6 +238,13 @@ export default function Register() {
                         name="firstName"
                         type="text"
                         required
+                        value={formData.firstName}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            firstName: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                         placeholder="John"
                       />
@@ -151,6 +263,10 @@ export default function Register() {
                         name="email"
                         type="email"
                         required
+                        value={formData.email}
+                        onChange={(e) =>
+                          setFormData({ ...formData, email: e.target.value })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                         placeholder="john@example.com"
                       />
@@ -169,6 +285,10 @@ export default function Register() {
                         name="address"
                         rows={3}
                         required
+                        value={formData.address}
+                        onChange={(e) =>
+                          setFormData({ ...formData, address: e.target.value })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
                         placeholder="Enter your full address"
                       ></textarea>
@@ -188,6 +308,13 @@ export default function Register() {
                           name="password"
                           type="password"
                           required
+                          value={formData.password}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              password: e.target.value,
+                            })
+                          }
                           className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                           placeholder="••••••••"
                         />
@@ -216,6 +343,10 @@ export default function Register() {
                         name="lastName"
                         type="text"
                         required
+                        value={formData.lastName}
+                        onChange={(e) =>
+                          setFormData({ ...formData, lastName: e.target.value })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                         placeholder="Doe"
                       />
@@ -234,6 +365,10 @@ export default function Register() {
                         name="phone"
                         type="tel"
                         required
+                        value={formData.phone}
+                        onChange={(e) =>
+                          setFormData({ ...formData, phone: e.target.value })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                         placeholder="+880 1234 567890"
                       />
@@ -255,6 +390,8 @@ export default function Register() {
                         name="bio"
                         rows={3}
                         maxLength={250}
+                        value={formData.bio}
+                        onChange={handleBioChange}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
                         placeholder="Tell us about yourself..."
                       ></textarea>
@@ -282,6 +419,13 @@ export default function Register() {
                           name="confirmPassword"
                           type="password"
                           required
+                          value={formData.confirmPassword}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              confirmPassword: e.target.value,
+                            })
+                          }
                           className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                           placeholder="••••••••"
                         />
@@ -310,6 +454,10 @@ export default function Register() {
                         id="farmName"
                         name="farmName"
                         type="text"
+                        value={formData.farmName}
+                        onChange={(e) =>
+                          setFormData({ ...formData, farmName: e.target.value })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                         placeholder="Green Valley Farm"
                       />
@@ -324,6 +472,13 @@ export default function Register() {
                       <select
                         id="specialization"
                         name="specialization"
+                        value={formData.specialization}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            specialization: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       >
                         <option value="">Select specialization</option>
@@ -349,12 +504,23 @@ export default function Register() {
                         type="number"
                         min="0"
                         step="0.1"
+                        value={formData.farmSize}
+                        onChange={(e) =>
+                          setFormData({ ...formData, farmSize: e.target.value })
+                        }
                         className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                         placeholder="5.5"
                       />
                       <select
                         id="farmSizeUnit"
                         name="farmSizeUnit"
+                        value={formData.farmSizeUnit}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            farmSizeUnit: e.target.value,
+                          })
+                        }
                         className="w-24 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm"
                       >
                         <option value="acres">Acres</option>
@@ -402,9 +568,10 @@ export default function Register() {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  className="w-full bg-primary-600 hover:bg-primary-700 text-white py-3 px-4 rounded-lg font-medium transition duration-200 transform hover:scale-105"
+                  disabled={loading}
+                  className="w-full bg-primary-600 hover:bg-primary-700 text-white py-3 px-4 rounded-lg font-medium transition duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Create Account
+                  {loading ? "Creating Account..." : "Create Account"}
                 </button>
 
                 {/* Divider */}
@@ -422,6 +589,7 @@ export default function Register() {
                 {/* Social Login */}
                 <button
                   type="button"
+                  onClick={handleGoogleSignIn}
                   className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition duration-200 flex items-center justify-center space-x-2"
                 >
                   <i className="fab fa-google text-red-500"></i>

@@ -1,12 +1,9 @@
 import Image from "next/image";
-import Navigation from "./components/Navigation";
 import Link from "next/link";
 
 export default function Home() {
   return (
     <>
-      <Navigation />
-
       {/* Hero Section */}
       <section className="relative bg-gradient-to-r from-primary-600 to-primary-800 text-white">
         <div className="absolute inset-0 bg-black opacity-20"></div>

@@ -1,12 +1,9 @@
-import Navigation from "../components/Navigation";
 import Link from "next/link";
 
 export default function Products() {
   return (
-    <>
-      <Navigation />
-
-      {/* Page Header */}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Products Header */}
       <div className="bg-primary-600 text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-bold mb-4">Fresh Products</h1>
@@ -662,6 +659,6 @@ export default function Products() {
           </div>
         </div>
       </footer>
-    </>
+    </div>
   );
 }

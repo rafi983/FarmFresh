@@ -1,10 +1,9 @@
-import Navigation from "../components/Navigation";
 import Link from "next/link";
 
 export default function About() {
   return (
     <>
-      <Navigation />
+      {/* Remove Navigation component - use global Navigation from layout instead */}
 
       {/* Hero Section */}
       <div className="bg-primary-600 text-white py-20">
