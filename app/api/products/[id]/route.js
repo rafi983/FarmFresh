@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import {
+  enhanceProductWithRatings,
+  enhanceProductsWithRatings,
+} from "@/lib/reviewUtils";
 
 export async function GET(request, { params }) {
   try {
@@ -42,20 +46,6 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    // Calculate review statistics ONLY from the product's reviews array
-    const reviews = targetProduct.reviews || [];
-    let averageRating = targetProduct.rating || 4.5;
-    let totalReviews = targetProduct.reviewCount || 0;
-
-    if (reviews.length > 0) {
-      const totalRating = reviews.reduce(
-        (sum, review) => sum + Number(review.rating),
-        0,
-      );
-      averageRating = Math.round((totalRating / reviews.length) * 10) / 10;
-      totalReviews = reviews.length;
-    }
-
     // Get all products for finding related products
     let allProducts = await db.collection("products").find({}).toArray();
 
@@ -85,8 +75,6 @@ export async function GET(request, { params }) {
         experience: 5,
       },
       stock: targetProduct.stock || 50,
-      averageRating: averageRating,
-      totalReviews: totalReviews,
       isOrganic: targetProduct.isOrganic || false,
       isFresh: targetProduct.isFresh || true,
       features: targetProduct.features || [
@@ -96,9 +84,16 @@ export async function GET(request, { params }) {
       ],
     };
 
+    // Calculate real ratings and review counts from reviews data
+    const enhancedProduct = enhanceProductWithRatings(product);
+
     // Get related products (same category, exclude current product)
-    const relatedProducts = allProducts
-      .filter((p) => p.category === product.category && p._id !== product._id)
+    let relatedProducts = allProducts
+      .filter(
+        (p) =>
+          p.category === enhancedProduct.category &&
+          p._id !== enhancedProduct._id,
+      )
       .slice(0, 4)
       .map((p) => ({
         ...p,
@@ -107,13 +102,15 @@ export async function GET(request, { params }) {
         ],
         farmer: p.farmer || { name: "Local Farmer", location: "Bangladesh" },
         stock: p.stock || 50,
-        averageRating: p.rating || p.averageRating || 4.5,
         isOrganic: p.isOrganic || false,
         isFresh: p.isFresh || true,
       }));
 
+    // Calculate real ratings for related products too
+    relatedProducts = enhanceProductsWithRatings(relatedProducts);
+
     return NextResponse.json({
-      product,
+      product: enhancedProduct,
       relatedProducts,
     });
   } catch (error) {

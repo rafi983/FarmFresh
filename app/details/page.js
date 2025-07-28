@@ -305,12 +305,12 @@ export default function ProductDetails() {
               {/* Rating and Reviews */}
               <div className="flex items-center space-x-4">
                 <StarRating
-                  rating={product.rating || product.averageRating || 0}
+                  rating={product.averageRating || 0}
                   size="text-lg"
                   showValue={true}
                 />
                 <span className="text-gray-500 dark:text-gray-400">
-                  ({product.reviewCount || product.totalReviews || 0} reviews)
+                  ({product.reviewCount || 0} reviews)
                 </span>
                 <button
                   onClick={() => setActiveTab("reviews")}

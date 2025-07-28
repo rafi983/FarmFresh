@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
+import { enhanceProductsWithRatings } from "@/lib/reviewUtils";
 
 export async function GET(request) {
   try {
@@ -7,9 +8,11 @@ export async function GET(request) {
     const search = searchParams.get("search");
     const category = searchParams.get("category");
     const featured = searchParams.get("featured");
-    const limit = parseInt(searchParams.get("limit")) || 20;
+    // Only apply limit if explicitly provided, otherwise return all products
+    const limit = searchParams.get("limit")
+      ? parseInt(searchParams.get("limit"))
+      : null;
     const page = parseInt(searchParams.get("page")) || 1;
-    const skip = (page - 1) * limit;
 
     const client = await clientPromise;
     const db = client.db("farmfresh");
@@ -54,15 +57,19 @@ export async function GET(request) {
     let totalProducts = allProducts.length;
 
     if (featured === "true") {
-      // For featured products, just take the first 8 (since we don't have purchase data yet)
+      // For featured products, just take the first 8
       products = allProducts.slice(0, 8);
       totalProducts = products.length;
-    } else {
-      // Apply pagination
+    } else if (limit) {
+      // Apply pagination only if limit is specified
+      const skip = (page - 1) * limit;
       products = allProducts.slice(skip, skip + limit);
+    } else {
+      // Return all products if no limit specified
+      products = allProducts;
     }
 
-    // Add missing fields with defaults
+    // Add missing fields with defaults and calculate real ratings
     products = products.map((product) => ({
       ...product,
       images: product.images || [
@@ -73,18 +80,19 @@ export async function GET(request) {
         location: "Bangladesh",
       },
       stock: product.stock || 50,
-      averageRating: product.averageRating || 4.5,
-      totalReviews: product.totalReviews || 0,
       isOrganic: product.isOrganic || false,
       isFresh: product.isFresh || true,
     }));
+
+    // Calculate real ratings and review counts from reviews data
+    products = enhanceProductsWithRatings(products);
 
     return NextResponse.json({
       products,
       totalProducts,
       currentPage: page,
-      totalPages: Math.ceil(totalProducts / limit),
-      hasNextPage: page < Math.ceil(totalProducts / limit),
+      totalPages: limit ? Math.ceil(totalProducts / limit) : 1,
+      hasNextPage: limit ? page < Math.ceil(totalProducts / limit) : false,
       hasPrevPage: page > 1,
     });
   } catch (error) {
