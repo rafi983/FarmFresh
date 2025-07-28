@@ -16,10 +16,18 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [tokenValidated, setTokenValidated] = useState(false);
 
   useEffect(() => {
+    // Only set error if we're sure there's no token in URL
     if (!token) {
-      setError("Invalid reset token");
+      setError(
+        "This page requires a reset token. Please use the reset link from your email.",
+      );
+    } else {
+      // Reset error when we have a token
+      setError("");
+      setTokenValidated(true);
     }
   }, [token]);
 
@@ -27,6 +35,12 @@ export default function ResetPassword() {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    if (!token) {
+      setError("No reset token available");
+      setLoading(false);
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
@@ -47,6 +61,7 @@ export default function ResetPassword() {
         body: JSON.stringify({
           token,
           password: formData.password,
+          confirmPassword: formData.confirmPassword,
         }),
       });
 

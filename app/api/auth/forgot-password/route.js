@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
-import { sendPasswordResetEmail } from "@/lib/email";
+import { sendPasswordResetEmail } from "@/lib/email-resend"; // Use Resend
 import crypto from "crypto";
 
 export async function POST(request) {
@@ -12,7 +12,8 @@ export async function POST(request) {
     }
 
     const client = await clientPromise;
-    const users = client.db().collection("users");
+    const db = client.db("farmfresh");
+    const users = db.collection("users");
 
     // Check if user exists
     const user = await users.findOne({ email });

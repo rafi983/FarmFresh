@@ -190,7 +190,7 @@ export default function Navigation() {
             {/* Dark Mode Toggle - Always show */}
             <button className="p-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
               <i className="fas fa-moon text-lg dark:hidden"></i>
-              <i className="fas fa-sun text-lg hidden dark:block"></i>
+              {/*<i className="fas fa-sun text-lg hidden dark:block"></i>*/}
             </button>
 
             {/* Mobile Menu Button - Hide on details page */}
