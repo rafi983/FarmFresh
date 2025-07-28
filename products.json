@@ -1,0 +1,2912 @@
+[
+  {
+    "_id": "688725de224d2f673382eac1",
+    "name": "Golden Wheat",
+    "category": "Grains",
+    "price": 117,
+    "unit": "bundle",
+    "description": "Golden Wheat is premium-grade, sun-ripened whole grain harvested from the fertile fields of Rajshahi. With a naturally rich golden hue and high protein content, it's ideal for baking, grinding into flour, or preparing nutritious traditional meals. Grown organically by Abdul Rahman at Farm 35, this wheat is free from synthetic chemicals and processed with care to retain its wholesome quality. Whether you’re making rotis, bread, or porridges, it ensures both taste and nourishment.",
+    "farmer": {
+      "name": "Abdul Rahman",
+      "farmName": "Farm 35",
+      "location": "Rajshahi, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1689118398153-d24137d57e12?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8Z29sZGVuJTIwd2hlYXR8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1689118402130-ad5a13556b75?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fGdvbGRlbiUyMHdoZWF0fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1553673324-aad5dc09f90f?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjJ8fGdvbGRlbiUyMHdoZWF0fGVufDB8fDB8fHww",
+      "https://plus.unsplash.com/premium_photo-1730191648801-51dda0c95368?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NDF8fGdvbGRlbiUyMHdoZWF0fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1588274061514-fe2fe8e9d645?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Njd8fGdvbGRlbiUyMHdoZWF0fGVufDB8fDB8fHww"
+    ],
+    "stock": 182,
+    "features": [
+      "100% organically grown without chemical fertilizers",
+      "Sun-dried and hand-harvested for maximum nutrient retention",
+      "Naturally high in protein and dietary fiber",
+      "Ideal for grinding into whole wheat flour (atta)",
+      "Supports local farmers and sustainable agriculture",
+      "Packed fresh and delivered with zero preservatives",
+      "Perfect for traditional recipes like roti, bread, and porridge"
+    ],
+    "rating": 5,
+    "reviewCount": 49,
+    "isOrganic": true,
+    "purchaseCount": 306,
+    "storageInstructions": "Store in a cool, dry place in an airtight container to preserve freshness. Avoid exposure to moisture and direct sunlight. Shelf life is up to 12 months if stored properly.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 340,
+      "protein": "13g",
+      "carbohydrates": "72g",
+      "fiber": "10g",
+      "fat": "2.5g",
+      "iron": "3.6mg",
+      "vitaminB1": "0.5mg",
+      "gluten": "Contains gluten"
+    },
+    "createdAt": "2025-07-28T02:30:53.328Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z",
+
+    "reviews": [
+      {
+        "reviewer": "Ayesha Siddique",
+        "date": "2025-07-20",
+        "rating": 5,
+        "comment": "Excellent quality wheat! The flour made from this wheat is fresh and perfect for traditional breads."
+      },
+      {
+        "reviewer": "Tanvir Hasan",
+        "date": "2025-07-22",
+        "rating": 5,
+        "comment": "I love that it's organic and locally sourced. The grain is full of flavor and cooks well."
+      },
+      {
+        "reviewer": "Sabina Rahman",
+        "date": "2025-07-25",
+        "rating": 4,
+        "comment": "Very good wheat. The texture is great and it stays fresh longer than other brands."
+      }
+    ]
+  },
+
+  {
+    "_id": "688725de224d2f673382eab9",
+    "name": "Green Cauliflower",
+    "category": "Vegetables",
+    "price": 108,
+    "unit": "kg",
+    "description": "Green Cauliflower is a vibrant, nutrient-dense vegetable known for its unique color and slightly sweeter, nuttier taste compared to white cauliflower. Grown locally by farmer Fatema Begum at Farm 27 in Dhaka, this hybrid variety is not only rich in antioxidants but also versatile in cooking. Whether steamed, roasted, stir-fried, or blended into soups, it delivers both flavor and health benefits. A fresh pick straight from local soil to your kitchen, this cauliflower is a colorful addition to healthy diets and plant-based recipes.",
+    "farmer": {
+      "name": "Fatema Begum",
+      "farmName": "Farm 27",
+      "location": "Dhaka, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1675365835662-3980c9fdbbc3?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8R3JlZW4lMjBDYXVsaWZsb3dlcnxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1645105664407-96f439f752eb?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8R3JlZW4lMjBDYXVsaWZsb3dlcnxlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1675365836465-ebdbf821cda0?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8R3JlZW4lMjBDYXVsaWZsb3dlcnxlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1702313776847-b90ae4bd048a?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTN8fEdyZWVuJTIwQ2F1bGlmbG93ZXJ8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1683723616147-44545defdc9e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fEdyZWVuJTIwQ2F1bGlmbG93ZXJ8ZW58MHx8MHx8fDA%3D"
+    ],
+    "stock": 86,
+    "features": [
+      "Naturally grown in local soil with minimal pesticide use",
+      "Rich in vitamins C, K, and folate for immune and bone health",
+      "Bright green florets add visual appeal to meals",
+      "Perfect for keto, vegan, and low-carb diets",
+      "Slightly nutty flavor ideal for both raw and cooked dishes",
+      "Hand-harvested for maximum freshness and quality",
+      "Packed and delivered fresh within 24 hours of harvesting"
+    ],
+    "rating": 4,
+    "reviewCount": 17,
+    "isOrganic": false,
+    "purchaseCount": 208,
+    "storageInstructions": "Keep refrigerated at 0–4°C in a loosely closed bag or container. Do not wash until ready to use. Best consumed within 4–5 days of purchase.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 25,
+      "protein": "2g",
+      "carbohydrates": "5g",
+      "fiber": "2g",
+      "fat": "0.3g",
+      "vitaminC": "80mg (89% DV)",
+      "vitaminK": "15.5µg (13% DV)",
+      "folate": "57µg (14% DV)",
+      "calcium": "22mg",
+      "potassium": "299mg"
+    },
+    "createdAt": "2025-07-27T19:33:10.918Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z",
+
+    "reviews": [
+      {
+        "reviewer": "Nusrat Jahan",
+        "date": "2025-07-28",
+        "rating": 4,
+        "comment": "Loved the unique taste and vibrant color. Great for salads and roasting!"
+      },
+      {
+        "reviewer": "Imran Khan",
+        "date": "2025-07-26",
+        "rating": 4,
+        "comment": "Fresh and high quality, but a bit pricier than white cauliflower."
+      },
+      {
+        "reviewer": "Farhana Ahmed",
+        "date": "2025-07-24",
+        "rating": 3,
+        "comment": "Good quality, but I prefer the taste of regular cauliflower more."
+      }
+    ]
+  }
+,
+  {
+    "_id": "688725de224d2f673382eacb",
+    "name": "Fresh Broccoli",
+    "category": "Vegetables",
+    "price": 85,
+    "unit": "bundle",
+    "description": "Fresh Broccoli is a nutrient-rich green vegetable grown organically in the fertile lands of Rajshahi by Mohammad Ali at Farm 45. Known for its vibrant green florets and crisp stalks, this broccoli is ideal for steaming, roasting, stir-frying, or adding to salads. Packed with fiber, vitamins, and antioxidants, it's a staple in healthy diets and a go-to ingredient for fitness enthusiasts and home cooks alike. With no chemical pesticides or additives, every bundle brings freshness and wellness straight to your kitchen.",
+    "farmer": {
+      "name": "Mohammad Ali",
+      "farmName": "Farm 45",
+      "location": "Rajshahi, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1594885270039-f8871b502f7f?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8RnJlc2glMjBCcm9jY29saXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1580391536506-a2864b8dae29?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fEZyZXNoJTIwQnJvY2NvbGl8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1622484964723-d1456419fcb0?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjZ8fEZyZXNoJTIwQnJvY2NvbGl8ZW58MHx8MHx8fDA%3D",
+      "https://plus.unsplash.com/premium_photo-1724849301852-e32aa67fd1c7?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NDV8fEZyZXNoJTIwQnJvY2NvbGl8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1748017079162-01d97c0789ea?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NzZ8fEZyZXNoJTIwQnJvY2NvbGl8ZW58MHx8MHx8fDA%3D"
+    ],
+    "stock": 83,
+    "features": [
+      "Organically grown without synthetic pesticides or chemicals",
+      "Packed with vitamin C, K, fiber, and antioxidants",
+      "Ideal for steaming, roasting, stir-frying, or salads",
+      "Crisp stalks and tightly packed florets ensure freshness",
+      "Harvested and packed within 24 hours of cutting",
+      "Supports heart health, immune function, and digestion",
+      "Suitable for vegan, keto, and low-calorie diets"
+    ],
+    "rating": 4.7,
+    "reviewCount": 86,
+    "isOrganic": true,
+    "purchaseCount": 303,
+    "storageInstructions": "Store unwashed in the refrigerator in a breathable bag or loosely wrapped in a paper towel. Best consumed within 4–6 days. Wash thoroughly before cooking.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 34,
+      "protein": "2.8g",
+      "carbohydrates": "6.6g",
+      "fiber": "2.6g",
+      "fat": "0.4g",
+      "vitaminC": "89mg (99% DV)",
+      "vitaminK": "101.6µg (85% DV)",
+      "folate": "63µg (16% DV)",
+      "calcium": "47mg",
+      "iron": "0.7mg"
+    },
+    "createdAt": "2025-07-27T15:04:33.198Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z",
+
+    "reviews": [
+      {
+        "reviewer": "Sadia Rahman",
+        "date": "2025-07-27",
+        "rating": 5,
+        "comment": "Extremely fresh and crunchy! Perfect for my salads and stir-fry dishes."
+      },
+      {
+        "reviewer": "Tariq Ahmed",
+        "date": "2025-07-26",
+        "rating": 4.5,
+        "comment": "Good quality broccoli, organic and flavorful. Would buy again."
+      },
+      {
+        "reviewer": "Laila Chowdhury",
+        "date": "2025-07-25",
+        "rating": 4,
+        "comment": "Nice texture and taste, but slightly smaller bundles than expected."
+      }
+    ]
+  }
+,
+  {
+    "_id": "688725de224d2f673382eac3",
+    "name": "Wildflower Honey",
+    "category": "Honey",
+    "price": 116,
+    "unit": "kg",
+    "description": "Wildflower Honey is a rich, aromatic natural sweetener harvested from the nectar of a diverse blend of wildflowers. Sourced directly from Dhaka’s local apiaries, this golden honey is collected with care by Shahnaz Parvin at Farm 37. Its deep flavor, floral notes, and smooth texture make it perfect for drizzling over toast, mixing into tea, or using in healthy baking recipes. Raw and unfiltered, this honey retains its natural enzymes, antioxidants, and antibacterial properties, making it not just a treat but a wellness booster.",
+    "farmer": {
+      "name": "Shahnaz Parvin",
+      "farmName": "Farm 37",
+      "location": "Dhaka, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1551492020-7630c76eb6c6?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8V2lsZGZsb3dlciUyMEhvbmV5fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1542216172-de344e12b7a1?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8V2lsZGZsb3dlciUyMEhvbmV5fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1598404743808-57e03035136b?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fFdpbGRmbG93ZXIlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1630138235049-4997a4e29c76?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjB8fFdpbGRmbG93ZXIlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1723795242530-3e061c86c5a3?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mjl8fFdpbGRmbG93ZXIlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 205,
+    "features": [
+      "Harvested from diverse seasonal wildflowers",
+      "Raw, unpasteurized, and unfiltered to retain nutrients",
+      "Rich in antioxidants and natural antibacterial properties",
+      "Smooth texture and naturally sweet floral flavor",
+      "No added sugar, colors, or preservatives",
+      "Perfect for tea, toast, yogurt, desserts, and baking",
+      "Supports local beekeeping and eco-friendly farming"
+    ],
+    "rating": 4.9,
+    "reviewCount": 124,
+    "isOrganic": false,
+    "purchaseCount": 189,
+    "storageInstructions": "Store in a cool, dry place away from direct sunlight. Do not refrigerate. Crystallization is natural—place the jar in warm water to liquefy.",
+    "nutritionalInformation": {
+      "servingSize": "1 tbsp (21g)",
+      "calories": 64,
+      "protein": "0g",
+      "carbohydrates": "17g",
+      "sugars": "17g (natural)",
+      "fat": "0g",
+      "fiber": "0g",
+      "iron": "0.1mg",
+      "potassium": "11mg"
+    },
+    "createdAt": "2025-07-27T09:12:26.719Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z",
+
+    "reviews": [
+      {
+        "reviewer": "Ayesha Khan",
+        "date": "2025-07-26",
+        "rating": 5,
+        "comment": "Absolutely love the rich floral taste and smooth texture. Perfect for my morning tea."
+      },
+      {
+        "reviewer": "Imran Hossain",
+        "date": "2025-07-25",
+        "rating": 4.8,
+        "comment": "Great quality honey, very natural and pure. No added sweetness, just perfect."
+      },
+      {
+        "reviewer": "Nabila Faruq",
+        "date": "2025-07-24",
+        "rating": 4.7,
+        "comment": "Good honey with lovely aroma. Crystallized a bit but that’s natural and easy to fix."
+      }
+    ]
+  }
+,
+  {
+    "_id": "688725de224d2f673382eaa1",
+    "name": "Red Onions",
+    "category": "Vegetables",
+    "price": 25,
+    "unit": "kg",
+    "description": "These vibrant, fresh Red Onions are harvested from fertile lands in Jessore by local grower Karim Uddin at Sunrise Farm. Known for their bold flavor, crispy texture, and deep purplish-red color, these onions are a staple in Bengali cooking. Perfect for curries, salads, biryanis, and chutneys, red onions bring sharp taste and color to any dish. They are hand-picked, naturally grown, and delivered fresh to preserve their pungency and shelf life. A must-have in every kitchen.",
+    "farmer": {
+      "name": "Karim Uddin",
+      "farmName": "Sunrise Farm",
+      "location": "Jessore, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1668295037469-8b0e8d11cd2a?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8UmVkJTIwT25pb25zfGVufDB8fDB8fHww",
+      "https://plus.unsplash.com/premium_photo-1723708958105-09e29205e551?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTN8fFJlZCUyME9uaW9uc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1534383346555-6cff1eaca960?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fFJlZCUyME9uaW9uc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1588613000160-2b766dd44779?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzJ8fFJlZCUyME9uaW9uc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1588613000151-4d3c77943c98?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NDJ8fFJlZCUyME9uaW9uc3xlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 200,
+    "features": [
+      "Locally grown with care by smallholder farmers",
+      "Bold, pungent flavor ideal for savory dishes",
+      "Crisp texture and vibrant red-purple layers",
+      "Freshly harvested and hand-selected",
+      "Essential in Bengali, Indian, and Middle Eastern cuisine",
+      "Chemical-free and naturally matured",
+      "Long shelf life when stored properly"
+    ],
+    "rating": 4.4,
+    "reviewCount": 89,
+    "isOrganic": false,
+    "purchaseCount": 203,
+    "storageInstructions": "Store in a cool, dry, well-ventilated place. Avoid refrigeration to prevent softening. Do not store in plastic bags.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 40,
+      "protein": "1.1g",
+      "carbohydrates": "9.3g",
+      "sugars": "4.2g",
+      "fat": "0.1g",
+      "fiber": "1.7g",
+      "vitaminC": "7.4mg",
+      "potassium": "146mg"
+    },
+    "createdAt": "2025-07-27T08:14:15.707Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z",
+
+    "reviews": [
+      {
+        "reviewer": "Sadia Rahman",
+        "date": "2025-07-20",
+        "rating": 4.5,
+        "comment": "Very fresh and flavorful onions. Perfect for my daily cooking needs."
+      },
+      {
+        "reviewer": "Jahid Islam",
+        "date": "2025-07-22",
+        "rating": 4.3,
+        "comment": "Good quality onions with nice crispness. Lasted well without softening."
+      },
+      {
+        "reviewer": "Moushumi Akter",
+        "date": "2025-07-24",
+        "rating": 4.4,
+        "comment": "Loved the deep red color and strong flavor. Great for salads and biryanis."
+      }
+    ]
+  },
+
+  {
+    "_id": "688725de224d2f673382eab5",
+    "name": "Farm Fresh Eggs",
+    "category": "Dairy",
+    "price": 120,
+    "unit": "dozen",
+    "description": "Our Farm Fresh Eggs come from healthy, free-range hens raised on open pastures at Free Range Poultry in Kishoreganj. These organic, protein-rich eggs are laid by hens that roam freely, enjoying natural feed and clean environments. Each egg boasts a rich golden yolk, firm white, and superior flavor—perfect for frying, boiling, baking, or scrambling. Rich in nutrients and free from antibiotics or hormones, these eggs offer natural taste and nutrition with every bite.",
+    "farmer": {
+      "name": "Rahima Khatun",
+      "farmName": "Free Range Poultry",
+      "location": "Kishoreganj, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1708715380817-31e20c61b18d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8RmFybSUyMEZyZXNoJTIwRWdnc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1552418322-3855ef830d11?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fEZhcm0lMjBGcmVzaCUyMEVnZ3N8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1586802990181-a5771596eaea?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzR8fEZhcm0lMjBGcmVzaCUyMEVnZ3N8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1576522488962-332e43c2ca12?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NDZ8fEZhcm0lMjBGcmVzaCUyMEVnZ3N8ZW58MHx8MHx8fDA%3D",
+      "https://plus.unsplash.com/premium_photo-1661630529381-68dccadb0b50?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NDl8fEZhcm0lMjBGcmVzaCUyMEVnZ3N8ZW58MHx8MHx8fDA%3D"
+    ],
+    "stock": 200,
+    "features": [
+      "Free-range raised hens with natural diets",
+      "No hormones or antibiotics",
+      "Golden yolks with superior taste",
+      "High in protein and essential vitamins",
+      "Perfect for all types of cooking and baking",
+      "Collected fresh daily and hand-packed",
+      "Ethically farmed and 100% organic certified"
+    ],
+    "rating": 4.9,
+    "reviewCount": 189,
+    "isOrganic": true,
+    "purchaseCount": 267,
+    "storageInstructions": "Store eggs in the refrigerator at 4°C or below. Keep in original carton to retain freshness. Consume within 3 weeks of purchase for best taste and safety.",
+    "nutritionalInformation": {
+      "servingSize": "1 egg (50g)",
+      "calories": 70,
+      "protein": "6g",
+      "fat": "5g",
+      "saturatedFat": "1.5g",
+      "cholesterol": "185mg",
+      "carbohydrates": "0.6g",
+      "vitaminD": "41 IU",
+      "vitaminB12": "0.6 mcg",
+      "selenium": "15.4 mcg"
+    },
+    "createdAt": "2025-07-27T00:33:19.370Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z",
+
+    "reviews": [
+      {
+        "reviewer": "Tanvir Ahmed",
+        "date": "2025-07-22",
+        "rating": 5,
+        "comment": "Best eggs I've had in a long time. Fresh, tasty, and perfect for all my cooking needs."
+      },
+      {
+        "reviewer": "Nusrat Jahan",
+        "date": "2025-07-23",
+        "rating": 4.8,
+        "comment": "Love that these are free-range and organic. The yolks are bright and flavorful."
+      },
+      {
+        "reviewer": "Md. Faisal",
+        "date": "2025-07-25",
+        "rating": 4.9,
+        "comment": "Great quality eggs, firm whites, and they stay fresh longer than others I've bought."
+      }
+    ]
+  }
+,
+  {
+    "_id": "688725de224d2f673382eac0",
+    "name": "Ripe Mangoes",
+    "category": "Fruits",
+    "price": 87,
+    "unit": "kg",
+    "description": "Delicious, sun-ripened mangoes freshly harvested from the lush orchards of Sylhet. Carefully handpicked at peak ripeness by local farmer Sufia Begum, these mangoes are bursting with tropical sweetness, rich aroma, and soft, juicy flesh. Perfect for eating fresh, making smoothies, or preparing desserts, our organic mangoes are naturally grown without any synthetic chemicals, preserving their authentic taste and nutrition.",
+    "farmer": {
+      "name": "Sufia Begum",
+      "farmName": "Farm 34",
+      "location": "Sylhet, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1622955658214-d05c1c6fcf84?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8UmlwZSUyME1hbmdvZXN8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1734163075572-8948e799e42c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8UmlwZSUyME1hbmdvZXN8ZW58MHx8MHx8fDA%3D",
+      "https://plus.unsplash.com/premium_photo-1724849318956-c17403245ce4?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTN8fFJpcGUlMjBNYW5nb2VzfGVufDB8fDB8fHww",
+      "https://plus.unsplash.com/premium_photo-1723126209079-02171b5bcd86?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NDV8fHJpcGUlMjBtYW5nb2VzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1699721977299-b96bfe26cee7?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NjN8fHJpcGUlMjBtYW5nb2VzfGVufDB8fDB8fHww"
+    ],
+    "stock": 140,
+    "features": [
+      "Naturally ripened under the sun",
+      "Sweet and fiberless flesh",
+      "Handpicked from local orchards",
+      "No artificial ripening agents used",
+      "Ideal for juicing, smoothies, or direct consumption",
+      "Locally sourced and ethically grown",
+      "100% organic certified"
+    ],
+    "rating": 3.7,
+    "reviewCount": 202,
+    "isOrganic": true,
+    "purchaseCount": 59,
+    "storageInstructions": "Store in a cool, dry place. Once ripe, refrigerate to extend freshness. Best consumed within 5–7 days after ripening.",
+    "nutritionalInformation": {
+      "servingSize": "1 cup (165g)",
+      "calories": 99,
+      "protein": "1.4g",
+      "fat": "0.6g",
+      "carbohydrates": "25g",
+      "fiber": "2.6g",
+      "sugars": "23g",
+      "vitaminC": "60mg",
+      "vitaminA": "89 mcg",
+      "potassium": "277mg"
+    },
+    "createdAt": "2025-07-26T04:45:43.739Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z",
+
+    "reviews": [
+      {
+        "reviewer": "Ayesha Rahman",
+        "date": "2025-07-20",
+        "rating": 4,
+        "comment": "Sweet and juicy mangoes, though a bit softer than I expected. Perfect for smoothies!"
+      },
+      {
+        "reviewer": "Jamil Khan",
+        "date": "2025-07-21",
+        "rating": 3.5,
+        "comment": "Good flavor but some were slightly underripe. Overall a decent buy for the price."
+      },
+      {
+        "reviewer": "Fatima Noor",
+        "date": "2025-07-23",
+        "rating": 4.2,
+        "comment": "Lovely aroma and taste, great for desserts. Wish they lasted a bit longer after ripening."
+      }
+    ]
+  },
+
+
+  {
+    "_id": "688725de224d2f673382eab1",
+    "name": "Sweet Corn",
+    "category": "Vegetables",
+    "price": 40,
+    "unit": "kg",
+    "description": "Crisp, golden-yellow sweet corn grown in the fertile lands of Rangpur. Harvested at peak ripeness, each kernel bursts with juicy sweetness and flavor. Whether grilled, boiled, or added to soups and salads, this non-GMO corn is a delicious and versatile addition to any meal. Carefully grown by Anwar Hossain of Sweet Valley Farm using natural farming practices.",
+    "farmer": {
+      "name": "Anwar Hossain",
+      "farmName": "Sweet Valley",
+      "location": "Rangpur, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1667047165840-803e47970128?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8U3dlZXQlMjBDb3JufGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1683543124257-1d214be3a366?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8U3dlZXQlMjBDb3JufGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1633345817529-cca176575d34?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fFN3ZWV0JTIwQ29ybnxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1635843105990-4f08403ecc12?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzB8fFN3ZWV0JTIwQ29ybnxlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1725619403774-8a32ceb2d0c1?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzN8fFN3ZWV0JTIwQ29ybnxlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 90,
+    "features": [
+      "Naturally sweet and juicy kernels",
+      "Bright golden-yellow color",
+      "Ideal for boiling, roasting, or salads",
+      "Harvested fresh from local farms",
+      "Non-GMO",
+      "High in dietary fiber",
+      "Versatile cooking ingredient"
+    ],
+    "rating": 4.6,
+    "reviewCount": 78,
+    "isOrganic": false,
+    "purchaseCount": 112,
+    "storageInstructions": "Store unshucked corn in the refrigerator and use within 3–5 days. For best flavor, cook soon after harvest.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 86,
+      "protein": "3.2g",
+      "fat": "1.2g",
+      "carbohydrates": "19g",
+      "fiber": "2.7g",
+      "sugars": "6.3g",
+      "vitaminC": "6.8mg",
+      "iron": "0.5mg",
+      "magnesium": "37mg"
+    },
+    "reviews": [
+      {
+        "reviewId": "rev001",
+        "userName": "Jahanara",
+        "rating": 5,
+        "comment": "Sweet and fresh! Perfect for grilling and salads. Definitely a pantry staple now.",
+        "date": "2025-07-20T10:15:00Z"
+      },
+      {
+        "reviewId": "rev002",
+        "userName": "Rahim",
+        "rating": 4,
+        "comment": "Good quality corn, very juicy kernels but slightly smaller than expected.",
+        "date": "2025-07-22T14:42:00Z"
+      },
+      {
+        "reviewId": "rev003",
+        "userName": "Nadia",
+        "rating": 4.5,
+        "comment": "Loved the natural sweetness and freshness. Cooked it as boiled corn and it was delicious!",
+        "date": "2025-07-24T09:05:00Z"
+      },
+      {
+        "reviewId": "rev004",
+        "userName": "Shakil",
+        "rating": 4.8,
+        "comment": "Crisp, juicy, and very fresh. Great for making corn soup. Highly recommend.",
+        "date": "2025-07-25T17:30:00Z"
+      }
+    ],
+    "createdAt": "2025-07-26T00:48:50.266Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  },
+  {
+    "_id": "688725de224d2f673382eac7",
+    "name": "Brown Rice",
+    "category": "Grains",
+    "price": 102,
+    "unit": "kg",
+    "description": "Naturally grown brown rice with its nutritious bran layer intact. This whole grain rice is rich in fiber, essential minerals, and antioxidants. Grown by Jahanara Begum at Farm 41 in Khulna, this rice is minimally processed to retain its natural texture and nutty flavor. Ideal for health-conscious diets and perfect for making wholesome meals like khichuri, biryani, or grain bowls.",
+    "farmer": {
+      "name": "Jahanara Begum",
+      "farmName": "Farm 41",
+      "location": "Khulna, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8QnJvd24lMjBSaWNlfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1669563794789-2412eeb7e62d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fEJyb3duJTIwUmljZXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1561767782-d8e3aa77ef77?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fEJyb3duJTIwUmljZXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1606728099646-68d5a0a4d423?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzV8fEJyb3duJTIwUmljZXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1719670712556-638018bd8238?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NDR8fEJyb3duJTIwUmljZXxlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 61,
+    "features": [
+      "Whole grain and high in fiber",
+      "Unpolished for maximum nutrients",
+      "Naturally gluten-free",
+      "Locally grown and minimally processed",
+      "Ideal for diabetic and heart-healthy diets",
+      "Nutty flavor and chewy texture",
+      "Eco-friendly farming practices"
+    ],
+    "rating": 3.7,
+    "reviewCount": 207,
+    "isOrganic": true,
+    "purchaseCount": 275,
+    "storageInstructions": "Store in an airtight container in a cool, dry place. Best used within 6 months for optimal freshness.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 111,
+      "protein": "2.6g",
+      "fat": "0.9g",
+      "carbohydrates": "23g",
+      "fiber": "1.8g",
+      "iron": "0.4mg",
+      "magnesium": "43mg",
+      "vitaminB6": "0.1mg"
+    },
+    "reviews": [
+      {
+        "reviewId": "rev101",
+        "userName": "Farida",
+        "rating": 4,
+        "comment": "Good quality rice with a nice nutty flavor. Takes a bit longer to cook but worth the health benefits.",
+        "date": "2025-07-15T08:30:00Z"
+      },
+      {
+        "reviewId": "rev102",
+        "userName": "Rafiq",
+        "rating": 3.5,
+        "comment": "Healthy option but the texture is a bit chewy for my liking. Great for biryani though!",
+        "date": "2025-07-18T12:45:00Z"
+      },
+      {
+        "reviewId": "rev103",
+        "userName": "Sumaiya",
+        "rating": 3.8,
+        "comment": "Organic and fresh, but I wish it was a little softer after cooking. Overall, a good choice.",
+        "date": "2025-07-21T10:20:00Z"
+      },
+      {
+        "reviewId": "rev104",
+        "userName": "Habib",
+        "rating": 4.2,
+        "comment": "Perfect for healthy meals and has a nice natural flavor. I use it regularly for my family.",
+        "date": "2025-07-24T15:05:00Z"
+      }
+    ],
+    "createdAt": "2025-07-25T00:39:25.618Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382eab0",
+    "name": "Fresh Lettuce",
+    "category": "Vegetables",
+    "price": 55,
+    "unit": "kg",
+    "description": "Crisp and naturally grown green lettuce leaves from Green Leaf Gardens in Gazipur. Packed with vitamins and minerals, these tender leaves are perfect for salads, wraps, burgers, and sandwiches. Grown organically using clean water and sustainable methods to preserve freshness, flavor, and nutrients. A must-have for healthy meal lovers.",
+    "farmer": {
+      "name": "Mostafa Kamal",
+      "farmName": "Green Leaf Gardens",
+      "location": "Gazipur, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1590531711560-43d7a9bc4e6c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0",
+      "https://images.unsplash.com/photo-1720456764346-1abff7d43efe?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0",
+      "https://images.unsplash.com/photo-1586288415925-d7affaf2d1f0?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0",
+      "https://plus.unsplash.com/premium_photo-1661677432898-3ea8734b66fd?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0",
+      "https://images.unsplash.com/photo-1598134565562-dc47b0b8c88e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0"
+    ],
+    "stock": 70,
+    "features": [
+      "Crispy and crunchy texture",
+      "Freshly harvested daily",
+      "Ideal for salads and wraps",
+      "High in water content",
+      "Organically grown without pesticides",
+      "Low in calories, high in fiber",
+      "Handpicked from Green Leaf Gardens"
+    ],
+    "rating": 4.4,
+    "reviewCount": 45,
+    "isOrganic": true,
+    "purchaseCount": 67,
+    "storageInstructions": "Keep refrigerated at 1–4°C. Store in a breathable vegetable bag or wrapped in a damp paper towel to maintain crispness. Use within 4–5 days.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 15,
+      "protein": "1.4g",
+      "fat": "0.2g",
+      "carbohydrates": "2.9g",
+      "fiber": "1.3g",
+      "vitaminC": "9.2mg",
+      "vitaminA": "7405 IU",
+      "folate": "38mcg"
+    },
+    "reviews": [
+      {
+        "reviewId": "rev201",
+        "userName": "Ayesha",
+        "rating": 4.5,
+        "comment": "Very fresh and crisp! Tasted amazing in my chicken wrap. Will definitely buy again.",
+        "date": "2025-07-20T09:12:00Z"
+      },
+      {
+        "reviewId": "rev202",
+        "userName": "Mehedi Hasan",
+        "rating": 4.2,
+        "comment": "Good quality organic lettuce. Stayed fresh for 3 days in the fridge. Great for salads.",
+        "date": "2025-07-22T14:50:00Z"
+      },
+      {
+        "reviewId": "rev203",
+        "userName": "Nasrin Akter",
+        "rating": 4.6,
+        "comment": "Very clean and no signs of chemicals. My kids love it in their sandwiches!",
+        "date": "2025-07-25T17:30:00Z"
+      }
+    ],
+    "createdAt": "2025-07-23T22:51:06.033Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382eaa6",
+    "name": "Fresh Potatoes",
+    "category": "Vegetables",
+    "price": 30,
+    "unit": "kg",
+    "description": "Farm-fresh potatoes grown in the fertile lands of Munshiganj, ideal for boiling, frying, baking, or mashing. These versatile tubers are a staple in every Bangladeshi kitchen, known for their smooth skin, dense texture, and earthy taste. Perfect for everyday meals, from curries to fries and stews.",
+    "farmer": {
+      "name": "Ruma Akter",
+      "farmName": "Earth's Bounty Farm",
+      "location": "Munshiganj, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1724256032011-4f9e9548fe34?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0",
+      "https://plus.unsplash.com/premium_photo-1675365779531-031dfdcdf947?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0",
+      "https://images.unsplash.com/photo-1741517922282-45b999eb9e49?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0",
+      "https://images.unsplash.com/photo-1719734756707-f27ba4926f3e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0",
+      "https://images.unsplash.com/photo-1683543124235-400a2b31cc73?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0"
+    ],
+    "stock": 300,
+    "features": [
+      "Firm and fresh texture",
+      "Perfect for all cooking styles",
+      "Locally sourced from Munshiganj",
+      "Naturally grown with minimal processing",
+      "Ideal for long-term storage",
+      "Great source of energy and carbs",
+      "Family kitchen essential"
+    ],
+    "rating": 4.2,
+    "reviewCount": 178,
+    "isOrganic": false,
+    "purchaseCount": 267,
+    "storageInstructions": "Store in a cool, dry, and dark place away from onions. Avoid refrigeration to prevent starch-to-sugar conversion. Use within 3–4 weeks for best results.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 77,
+      "protein": "2g",
+      "fat": "0.1g",
+      "carbohydrates": "17g",
+      "fiber": "2.2g",
+      "vitaminC": "19.7mg",
+      "potassium": "429mg",
+      "iron": "0.8mg"
+    },
+    "reviews": [
+      {
+        "reviewId": "rev301",
+        "userName": "Shafiq Ahmed",
+        "rating": 4.0,
+        "comment": "These potatoes are great for mashed dishes and fries. Very fresh and clean.",
+        "date": "2025-07-21T10:45:00Z"
+      },
+      {
+        "reviewId": "rev302",
+        "userName": "Tanjina Yasmin",
+        "rating": 4.3,
+        "comment": "Good value for money. The size was consistent and they cooked well.",
+        "date": "2025-07-23T16:20:00Z"
+      },
+      {
+        "reviewId": "rev303",
+        "userName": "Habibur Rahman",
+        "rating": 4.4,
+        "comment": "Stayed fresh for weeks. Loved using them in curries and bharta.",
+        "date": "2025-07-26T08:55:00Z"
+      }
+    ],
+    "createdAt": "2025-07-23T15:02:12.188Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382eaad",
+    "name": "Sweet Pineapple",
+    "category": "Fruits",
+    "price": 80,
+    "unit": "piece",
+    "description": "Juicy, sweet, and mildly tangy pineapples harvested from the tropical fields of Tangail. These golden-fleshed fruits are packed with flavor and nutrition — perfect for fresh juices, fruit salads, smoothies, or as a refreshing standalone snack. Each piece delivers a burst of tropical sunshine in every bite.",
+    "farmer": {
+      "name": "Nurul Islam",
+      "farmName": "Tropical Paradise",
+      "location": "Tangail, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1724849318956-c17403245ce4?w=600&auto=format&fit=crop&q=60",
+      "https://plus.unsplash.com/premium_photo-1723934528714-f8ec8581a3f3?w=600&auto=format&fit=crop&q=60",
+      "https://plus.unsplash.com/premium_photo-1725001313889-d2f0a61e9082?w=600&auto=format&fit=crop&q=60",
+      "https://images.unsplash.com/photo-1740631599964-a92bbfafdee2?w=600&auto=format&fit=crop&q=60",
+      "https://plus.unsplash.com/premium_photo-1695055513645-1f666594920c?w=600&auto=format&fit=crop&q=60"
+    ],
+    "stock": 60,
+    "features": [
+      "Juicy and golden interior",
+      "Ideal for desserts and smoothies",
+      "Perfect blend of sweetness and acidity",
+      "Naturally ripened under the sun",
+      "Rich in vitamin C and digestive enzymes",
+      "Hand-picked with care from Tangail",
+      "Tropical taste in every bite"
+    ],
+    "rating": 4.8,
+    "reviewCount": 67,
+    "isOrganic": false,
+    "purchaseCount": 89,
+    "storageInstructions": "Store at room temperature until ripe. Once ripe, refrigerate and consume within 3–4 days for best flavor. For cut pineapple, refrigerate in an airtight container and consume within 2 days.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 50,
+      "protein": "0.5g",
+      "fat": "0.1g",
+      "carbohydrates": "13g",
+      "sugar": "10g",
+      "fiber": "1.4g",
+      "vitaminC": "47.8mg",
+      "manganese": "0.9mg",
+      "bromelain": "Yes"
+    },
+    "reviews": [
+      {
+        "reviewId": "rev401",
+        "userName": "Sumaiya Hossain",
+        "rating": 4.9,
+        "comment": "One of the juiciest pineapples I’ve ever had. So sweet and fresh — it reminded me of my childhood summers!",
+        "date": "2025-07-25T09:12:00Z"
+      },
+      {
+        "reviewId": "rev402",
+        "userName": "Raihan Chowdhury",
+        "rating": 4.7,
+        "comment": "Excellent flavor and very fragrant. Great for smoothies. I just wish the pieces were a little bigger.",
+        "date": "2025-07-26T18:45:00Z"
+      },
+      {
+        "reviewId": "rev403",
+        "userName": "Nafisa Binte Karim",
+        "rating": 4.8,
+        "comment": "Perfect balance of sweet and tangy. Loved it in my fruit salad. Will definitely reorder!",
+        "date": "2025-07-27T13:35:00Z"
+      }
+    ],
+    "createdAt": "2025-07-23T07:53:16.050Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382eacc",
+    "name": "Guava",
+    "category": "Fruits",
+    "price": 82,
+    "unit": "dozen",
+    "description": "Fresh, juicy guavas harvested from the fertile farms of Khulna. These guavas are known for their sweet aroma, crunchy texture, and rich vitamin content. Ideal for eating raw, juicing, or adding to desserts and salads. A nutritious tropical fruit loved across Bangladesh.",
+    "farmer": {
+      "name": "Ayesha Siddika",
+      "farmName": "Farm 46",
+      "location": "Khulna, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1536511132770-e5058c7e8c46?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0",
+      "https://images.unsplash.com/photo-1629367308496-a2496ba22f88?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0",
+      "https://images.unsplash.com/photo-1600659090872-74ca5ca1023a?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0",
+      "https://images.unsplash.com/photo-1521678692304-15d9dbb84a3a?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0",
+      "https://plus.unsplash.com/premium_photo-1705932430293-a1d21fab094a?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0"
+    ],
+    "stock": 158,
+    "features": [
+      "Sweet and aromatic",
+      "Crunchy texture",
+      "Rich in Vitamin C and fiber",
+      "Locally sourced from Khulna farms",
+      "Naturally ripened",
+      "Versatile for raw eating or cooking"
+    ],
+    "rating": 4.3,
+    "reviewCount": 104,
+    "isOrganic": false,
+    "purchaseCount": 86,
+    "storageInstructions": "Keep guavas refrigerated at 4°C to extend freshness. Consume within 5–7 days for optimal taste and nutrition.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 68,
+      "protein": "2.6g",
+      "fat": "0.9g",
+      "carbohydrates": "14g",
+      "fiber": "5.4g",
+      "vitaminC": "228mg",
+      "potassium": "417mg",
+      "calcium": "18mg"
+    },
+    "reviews": [
+      {
+        "reviewId": "rev501",
+        "userName": "Hasibul Alam",
+        "rating": 4.4,
+        "comment": "Crisp and sweet! The guavas arrived fresh and smelled amazing. My whole family enjoyed them.",
+        "date": "2025-07-26T11:05:00Z"
+      },
+      {
+        "reviewId": "rev502",
+        "userName": "Tania Nahar",
+        "rating": 4.2,
+        "comment": "Really fresh and flavorful. Great for making guava juice. I just wish the size was a bit more uniform.",
+        "date": "2025-07-27T16:32:00Z"
+      },
+      {
+        "reviewId": "rev503",
+        "userName": "Rafid Mahmud",
+        "rating": 4.3,
+        "comment": "Excellent quality. Loved the crunch and natural sweetness. Will definitely buy again from Farm 46.",
+        "date": "2025-07-28T09:20:00Z"
+      }
+    ],
+    "createdAt": "2025-07-22T20:17:36.006Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382eab7",
+    "name": "Fresh Mint Leaves",
+    "category": "Herbs",
+    "price": 40,
+    "unit": "bundle",
+    "description": "Handpicked fresh mint leaves from Aromatic Herbs Farm in Mymensingh, bursting with a refreshing aroma and vibrant green color. Ideal for enhancing teas, salads, sauces, and various culinary dishes with a cool, invigorating flavor.",
+    "farmer": {
+      "name": "Selim Reza",
+      "farmName": "Aromatic Herbs Farm",
+      "location": "Mymensingh, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1648036933917-762235e009c7?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8RnJlc2glMjBNaW50JTIwTGVhdmVzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1679061583335-c8be1c6209f6?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8RnJlc2glMjBNaW50JTIwTGVhdmVzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1695088957810-8d5ad5ca9a22?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTR8fEZyZXNoJTIwTWludCUyMExlYXZlc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1554495287-5d0180315f3c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjZ8fEZyZXNoJTIwTWludCUyMExlYXZlc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1595101259230-fe53eae70f2e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mjh8fEZyZXNoJTIwTWludCUyMExlYXZlc3xlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 80,
+    "features": [
+      "Fresh and vibrant leaves",
+      "Strong aromatic scent",
+      "Perfect for teas, cooking, and garnishing",
+      "Grown organically",
+      "Handpicked for quality"
+    ],
+    "rating": 4.6,
+    "reviewCount": 67,
+    "isOrganic": true,
+    "purchaseCount": 89,
+    "storageInstructions": "Store wrapped in a damp paper towel inside a sealed container in the refrigerator. Use within 5-7 days for best freshness and aroma.",
+    "nutritionalInformation": {
+      "servingSize": "10g",
+      "calories": 5,
+      "protein": "0.3g",
+      "fat": "0.1g",
+      "carbohydrates": "1g",
+      "fiber": "0.5g",
+      "vitaminA": "1500 IU",
+      "vitaminC": "31 mg",
+      "calcium": "50 mg",
+      "iron": "0.8 mg"
+    },
+    "reviews": [
+      {
+        "reviewId": "rev601",
+        "userName": "Farzana Hossain",
+        "rating": 4.7,
+        "comment": "The mint was incredibly fresh and fragrant! I used it in my tea and chutney — made everything taste amazing.",
+        "date": "2025-07-26T08:10:00Z"
+      },
+      {
+        "reviewId": "rev602",
+        "userName": "Md. Nahid Hasan",
+        "rating": 4.5,
+        "comment": "Very clean and vibrant leaves. The aroma filled my kitchen the moment I opened the packet. Highly recommended!",
+        "date": "2025-07-27T12:44:00Z"
+      },
+      {
+        "reviewId": "rev603",
+        "userName": "Shirin Akter",
+        "rating": 4.6,
+        "comment": "Perfect for garnish and flavoring dishes. Stays fresh longer than other brands I’ve tried. Will reorder soon!",
+        "date": "2025-07-28T09:30:00Z"
+      }
+    ],
+    "createdAt": "2025-07-22T15:15:25.480Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382eaaa",
+    "name": "Fresh Bananas",
+    "category": "Fruits",
+    "price": 60,
+    "unit": "dozen",
+    "description": "Yellow ripe bananas harvested from Tropical Fruits Farm in Patuakhali, Bangladesh. These bananas are naturally sweet, rich in potassium and dietary fiber, making them a healthy and delicious snack or ingredient for smoothies, desserts, and breakfast dishes.",
+    "farmer": {
+      "name": "Rashida Khatun",
+      "farmName": "Tropical Fruits Farm",
+      "location": "Patuakhali, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1724250081106-4bb1be9bf950?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8RnJlc2glMjBCYW5hbmFzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1648421975534-198c407cc25b?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8RnJlc2glMjBCYW5hbmFzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1744659753302-9f4fc320f085?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTR8fEZyZXNoJTIwQmFuYW5hc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1711915517423-c7998cd90ad5?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fEZyZXNoJTIwQmFuYW5hc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1572376832515-4a8aac0f63a2?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzF8fEZyZXNoJTIwQmFuYW5hc3xlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 150,
+    "features": [
+      "Ripe and sweet",
+      "High in potassium",
+      "Rich in dietary fiber",
+      "Naturally grown",
+      "Perfect for snacks and smoothies"
+    ],
+    "rating": 4.5,
+    "reviewCount": 89,
+    "isOrganic": false,
+    "purchaseCount": 234,
+    "storageInstructions": "Store at room temperature away from direct sunlight. To slow ripening, refrigerate once bananas are ripe; peel may darken but fruit remains fresh. Avoid storing near ethylene-sensitive fruits.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 89,
+      "protein": "1.1g",
+      "fat": "0.3g",
+      "carbohydrates": "23g",
+      "fiber": "2.6g",
+      "potassium": "358mg",
+      "vitaminC": "8.7mg",
+      "magnesium": "27mg"
+    },
+    "reviews": [
+      {
+        "reviewId": "rev701",
+        "userName": "Shamim Alam",
+        "rating": 4.5,
+        "comment": "Perfectly ripe and sweet. These bananas are great for smoothies and taste even better than store-bought ones.",
+        "date": "2025-07-26T09:20:00Z"
+      },
+      {
+        "reviewId": "rev702",
+        "userName": "Nazma Sultana",
+        "rating": 4.6,
+        "comment": "Arrived fresh and in great condition. The kids love them as snacks. Will be ordering again!",
+        "date": "2025-07-27T11:42:00Z"
+      },
+      {
+        "reviewId": "rev703",
+        "userName": "Ashiqur Rahman",
+        "rating": 4.4,
+        "comment": "Good value and fresh. A couple of bananas were slightly overripe but still delicious.",
+        "date": "2025-07-28T10:15:00Z"
+      }
+    ],
+    "createdAt": "2025-07-22T03:45:56.352Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+,
+  {
+    "_id": "688725de224d2f673382eabd",
+    "name": "Sundarbans Honey",
+    "category": "Honey",
+    "price": 24,
+    "unit": "dozen",
+    "description": "Pure, high-quality honey sourced from the wildflowers of the Sundarbans forest in Khulna, Bangladesh. Known for its rich aroma, golden color, and natural sweetness, this honey is packed with antioxidants and beneficial enzymes, making it a healthy choice for sweetening foods and beverages or as a natural remedy.",
+    "farmer": {
+      "name": "Khalilur Rahman",
+      "farmName": "Farm 31",
+      "location": "Khulna, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1719871766551-b9ecf87eee51?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fFN1bmRhcmJhbnMlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1448062885262-aa6670248b0e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fFN1bmRhcmJhbnMlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1688940739777-2672203d1c16?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzJ8fFN1bmRhcmJhbnMlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1717144698901-f41f06c7c6a2?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzZ8fFN1bmRhcmJhbnMlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1601592149903-210683803e31?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NDZ8fFN1bmRhcmJhbnMlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 154,
+    "features": [
+      "Pure and natural",
+      "Wildflower sourced",
+      "Rich aroma and flavor",
+      "High antioxidant content",
+      "Locally harvested"
+    ],
+    "rating": 4.2,
+    "reviewCount": 112,
+    "isOrganic": true,
+    "purchaseCount": 264,
+    "storageInstructions": "Store in a cool, dry place away from direct sunlight. Keep the container tightly sealed to prevent moisture absorption and crystallization. Do not refrigerate.",
+    "nutritionalInformation": {
+      "servingSize": "1 tablespoon (21g)",
+      "calories": 64,
+      "protein": "0.1g",
+      "fat": "0g",
+      "carbohydrates": "17g",
+      "sugars": "17g",
+      "calcium": "1mg",
+      "iron": "0.1mg",
+      "potassium": "11mg"
+    },
+    "reviews": [
+      {
+        "reviewId": "rev801",
+        "userName": "Taslima Akter",
+        "rating": 4.3,
+        "comment": "Absolutely pure and fragrant! I use it in my morning tea, and it enhances the flavor wonderfully.",
+        "date": "2025-07-26T08:12:00Z"
+      },
+      {
+        "reviewId": "rev802",
+        "userName": "Hasibul Hasan",
+        "rating": 4.1,
+        "comment": "You can really tell this honey is natural. Great quality and value for the price.",
+        "date": "2025-07-27T15:00:00Z"
+      },
+      {
+        "reviewId": "rev803",
+        "userName": "Mahmuda Chowdhury",
+        "rating": 4.2,
+        "comment": "Tastes amazing and works great in home remedies. Will definitely reorder!",
+        "date": "2025-07-28T10:34:00Z"
+      }
+    ],
+    "createdAt": "2025-07-21T17:04:48.938Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382eaba",
+    "name": "Lychees",
+    "category": "Fruits",
+    "price": 49,
+    "unit": "piece",
+    "description": "Fresh and juicy lychees cultivated by local farmers in Chittagong, Bangladesh. These lychees have a sweet, floral flavor and a refreshing aroma, making them perfect for eating fresh or adding to desserts and beverages. Known for their bright red skin and succulent white flesh, they are a popular tropical fruit rich in vitamins and antioxidants.",
+    "farmer": {
+      "name": "Nasima Akter",
+      "farmName": "Farm 28",
+      "location": "Chittagong, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1709146958860-d29e4c08a3b1?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8THljaGVlc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1521123036037-6725d75de336?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8THljaGVlc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1722961405964-ec2ab6e7ecb8?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8THljaGVlc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1656826605781-fcd6c13b0bd5?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjZ8fEx5Y2hlZXN8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1651451142035-0f8838b13469?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzR8fEx5Y2hlZXN8ZW58MHx8MHx8fDA%3D"
+    ],
+    "stock": 218,
+    "features": [
+      "Fresh and juicy",
+      "Locally grown in Chittagong",
+      "Sweet and floral flavor",
+      "Rich in antioxidants",
+      "Ideal for fresh eating or desserts"
+    ],
+    "rating": 3.9,
+    "reviewCount": 49,
+    "isOrganic": false,
+    "purchaseCount": 260,
+    "storageInstructions": "Store lychees in a cool, dry place or refrigerate in a perforated plastic bag to maintain freshness. Consume within 3-5 days for optimal taste.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 66,
+      "protein": "0.8g",
+      "fat": "0.4g",
+      "carbohydrates": "16.5g",
+      "fiber": "1.3g",
+      "vitaminC": "71.5mg",
+      "potassium": "171mg",
+      "magnesium": "10mg"
+    },
+    "reviews": [
+      {
+        "reviewId": "rev901",
+        "userName": "Rumana Haque",
+        "rating": 4.2,
+        "comment": "Very sweet and fresh lychees! They were perfectly ripe and flavorful. Highly recommend during summer!",
+        "date": "2025-07-25T12:45:00Z"
+      },
+      {
+        "reviewId": "rev902",
+        "userName": "Aminul Islam",
+        "rating": 3.7,
+        "comment": "Nice taste but a few were slightly overripe. Still good overall and great for the price.",
+        "date": "2025-07-26T16:20:00Z"
+      },
+      {
+        "reviewId": "rev903",
+        "userName": "Sadia Karim",
+        "rating": 4.0,
+        "comment": "Love the freshness and aroma! Used them in a fruit salad and everyone loved it.",
+        "date": "2025-07-27T09:10:00Z"
+      }
+    ],
+    "createdAt": "2025-07-21T01:04:23.274Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382eacf",
+    "name": "Forest Honey",
+    "category": "Honey",
+    "price": 92,
+    "unit": "liter",
+    "description": "Premium forest honey harvested from wildflowers in the Sylhet region of Bangladesh. This honey is known for its rich aroma, smooth texture, and natural sweetness. Sourced sustainably from local farmers, it offers a pure taste of the forest with natural health benefits including antioxidants and antimicrobial properties.",
+    "farmer": {
+      "name": "Mokbul Hossain",
+      "farmName": "Farm 49",
+      "location": "Sylhet, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1658922251481-b49205905aff?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fEZvcmVzdCUyMEhvbmV5fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1549269459-ba9e31874ef2?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8Rm9yZXN0JTIwSG9uZXl8ZW58MHx8MHx8fDA%3D",
+      "https://plus.unsplash.com/premium_photo-1681506399058-89fb8a9fc714?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTd8fEZvcmVzdCUyMEhvbmV5fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1627515761181-9d20a39536bb?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mjh8fEZvcmVzdCUyMEhvbmV5fGVufDB8fDB8fHww",
+      "https://plus.unsplash.com/premium_photo-1681506394169-d2c9c91c09e2?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mzd8fEZvcmVzdCUyMEhvbmV5fGVufDB8fDB8fHww"
+    ],
+    "stock": 242,
+    "features": [
+      "Pure and natural",
+      "Sustainably sourced",
+      "Rich in antioxidants",
+      "Smooth texture and rich aroma",
+      "Locally harvested from Sylhet forests"
+    ],
+    "rating": 3.9,
+    "reviewCount": 76,
+    "isOrganic": false,
+    "purchaseCount": 308,
+    "storageInstructions": "Store in a cool, dry place away from direct sunlight. Keep the container tightly sealed to prevent moisture absorption and crystallization. Avoid refrigeration to maintain smooth texture.",
+    "nutritionalInformation": {
+      "servingSize": "1 tablespoon (21g)",
+      "calories": 64,
+      "protein": "0.1g",
+      "fat": "0g",
+      "carbohydrates": "17g",
+      "sugars": "17g",
+      "fiber": "0g",
+      "vitamins": "Trace amounts of B vitamins",
+      "minerals": "Calcium, iron, magnesium in trace amounts"
+    },
+    "reviews": [
+      {
+        "reviewId": "rev1101",
+        "userName": "Jannatul Ferdous",
+        "rating": 4.5,
+        "comment": "The aroma is incredible! I use it in my herbal tea and even for skincare. So pure and fresh!",
+        "date": "2025-07-24T09:30:00Z"
+      },
+      {
+        "reviewId": "rev1102",
+        "userName": "Tanvir Ahmed",
+        "rating": 3.8,
+        "comment": "Good quality and packaging, but a bit sweeter than expected. Still love that it's natural and local.",
+        "date": "2025-07-25T14:55:00Z"
+      },
+      {
+        "reviewId": "rev1103",
+        "userName": "Razia Sultana",
+        "rating": 4.2,
+        "comment": "One of the best forest honeys I've tasted. Smooth, aromatic, and perfect for toast or warm water!",
+        "date": "2025-07-26T08:10:00Z"
+      }
+    ],
+    "createdAt": "2025-07-20T16:44:52.509Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382eace",
+    "name": "Fresh Cheese",
+    "category": "Dairy",
+    "price": 113,
+    "unit": "piece",
+    "description": "Creamy, fresh cheese made from locally sourced milk in Chittagong, Bangladesh. This high-quality cheese offers a mild, slightly tangy flavor, perfect for snacks, cooking, and adding richness to meals. Produced with care by local farmers, it brings authentic taste and nutrition to your table.",
+    "farmer": {
+      "name": "Rokeya Begum",
+      "farmName": "Farm 48",
+      "location": "Chittagong, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1642702678273-d0927e765695?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8RnJlc2glMjBjaGVlc2V8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1583961574431-0a3fa7321b43?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8RnJlc2glMjBjaGVlc2V8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1650142700236-f1889e0193b8?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fEZyZXNoJTIwY2hlZXNlfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1572982270458-ad80e5fcc49a?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fEZyZXNoJTIwY2hlZXNlfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1581339742938-f197c2b238d1?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjB8fEZyZXNoJTIwY2hlZXNlfGVufDB8fDB8fHww"
+    ],
+    "stock": 116,
+    "features": [
+      "Fresh and creamy texture",
+      "Locally sourced milk",
+      "Mild and rich flavor",
+      "Suitable for cooking and snacking",
+      "Organic farming practices",
+      "High nutritional value",
+      "Trusted by local chefs"
+    ],
+    "rating": 3.7,
+    "reviewCount": 173,
+    "isOrganic": true,
+    "purchaseCount": 292,
+    "storageInstructions": "Keep refrigerated between 2°C and 5°C. Store in an airtight container to maintain freshness. Consume within 7-10 days after opening.",
+    "nutritionalInformation": {
+      "servingSize": "30g",
+      "calories": 110,
+      "protein": "7g",
+      "fat": "9g",
+      "carbohydrates": "1g",
+      "calcium": "200mg",
+      "sodium": "150mg"
+    },
+    "reviews": [
+      {
+        "reviewId": "rev1201",
+        "userName": "Nazia Rahman",
+        "rating": 4.0,
+        "comment": "Very creamy and delicious! Great in sandwiches and melts well when heated. Will buy again!",
+        "date": "2025-07-23T11:10:00Z"
+      },
+      {
+        "reviewId": "rev1202",
+        "userName": "Mahmudul Hasan",
+        "rating": 3.5,
+        "comment": "Good texture but a bit too mild in flavor for my taste. Works best with spicy dishes.",
+        "date": "2025-07-24T18:45:00Z"
+      },
+      {
+        "reviewId": "rev1203",
+        "userName": "Afsana Jahan",
+        "rating": 3.8,
+        "comment": "Fresh and organic as promised. My kids love it on toast. Packaging could be better though.",
+        "date": "2025-07-26T09:22:00Z"
+      }
+    ],
+    "createdAt": "2025-07-19T06:48:06.565Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382eab6",
+    "name": "Pure Honey",
+    "category": "Honey",
+    "price": 450,
+    "unit": "kg",
+    "description": "100% pure natural honey harvested from wildflowers in Sylhet, Bangladesh. This raw, unprocessed honey retains all natural enzymes and antioxidants, offering a rich, sweet flavor and numerous health benefits. Perfect for sweetening, cooking, or medicinal use.",
+    "farmer": {
+      "name": "Abdur Rahim",
+      "farmName": "Golden Nectar Apiaries",
+      "location": "Sylhet, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1566236057428-7e68793aef51?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8UHVyZSUyMEhvbmV5fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1606585963179-368e21ffca23?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mjd8fFB1cmUlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1572102329980-f9e3c4b955e1?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjZ8fFB1cmUlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1651217431776-b8cb4fd9c20d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzJ8fFB1cmUlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1707648026660-3bb261f85166?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzB8fFB1cmUlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 50,
+    "features": [
+      "100% Pure and Natural",
+      "Raw and Unprocessed",
+      "Rich in Antioxidants",
+      "Sourced from Wildflowers",
+      "Certified Organic",
+      "Medicinal Properties",
+      "Locally Harvested in Sylhet"
+    ],
+    "rating": 4.9,
+    "reviewCount": 234,
+    "isOrganic": true,
+    "purchaseCount": 156,
+    "storageInstructions": "Store in a cool, dry place away from direct sunlight. Keep the container tightly closed to prevent moisture absorption. Avoid refrigeration to maintain texture and flavor.",
+    "nutritionalInformation": {
+      "servingSize": "1 tbsp (21g)",
+      "calories": 64,
+      "protein": "0.1g",
+      "fat": "0g",
+      "carbohydrates": "17g",
+      "sugars": "17g",
+      "calcium": "1mg",
+      "iron": "0.1mg"
+    },
+    "reviews": [
+      {
+        "reviewId": "rev1301",
+        "userName": "Farhana Islam",
+        "rating": 5.0,
+        "comment": "Absolutely the best pure honey I've ever tasted. Rich, smooth, and full of flavor. Highly recommend!",
+        "date": "2025-07-20T08:30:00Z"
+      },
+      {
+        "reviewId": "rev1302",
+        "userName": "Jahidul Karim",
+        "rating": 4.8,
+        "comment": "Perfectly raw and natural. Love using it in my morning tea and for medicinal purposes.",
+        "date": "2025-07-22T14:15:00Z"
+      },
+      {
+        "reviewId": "rev1303",
+        "userName": "Shahana Akter",
+        "rating": 4.7,
+        "comment": "Great texture and sweetness. Packaging was secure and product arrived fresh.",
+        "date": "2025-07-25T10:50:00Z"
+      }
+    ],
+    "createdAt": "2025-07-18T14:34:28.969Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382ead0",
+    "name": "Basmati Rice",
+    "category": "Grains",
+    "price": 150,
+    "unit": "kg",
+    "description": "Premium aromatic basmati rice grown in the fertile fields of Dinajpur, Bangladesh. Known for its long grains, distinctive fragrance, and fluffy texture, this rice is perfect for biryani, pulao, and everyday meals. Carefully harvested and processed to retain quality and flavor.",
+    "farmer": {
+      "name": "Abdul Haque",
+      "farmName": "Rice Fields",
+      "location": "Dinajpur, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8QmFzbWF0aSUyMFJpY2V8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8QmFzbWF0aSUyMFJpY2V8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1630409346824-4f0e7b080087?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8QmFzbWF0aSUyMFJpY2V8ZW58MHx8MHx8fDA%3D",
+      "https://plus.unsplash.com/premium_photo-1705404738215-3428300767a2?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8QmFzbWF0aSUyMFJpY2V8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1644131447497-8723db691320?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjB8fEJhc21hdGklMjBSaWNlfGVufDB8fDB8fHww"
+    ],
+    "stock": 250,
+    "features": [
+      "Aromatic and fragrant",
+      "Premium quality grains",
+      "Long grain rice",
+      "Naturally grown",
+      "Perfect for biryani and pulao",
+      "Non-GMO and organic",
+      "Hand-harvested with care"
+    ],
+    "rating": 4.8,
+    "reviewCount": 120,
+    "isOrganic": true,
+    "purchaseCount": 345,
+    "storageInstructions": "Store in a cool, dry place in an airtight container to preserve freshness and prevent moisture. Keep away from strong odors and sunlight.",
+    "nutritionalInformation": {
+      "servingSize": "100g cooked",
+      "calories": 130,
+      "protein": "2.4g",
+      "fat": "0.3g",
+      "carbohydrates": "28g",
+      "fiber": "0.4g",
+      "iron": "0.2mg"
+    },
+    "reviews": [
+      {
+        "username": "Farhana S.",
+        "rating": 5,
+        "date": "2025-07-15",
+        "comment": "Absolutely loved this basmati rice! The aroma and fluffiness made my biryani stand out. Highly recommend for any rice lover."
+      },
+      {
+        "username": "Jahid M.",
+        "rating": 4,
+        "date": "2025-07-18",
+        "comment": "Good quality rice with a nice fragrance. Cooked perfectly and tastes great, though a bit pricey."
+      },
+      {
+        "username": "Rina K.",
+        "rating": 5,
+        "date": "2025-07-20",
+        "comment": "This rice is the best I've had from local farms. Perfect for special dishes and everyday meals alike."
+      }
+    ],
+    "createdAt": "2025-07-18T10:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382ead1",
+    "name": "Fresh Tomatoes",
+    "category": "Vegetables",
+    "price": 35,
+    "unit": "kg",
+    "description": "Juicy red tomatoes grown in the fertile fields of Comilla, Bangladesh. Ideal for curries, salads, and sauces, these tomatoes are known for their vibrant color, rich flavor, and perfect balance of sweetness and acidity. Freshly harvested and packed to ensure quality.",
+    "farmer": {
+      "name": "Fatima Begum",
+      "farmName": "Red Harvest Farm",
+      "location": "Comilla, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1686529591640-876ef71ab2ac?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8RnJlc2glMjBUb21hdG9lc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1683008952458-dc02ac67f382?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8RnJlc2glMjBUb21hdG9lc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1683008952351-e527eff405c3?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8RnJlc2glMjBUb21hdG9lc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1683008952375-410ae668e6b9?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8RnJlc2glMjBUb21hdG9lc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1591171551239-80a5eddd627a?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8RnJlc2glMjBUb21hdG9lc3xlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 180,
+    "features": [
+      "Juicy",
+      "Fresh",
+      "Local",
+      "Bright red color",
+      "Rich in antioxidants",
+      "Versatile for cooking"
+    ],
+    "rating": 4.5,
+    "reviewCount": 95,
+    "isOrganic": false,
+    "purchaseCount": 210,
+    "storageInstructions": "Store in a cool, dry place away from direct sunlight. Avoid refrigeration to preserve flavor and texture. Use within 5-7 days for best freshness.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 18,
+      "protein": "0.9g",
+      "fat": "0.2g",
+      "carbohydrates": "3.9g",
+      "fiber": "1.2g",
+      "vitaminC": "14mg",
+      "potassium": "237mg"
+    },
+    "reviews": [
+      {
+        "username": "Hasan R.",
+        "rating": 5,
+        "date": "2025-07-19",
+        "comment": "These tomatoes are incredibly fresh and juicy. Perfect for making rich curries!"
+      },
+      {
+        "username": "Nusrat J.",
+        "rating": 4,
+        "date": "2025-07-22",
+        "comment": "Bright color and good taste. They add a nice tang to my salads."
+      },
+      {
+        "username": "Sajid A.",
+        "rating": 4,
+        "date": "2025-07-25",
+        "comment": "Good quality tomatoes, though a bit soft when delivered. Still excellent for sauces."
+      }
+    ],
+    "createdAt": "2025-07-18T09:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382ead2",
+    "name": "Himsagar Mangoes",
+    "category": "Fruits",
+    "price": 120,
+    "unit": "dozen",
+    "description": "Sweet and juicy Himsagar mangoes, often hailed as the king of fruits. These mangoes are prized for their rich aroma, smooth texture, and delicious sweetness, freshly harvested from Chapainawabganj, Bangladesh.",
+    "farmer": {
+      "name": "Siddique Ali",
+      "farmName": "Mango Orchard",
+      "location": "Chapainawabganj, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1686544304650-36640704097a?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8SGltc2FnYXIlMjBNYW5nb2VzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1543158181-7ecb8d8f3f81?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8SGltc2FnYXIlMjBNYW5nb2VzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1724120996945-88eb4637bfc8?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8SGltc2FnYXIlMjBNYW5nb2VzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1642280351457-6c6193c3c8a0?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fEhpbXNhZ2FyJTIwTWFuZ29lc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1652102351785-0e95356d6e73?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fEhpbXNhZ2FyJTIwTWFuZ29lc3xlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 100,
+    "features": [
+      "Sweet",
+      "Juicy",
+      "Tropical",
+      "Fragrant",
+      "Smooth Texture"
+    ],
+    "rating": 4.9,
+    "reviewCount": 150,
+    "isOrganic": true,
+    "purchaseCount": 180,
+    "storageInstructions": "Store in a cool, dry place. For best taste, consume fresh or refrigerate for up to 5 days after ripening.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 70,
+      "protein": "0.8g",
+      "fat": "0.2g",
+      "carbohydrates": "17g",
+      "fiber": "1.6g",
+      "vitaminC": "36.4mg",
+      "potassium": "168mg"
+    },
+    "reviews": [
+      {
+        "username": "Mona K.",
+        "rating": 5,
+        "date": "2025-07-20",
+        "comment": "Absolutely delicious mangoes! Sweet, juicy, and fragrant. Highly recommend."
+      },
+      {
+        "username": "Arif S.",
+        "rating": 5,
+        "date": "2025-07-23",
+        "comment": "The texture is so smooth and the flavor is amazing. Best Himsagar I've had in years."
+      },
+      {
+        "username": "Rina B.",
+        "rating": 4,
+        "date": "2025-07-26",
+        "comment": "Very tasty and fresh. A little pricey but worth every penny for the quality."
+      }
+    ],
+    "createdAt": "2025-07-18T08:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382ead3",
+    "name": "Fresh Milk",
+    "category": "Dairy",
+    "price": 80,
+    "unit": "liter",
+    "description": "Pure fresh milk sourced from local dairy farms in Sirajganj, Bangladesh. Rich in calcium and essential nutrients, perfect for daily consumption.",
+    "farmer": {
+      "name": "Kamrul Hasan",
+      "farmName": "Pure Milk Farm",
+      "location": "Sirajganj, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1695042864778-6d67ec3953e9?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTN8fEZyZXNoJTIwTWlsa3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1595275522477-c3ce3ca9714b?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fEZyZXNoJTIwTWlsa3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1695042865857-27ce955248cf?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mjl8fEZyZXNoJTIwTWlsa3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1643114453626-97ae781657b6?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NDN8fEZyZXNoJTIwTWlsa3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1740637372899-e27569049917?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NTB8fEZyZXNoJTIwTWlsa3xlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 150,
+    "features": [
+      "Fresh",
+      "Pure",
+      "Local",
+      "Calcium Rich",
+      "Nutrient Dense"
+    ],
+    "rating": 4.7,
+    "reviewCount": 88,
+    "isOrganic": true,
+    "purchaseCount": 200,
+    "storageInstructions": "Keep refrigerated at or below 4°C. Consume within 3 days after opening for best freshness.",
+    "nutritionalInformation": {
+      "servingSize": "250ml",
+      "calories": 150,
+      "protein": "8g",
+      "fat": "8g",
+      "carbohydrates": "12g",
+      "calcium": "300mg",
+      "vitaminD": "2.5mcg"
+    },
+    "reviews": [
+      {
+        "username": "Tania R.",
+        "rating": 5,
+        "date": "2025-07-22",
+        "comment": "The freshest milk I've had in a long time! Perfect for my family."
+      },
+      {
+        "username": "Sabbir H.",
+        "rating": 4,
+        "date": "2025-07-25",
+        "comment": "Good quality milk with rich taste. Slightly pricey but worth it."
+      },
+      {
+        "username": "Joya M.",
+        "rating": 5,
+        "date": "2025-07-27",
+        "comment": "Love the creamy texture and freshness. Highly recommend!"
+      }
+    ],
+    "createdAt": "2025-07-18T07:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382ead4",
+    "name": "Coriander Leaves",
+    "category": "Herbs",
+    "price": 25,
+    "unit": "bundle",
+    "description": "Fresh coriander leaves, perfect for garnishing, cooking, and enhancing flavor with their aromatic freshness.",
+    "farmer": {
+      "name": "Nurjahan Begum",
+      "farmName": "Herb Haven",
+      "location": "Narsingdi, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1675430785093-239946363048?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8Q29yaWFuZGVyJTIwTGVhdmVzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1588879460618-9249e7d947d1?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Q29yaWFuZGVyJTIwTGVhdmVzfGVufDB8fDB8fHww",
+      "https://plus.unsplash.com/premium_photo-1675690280450-a544f470d42f?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8Q29yaWFuZGVyJTIwTGVhdmVzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1609149272289-9a5030d0e6c5?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fENvcmlhbmRlciUyMExlYXZlc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1654048210744-a82ee08e5fbf?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjR8fENvcmlhbmRlciUyMExlYXZlc3xlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 90,
+    "features": [
+      "Fresh",
+      "Aromatic",
+      "Local",
+      "Organic"
+    ],
+    "rating": 4.6,
+    "reviewCount": 70,
+    "isOrganic": true,
+    "purchaseCount": 110,
+    "storageInstructions": "Keep refrigerated and use within 3 days for optimal freshness and aroma.",
+    "nutritionalInformation": {
+      "servingSize": "10g",
+      "calories": 2,
+      "vitamins": ["Vitamin A", "Vitamin C", "Vitamin K"],
+      "minerals": ["Iron", "Calcium"],
+      "antioxidants": true
+    },
+    "reviews": [
+      {
+        "username": "Rima S.",
+        "rating": 5,
+        "date": "2025-07-22",
+        "comment": "Very fresh and aromatic coriander. Adds great flavor to my dishes."
+      },
+      {
+        "username": "Jamal K.",
+        "rating": 4,
+        "date": "2025-07-24",
+        "comment": "Good quality leaves, stayed fresh longer than expected."
+      },
+      {
+        "username": "Anika F.",
+        "rating": 5,
+        "date": "2025-07-26",
+        "comment": "Love the organic quality and freshness. Perfect for garnishing."
+      }
+    ],
+    "createdAt": "2025-07-18T06:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382ead5",
+    "name": "Red Lentils",
+    "category": "Grains",
+    "price": 95,
+    "unit": "kg",
+    "description": "High quality red lentils from local farmers, perfect for dal and rich in protein.",
+    "farmer": {
+      "name": "Shafiqul Islam",
+      "farmName": "Farm 1",
+      "location": "Bogra, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1730591857303-0fa44be3f677?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8UmVkJTIwTGVudGlsc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1479750538326-d7a4e460010c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fFJlZCUyMExlbnRpbHN8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1604872832578-c59e898d580c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fFJlZCUyMExlbnRpbHN8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1722882269533-9a9e6b815bbb?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fFJlZCUyMExlbnRpbHN8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1636649265673-11306d8abe49?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mjd8fFJlZCUyMExlbnRpbHN8ZW58MHx8MHx8fDA%3D"
+    ],
+    "stock": 200,
+    "features": [
+      "Fresh",
+      "Local",
+      "Quality",
+      "Protein-Rich"
+    ],
+    "rating": 4.3,
+    "reviewCount": 65,
+    "isOrganic": false,
+    "purchaseCount": 150,
+    "storageInstructions": "Store in a cool, dry place away from sunlight. Use within 6 months for best quality.",
+    "nutritionalInformation": {
+      "servingSize": "50g",
+      "calories": 180,
+      "protein": "12g",
+      "fiber": "8g",
+      "carbohydrates": "30g",
+      "iron": "3.3mg"
+    },
+    "reviews": [
+      {
+        "username": "Hasan M.",
+        "rating": 5,
+        "date": "2025-07-20",
+        "comment": "Excellent quality lentils, cooks well and tastes great."
+      },
+      {
+        "username": "Nazia R.",
+        "rating": 4,
+        "date": "2025-07-22",
+        "comment": "Good lentils with a fresh taste, perfect for dal."
+      },
+      {
+        "username": "Rahim U.",
+        "rating": 4,
+        "date": "2025-07-25",
+        "comment": "Decent lentils, consistent quality and affordable price."
+      }
+    ],
+    "createdAt": "2025-07-17T10:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382ead6",
+    "name": "Green Beans",
+    "category": "Vegetables",
+    "price": 45,
+    "unit": "kg",
+    "description": "High quality green beans from local farmers, great for stir-fries and salads.",
+    "farmer": {
+      "name": "Monira Khatun",
+      "farmName": "Farm 2",
+      "location": "Faridpur, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1725384940646-ef6aa8c2a091?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8R3JlZW4lMjBCZWFuc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1574963835594-61eede2070dc?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8R3JlZW4lMjBCZWFuc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1508900173264-bb171fa617e4?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8R3JlZW4lMjBCZWFuc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1667251760206-60812664e900?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8R3JlZW4lMjBCZWFuc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1725384940661-d2a4d303c6bf?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8R3JlZW4lMjBCZWFuc3xlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 120,
+    "features": [
+      "Fresh",
+      "Local",
+      "Quality",
+      "Crisp"
+    ],
+    "rating": 4.2,
+    "reviewCount": 55,
+    "isOrganic": true,
+    "purchaseCount": 140,
+    "storageInstructions": "Keep refrigerated and consume within 3-4 days for best freshness.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 31,
+      "protein": "2g",
+      "fiber": "3.4g",
+      "carbohydrates": "7g",
+      "vitaminC": "12mg"
+    },
+    "reviews": [
+      {
+        "username": "Amina H.",
+        "rating": 5,
+        "date": "2025-07-21",
+        "comment": "Very fresh and crisp green beans. Perfect for my salads!"
+      },
+      {
+        "username": "Jahid S.",
+        "rating": 4,
+        "date": "2025-07-24",
+        "comment": "Good quality beans with nice texture, though a bit pricey."
+      },
+      {
+        "username": "Lina K.",
+        "rating": 4,
+        "date": "2025-07-26",
+        "comment": "Loved the freshness and flavor, great for stir-fries."
+      }
+    ],
+    "createdAt": "2025-07-17T09:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382ead7",
+    "name": "Jackfruit",
+    "category": "Fruits",
+    "price": 70,
+    "unit": "dozen",
+    "description": "High quality jackfruits from local farmers, sweet and versatile.",
+    "farmer": {
+      "name": "Ibrahim Khalil",
+      "farmName": "Farm 3",
+      "location": "Barisal, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1624711078028-19ed36a91f02?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8SmFja2ZydWl0fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1620685581318-91ce6f1b76ca?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8SmFja2ZydWl0fGVufDB8fDB8fHww",
+      "https://plus.unsplash.com/premium_photo-1723369639215-e387669c93ab?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8SmFja2ZydWl0fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1651565919334-bf81165cd0a3?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8SmFja2ZydWl0fGVufDB8fDB8fHww",
+      "https://plus.unsplash.com/premium_photo-1723369639702-17eef90b7ae5?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTd8fEphY2tmcnVpdHxlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 130,
+    "features": [
+      "Fresh",
+      "Local",
+      "Quality"
+    ],
+    "rating": 4.4,
+    "reviewCount": 80,
+    "isOrganic": false,
+    "purchaseCount": 170,
+    "storageInstructions": "Store in a cool, dry place. Consume within a week after cutting.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 95,
+      "protein": "1.7g",
+      "fiber": "1.5g",
+      "carbohydrates": "23.25g",
+      "vitaminC": "13.7mg"
+    },
+    "reviews": [
+      {
+        "username": "Rana M.",
+        "rating": 5,
+        "date": "2025-07-20",
+        "comment": "Delicious and sweet jackfruits! Very fresh and juicy."
+      },
+      {
+        "username": "Shumi B.",
+        "rating": 4,
+        "date": "2025-07-23",
+        "comment": "Good quality jackfruit, but a few pieces were a bit overripe."
+      },
+      {
+        "username": "Hasan K.",
+        "rating": 4,
+        "date": "2025-07-25",
+        "comment": "Great taste and aroma. Perfect for desserts and snacks."
+      }
+    ],
+    "createdAt": "2025-07-17T08:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382ead8",
+    "name": "Mangrove Honey",
+    "category": "Honey",
+    "price": 200,
+    "unit": "kg",
+    "description": "High quality honey from local farmers, sourced from Sundarbans mangroves.",
+    "farmer": {
+      "name": "Salma Begum",
+      "farmName": "Farm 4",
+      "location": "Sundarbans, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1713316834449-d8fbe5f2aad3?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8TWFuZ3JvdmUlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1649706937154-f3f494c0b8b3?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8TWFuZ3JvdmUlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1741000490468-88b9824460f5?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8TWFuZ3JvdmUlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1745623378315-f90bfa61515f?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8TWFuZ3JvdmUlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1601064962128-2b94dda605a1?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fE1hbmdyb3ZlJTIwSG9uZXl8ZW58MHx8MHx8fDA%3D"
+    ],
+    "stock": 80,
+    "features": [
+      "100% Pure and Natural Honey",
+      "Sustainably Harvested from Sundarbans Mangroves",
+      "Rich in Antioxidants and Nutrients",
+      "Unprocessed and Free from Additives",
+      "Locally Produced by Experienced Farmers",
+      "Distinctive Flavor Profile Unique to Mangrove Honey"
+    ],
+    "rating": 4.8,
+    "reviewCount": 90,
+    "isOrganic": true,
+    "purchaseCount": 130,
+    "storageInstructions": "Store in a cool, dry place away from direct sunlight.",
+    "nutritionalInformation": {
+      "servingSize": "1 tbsp (21g)",
+      "calories": 64,
+      "totalFat": "0g",
+      "sugars": "17g",
+      "protein": "0.1g"
+    },
+    "reviews": [
+      {
+        "username": "Anika R.",
+        "rating": 5,
+        "date": "2025-07-21",
+        "comment": "Absolutely pure and delicious honey. Love the natural sweetness and aroma!"
+      },
+      {
+        "username": "Jamal H.",
+        "rating": 4,
+        "date": "2025-07-24",
+        "comment": "Great quality honey with a unique flavor from the mangroves. Perfect for my tea."
+      },
+      {
+        "username": "Rina S.",
+        "rating": 5,
+        "date": "2025-07-26",
+        "comment": "Very fresh and natural. The texture and taste are amazing, highly recommend."
+      }
+    ],
+    "createdAt": "2025-07-17T07:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382ead9",
+    "name": "Fresh Yogurt",
+    "category": "Dairy",
+    "price": 90,
+    "unit": "liter",
+    "description": "High quality yogurt from local farmers, creamy and tangy, made with traditional methods ensuring rich flavor and probiotics.",
+    "farmer": {
+      "name": "Hasan Mahmud",
+      "farmName": "Farm 5",
+      "location": "Pabna, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1663924211639-ed3b554132e2?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8RnJlc2glMjBZb2d1cnR8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1590085345642-cc15c79a9607?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fEZyZXNoJTIwWW9ndXJ0fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1753173301360-bc5cb27915e4?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTR8fEZyZXNoJTIwWW9ndXJ0fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1753173303140-52768b5b82f4?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fEZyZXNoJTIwWW9ndXJ0fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1719077518887-bc0f378e4ec4?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzF8fEZyZXNoJTIwWW9ndXJ0fGVufDB8fDB8fHww"
+    ],
+    "stock": 110,
+    "features": [
+      "Made from fresh local milk",
+      "Contains live probiotics for gut health",
+      "Creamy and smooth texture",
+      "No artificial preservatives or additives",
+      "Rich in calcium and protein",
+      "Gluten-free and suitable for vegetarians",
+      "Traditional fermentation process",
+      "Free from antibiotics and hormones"
+    ],
+    "rating": 4.6,
+    "reviewCount": 85,
+    "isOrganic": true,
+    "purchaseCount": 160,
+    "storageInstructions": "Keep refrigerated at or below 4°C. Consume within 7 days after opening. Shake gently before use.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 59,
+      "totalFat": "3.3g",
+      "saturatedFat": "2.1g",
+      "cholesterol": "10mg",
+      "sodium": "50mg",
+      "totalCarbohydrates": "4.7g",
+      "dietaryFiber": "0g",
+      "sugars": "4.7g",
+      "protein": "3.5g",
+      "calcium": "150mg",
+      "vitaminD": "2mcg"
+    },
+    "reviews": [
+      {
+        "user": "Anika Rahman",
+        "rating": 5,
+        "comment": "Excellent creamy texture and fresh taste. Perfect for breakfast smoothies! I feel it really helps my digestion because of the probiotics."
+      },
+      {
+        "user": "Jahid Hasan",
+        "rating": 4,
+        "comment": "Good quality yogurt, very fresh and natural. I prefer it a bit tangier but it’s perfect for making desserts and raitas."
+      },
+      {
+        "user": "Moushumi Sultana",
+        "rating": 5,
+        "comment": "Love the local flavor and the freshness. No preservatives, so it tastes pure and natural. My kids enjoy it every day."
+      }
+    ],
+    "createdAt": "2025-07-17T06:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382eada",
+    "name": "Basil Leaves",
+    "category": "Herbs",
+    "price": 30,
+    "unit": "bundle",
+    "description": "High quality basil leaves from local farmers, aromatic and fresh, perfect for garnishing and enhancing the flavor of your dishes.",
+    "farmer": {
+      "name": "Rubina Akter",
+      "farmName": "Farm 6",
+      "location": "Netrokona, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1693266636037-a8fdc067a6b3?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8QmFzaWwlMjBMZWF2ZXN8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1602082406080-ca5a1fbaf8f6?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTR8fEJhc2lsJTIwTGVhdmVzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1641840360785-c720744aa905?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTZ8fEJhc2lsJTIwTGVhdmVzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1726253724522-0d007834df83?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mjh8fEJhc2lsJTIwTGVhdmVzfGVufDB8fDB8fHww",
+      "https://plus.unsplash.com/premium_photo-1726138617400-da017a54800f?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mzd8fEJhc2lsJTIwTGVhdmVzfGVufDB8fDB8fHww"
+    ],
+    "stock": 95,
+    "features": [
+      "Freshly harvested daily",
+      "Strong aromatic fragrance",
+      "Rich in essential oils",
+      "Excellent for cooking and garnishing",
+      "Organic and pesticide-free",
+      "Boosts digestion and immunity",
+      "Contains antioxidants and vitamins",
+      "Sustainably farmed locally"
+    ],
+    "rating": 4.5,
+    "reviewCount": 60,
+    "isOrganic": true,
+    "purchaseCount": 100,
+    "storageInstructions": "Store in a perforated plastic bag in the refrigerator. Keep leaves dry and avoid crushing to maintain freshness for up to 7 days.",
+    "nutritionalInformation": {
+      "servingSize": "10g",
+      "calories": 2,
+      "totalFat": "0.1g",
+      "saturatedFat": "0g",
+      "cholesterol": "0mg",
+      "sodium": "1mg",
+      "totalCarbohydrates": "0.4g",
+      "dietaryFiber": "0.2g",
+      "sugars": "0g",
+      "protein": "0.2g",
+      "vitaminA": "340 IU",
+      "vitaminC": "3.2 mg",
+      "calcium": "22 mg",
+      "iron": "0.3 mg"
+    },
+    "reviews": [
+      {
+        "user": "Farhana Akhter",
+        "rating": 5,
+        "comment": "Absolutely fresh and fragrant basil leaves! They elevate the taste of my dishes and last long when stored properly."
+      },
+      {
+        "user": "Tariq Mahmud",
+        "rating": 4,
+        "comment": "Good quality basil, very aromatic and clean. Would love if the bunch was a bit bigger but overall very satisfied."
+      },
+      {
+        "user": "Lina Chowdhury",
+        "rating": 5,
+        "comment": "Perfect for my homemade pesto and salads. Organic and pesticide-free, I trust these leaves for healthy cooking."
+      }
+    ],
+    "createdAt": "2025-07-16T10:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+
+,
+  {
+    "_id": "688725de224d2f673382eadb",
+    "name": "Barley",
+    "category": "Grains",
+    "price": 110,
+    "unit": "kg",
+    "description": "High quality barley from local farmers, ideal for soups, brewing, and nutritious meals.",
+    "farmer": {
+      "name": "Kuddus Mia",
+      "farmName": "Farm 7",
+      "location": "Naogaon, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1705404738459-c4cb25ad7933?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8QmFybGV5fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1437252611977-07f74518abd7?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8QmFybGV5fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1499946253127-725623d773d5?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8QmFybGV5fGVufDB8fDB8fHww",
+      "https://plus.unsplash.com/premium_photo-1670909649532-d1d68ee475cd?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8QmFybGV5fGVufDB8fDB8fHww",
+      "https://plus.unsplash.com/premium_photo-1663945779273-ebc45569fb9f?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTN8fEJhcmxleXxlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 190,
+    "features": [
+      "Freshly harvested and cleaned",
+      "Locally sourced from Naogaon farms",
+      "Ideal for soups, stews, and brewing",
+      "Good source of dietary fiber and protein",
+      "Rich in vitamins and minerals",
+      "Non-GMO and free from artificial additives",
+      "Versatile grain for various recipes",
+      "Sustainably farmed"
+    ],
+    "rating": 4.4,
+    "reviewCount": 70,
+    "isOrganic": false,
+    "purchaseCount": 145,
+    "storageInstructions": "Store in a cool, dry place in an airtight container. Keep away from moisture and direct sunlight to maintain freshness for several months.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 354,
+      "totalFat": "2.3g",
+      "saturatedFat": "0.4g",
+      "cholesterol": "0mg",
+      "sodium": "12mg",
+      "totalCarbohydrates": "73.5g",
+      "dietaryFiber": "17.3g",
+      "sugars": "0.8g",
+      "protein": "12.5g",
+      "vitaminB1": "0.19mg",
+      "vitaminB3": "4.6mg",
+      "iron": "3.6mg",
+      "magnesium": "133mg"
+    },
+    "reviews": [
+      {
+        "user": "Jamal Uddin",
+        "rating": 5,
+        "comment": "Excellent quality barley! Perfect for my homemade soups and porridge. Clean and fresh every time."
+      },
+      {
+        "user": "Nusrat Jahan",
+        "rating": 4,
+        "comment": "Good barley grain, cooks well and tastes great in my brewing experiments. Would prefer organic though."
+      },
+      {
+        "user": "Farid Ahmed",
+        "rating": 4,
+        "comment": "Fresh and locally sourced, this barley has good texture and flavor. Packaging could be improved."
+      }
+    ],
+    "createdAt": "2025-07-16T09:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+,
+  {
+    "_id": "688725de224d2f673382eadc",
+    "name": "Eggplant",
+    "category": "Vegetables",
+    "price": 50,
+    "unit": "kg",
+    "description": "High quality eggplants from local farmers, perfect for curries and a variety of dishes.",
+    "farmer": {
+      "name": "Latifa Begum",
+      "farmName": "Farm 8",
+      "location": "Kushtia, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1666270423836-864dfa7071e5?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8RWdncGxhbnR8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1615484477201-9f4953340fab?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8RWdncGxhbnR8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1604245437608-50c6bb8d4ee5?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8RWdncGxhbnR8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1533213520888-6aa83d71cc24?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fEVnZ3BsYW50fGVufDB8fDB8fHww",
+      "https://plus.unsplash.com/premium_photo-1663040083845-9e7910bb3ae2?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjV8fEVnZ3BsYW50fGVufDB8fDB8fHww"
+    ],
+    "stock": 140,
+    "features": [
+      "Freshly harvested and handpicked",
+      "Locally sourced from Kushtia farms",
+      "Ideal for curries, grilling, and roasting",
+      "Rich in antioxidants and dietary fiber",
+      "Low in calories and fat",
+      "Organic and pesticide-free",
+      "Firm texture with glossy skin",
+      "Versatile vegetable for various cuisines"
+    ],
+    "rating": 4.3,
+    "reviewCount": 60,
+    "isOrganic": true,
+    "purchaseCount": 155,
+    "storageInstructions": "Store in a cool, dry place or refrigerate wrapped in paper to maintain freshness up to one week. Avoid direct sunlight and moisture.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 25,
+      "totalFat": "0.2g",
+      "saturatedFat": "0.0g",
+      "cholesterol": "0mg",
+      "sodium": "2mg",
+      "totalCarbohydrates": "6g",
+      "dietaryFiber": "3g",
+      "sugars": "3.5g",
+      "protein": "1g",
+      "vitaminC": "2.2mg",
+      "vitaminK": "3.5mcg",
+      "potassium": "230mg"
+    },
+    "reviews": [
+      {
+        "user": "Sadia Rahman",
+        "rating": 5,
+        "comment": "These eggplants were fresh and perfect for my traditional curry recipes. The quality is consistent every time."
+      },
+      {
+        "user": "Rafiq Hasan",
+        "rating": 4,
+        "comment": "Good quality and firm eggplants, cooked well and tasted fresh. Would love to see a bit larger size next time."
+      },
+      {
+        "user": "Anika Sultana",
+        "rating": 4,
+        "comment": "Organic and fresh product. The texture was great, and it added excellent flavor to my grilled dishes."
+      }
+    ],
+    "createdAt": "2025-07-16T08:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+,
+  {
+    "_id": "688725de224d2f673382eadd",
+    "name": "Pomegranates",
+    "category": "Fruits",
+    "price": 65,
+    "unit": "dozen",
+    "description": "High quality pomegranates from local farmers, juicy and antioxidant-rich, perfect for fresh eating and juicing.",
+    "farmer": {
+      "name": "Arif Hossain",
+      "farmName": "Farm 9",
+      "location": "Satkhira, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1668076515507-c5bc223c99a4?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8UG9tZWdyYW5hdGVzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1541344999736-83eca272f6fc?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8UG9tZWdyYW5hdGVzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1530730459653-e0edd4c6072e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8UG9tZWdyYW5hdGVzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1571112104825-21c8169cbc08?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fFBvbWVncmFuYXRlc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1689247946393-151eec6c0f45?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjV8fFBvbWVncmFuYXRlc3xlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 125,
+    "features": [
+      "Freshly harvested and handpicked",
+      "Locally sourced from Satkhira farms",
+      "Juicy and rich in antioxidants",
+      "Excellent source of Vitamin C and fiber",
+      "Perfect for fresh consumption and juicing",
+      "Bright red arils with sweet-tart flavor",
+      "Non-GMO and pesticide-free",
+      "Supports heart health and digestion"
+    ],
+    "rating": 4.5,
+    "reviewCount": 75,
+    "isOrganic": false,
+    "purchaseCount": 165,
+    "storageInstructions": "Store in a cool, dry place or refrigerate for up to two weeks. Avoid bruising for best freshness.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 83,
+      "totalFat": "1.2g",
+      "saturatedFat": "0.1g",
+      "cholesterol": "0mg",
+      "sodium": "3mg",
+      "totalCarbohydrates": "19g",
+      "dietaryFiber": "4g",
+      "sugars": "14g",
+      "protein": "1.7g",
+      "vitaminC": "10.2mg",
+      "vitaminK": "16.4mcg",
+      "potassium": "236mg"
+    },
+    "reviews": [
+      {
+        "user": "Taslima Akter",
+        "rating": 5,
+        "comment": "The pomegranates were very fresh and juicy. Loved the natural sweetness and the freshness was unmatched."
+      },
+      {
+        "user": "Jahidul Islam",
+        "rating": 4,
+        "comment": "Great quality fruits, perfect for making fresh juice. A bit pricey but worth it for the taste."
+      },
+      {
+        "user": "Roksana Parvin",
+        "rating": 4,
+        "comment": "Bright red and delicious. The seeds were juicy and had a perfect balance of sweet and tart flavors."
+      }
+    ],
+    "createdAt": "2025-07-16T07:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+,
+  {
+    "_id": "688725de224d2f673382eade",
+    "name": "Mustard Honey",
+    "category": "Honey",
+    "price": 180,
+    "unit": "kg",
+    "description": "High quality honey from local farmers, sourced from mustard fields, known for its unique floral aroma and rich taste.",
+    "farmer": {
+      "name": "Shirin Akter",
+      "farmName": "Farm 10",
+      "location": "Sylhet, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1743213747490-7e66ab4fe13d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8TXVzdGFyZCUyMEhvbmV5fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1691480208637-6ed63aac6694?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8TXVzdGFyZCUyMEhvbmV5fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1573697610008-4c72b4e9508f?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fE11c3RhcmQlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1681506306684-d222c03f42fb?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8TXVzdGFyZCUyMEhvbmV5fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1548365329-c628c7005461?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTR8fE11c3RhcmQlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 70,
+    "features": [
+      "100% pure and raw honey",
+      "Locally sourced from mustard flower fields",
+      "Rich in antioxidants and natural enzymes",
+      "Distinct floral aroma and smooth texture",
+      "Unprocessed and pesticide-free",
+      "Supports immunity and digestive health",
+      "Natural energy booster",
+      "Ideal for sweetening and medicinal uses"
+    ],
+    "rating": 4.7,
+    "reviewCount": 85,
+    "isOrganic": true,
+    "purchaseCount": 140,
+    "storageInstructions": "Store in a cool, dry place away from direct sunlight. Avoid moisture to prevent fermentation. Keep container tightly closed.",
+    "nutritionalInformation": {
+      "servingSize": "1 tablespoon (21g)",
+      "calories": 64,
+      "totalFat": "0g",
+      "sodium": "1mg",
+      "totalCarbohydrates": "17g",
+      "sugars": "17g",
+      "protein": "0.1g",
+      "vitamins": "Contains trace amounts of B vitamins and minerals",
+      "antioxidants": "High"
+    },
+    "reviews": [
+      {
+        "user": "Fatema Begum",
+        "rating": 5,
+        "comment": "The mustard honey has a wonderful floral taste and a lovely aroma. Perfectly natural and pure. Highly recommended!"
+      },
+      {
+        "user": "Javed Khan",
+        "rating": 4.5,
+        "comment": "Great quality honey, rich and smooth texture. It works great in tea and as a natural sweetener."
+      },
+      {
+        "user": "Sadia Rahman",
+        "rating": 4.8,
+        "comment": "Very pure and fresh honey. I love its health benefits and the natural sweetness it adds to my dishes."
+      }
+    ],
+    "createdAt": "2025-07-16T06:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+,
+  {
+    "_id": "688725de224d2f673382eadf",
+    "name": "Butter",
+    "category": "Dairy",
+    "price": 85,
+    "unit": "liter",
+    "description": "High quality butter from local farmers, rich and creamy with a fresh natural taste.",
+    "farmer": {
+      "name": "Jasim Uddin",
+      "farmName": "Farm 11",
+      "location": "Manikganj, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8QnV0dGVyfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1589985269102-ff38adf6f00d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8QnV0dGVyfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1573812461383-e5f8b759d12e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fEJ1dHRlcnxlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1700887028603-53b13f06233c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTd8fEJ1dHRlcnxlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1700612685744-a8447b4cd884?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mjl8fEJ1dHRlcnxlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 100,
+    "features": [
+      "Freshly churned from local dairy farms",
+      "Rich, creamy texture and natural flavor",
+      "No artificial additives or preservatives",
+      "Organic and grass-fed sourced milk",
+      "Ideal for cooking, baking, and spreading",
+      "High in healthy fats and fat-soluble vitamins",
+      "Supports local farmers and sustainable farming",
+      "Smooth consistency and natural golden color"
+    ],
+    "rating": 4.5,
+    "reviewCount": 80,
+    "isOrganic": true,
+    "purchaseCount": 150,
+    "storageInstructions": "Keep refrigerated below 5°C. Store in an airtight container to preserve freshness and prevent absorption of odors.",
+    "nutritionalInformation": {
+      "servingSize": "1 tablespoon (14g)",
+      "calories": 102,
+      "totalFat": "12g",
+      "saturatedFat": "7g",
+      "cholesterol": "31mg",
+      "sodium": "2mg",
+      "totalCarbohydrates": "0g",
+      "protein": "0.1g",
+      "vitamins": "Rich in Vitamins A, D, E, and K2"
+    },
+    "reviews": [
+      {
+        "user": "Rashed Alam",
+        "rating": 5,
+        "comment": "The butter has an amazing creamy texture and pure fresh taste. Perfect for my baking needs!"
+      },
+      {
+        "user": "Nusrat Jahan",
+        "rating": 4.3,
+        "comment": "Good quality organic butter. Great flavor and texture, makes cooking richer."
+      },
+      {
+        "user": "Tariq Hossain",
+        "rating": 4.6,
+        "comment": "Very fresh and natural butter from local farmers. I appreciate the organic sourcing."
+      }
+    ],
+    "createdAt": "2025-07-15T10:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+,
+  {
+    "_id": "688725de224d2f673382eae0",
+    "name": "Parsley",
+    "category": "Herbs",
+    "price": 35,
+    "unit": "bundle",
+    "description": "High quality parsley from local farmers, fresh and aromatic, perfect for cooking and garnishing.",
+    "farmer": {
+      "name": "Rina Begum",
+      "farmName": "Farm 12",
+      "location": "Brahmanbaria, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1726862972631-00709ba547b0?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8UGFyc2xleXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1588879460618-9249e7d947d1?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8UGFyc2xleXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1568493840567-5836c376e857?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8UGFyc2xleXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1598998255703-ea48fb246da0?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fFBhcnNsZXl8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1588983993367-a7a1365befbd?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fFBhcnNsZXl8ZW58MHx8MHx8fDA%3D"
+    ],
+    "stock": 85,
+    "features": [
+      "Freshly harvested from local farms",
+      "Strong aromatic flavor and aroma",
+      "Rich in vitamins A, C, and K",
+      "Organic and pesticide-free",
+      "Perfect for culinary use and garnishing",
+      "Supports local farmers and sustainable agriculture"
+    ],
+    "rating": 4.6,
+    "reviewCount": 65,
+    "isOrganic": true,
+    "purchaseCount": 105,
+    "storageInstructions": "Keep refrigerated in a sealed plastic bag or container to maintain freshness. Use within 5-7 days.",
+    "nutritionalInformation": {
+      "servingSize": "1 tablespoon (3g)",
+      "calories": 1,
+      "totalFat": "0g",
+      "sodium": "1mg",
+      "totalCarbohydrates": "0.3g",
+      "fiber": "0.1g",
+      "protein": "0.1g",
+      "vitamins": "High in Vitamins A, C, and K"
+    },
+    "reviews": [
+      {
+        "user": "Shahriar Rahman",
+        "rating": 5,
+        "comment": "Extremely fresh parsley with a strong aroma. Perfect for my salads and garnishes."
+      },
+      {
+        "user": "Anika Sultana",
+        "rating": 4.5,
+        "comment": "Good quality and very aromatic. Adds great flavor to my cooking."
+      },
+      {
+        "user": "Fahim Chowdhury",
+        "rating": 4.3,
+        "comment": "Fresh and organic parsley. Definitely supports local farmers."
+      }
+    ],
+    "createdAt": "2025-07-15T09:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+,
+  {
+    "_id": "688725de224d2f673382eae1",
+    "name": "Millet",
+    "category": "Grains",
+    "price": 105,
+    "unit": "kg",
+    "description": "High quality millet from local farmers, nutritious and versatile, ideal for porridges, breads, and more.",
+    "farmer": {
+      "name": "Alamgir Hossain",
+      "farmName": "Farm 13",
+      "location": "Joypurhat, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1670909649685-7e1aabc56837?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8TWlsbGV0fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1653580524515-77b19c176b88?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8TWlsbGV0fGVufDB8fDB8fHww",
+      "https://plus.unsplash.com/premium_photo-1675237626370-caf08f2b9966?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8TWlsbGV0fGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1738388553102-707297a9d39d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTh8fE1pbGxldHxlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1675237626865-274f0e553c4c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mjl8fE1pbGxldHxlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 180,
+    "features": [
+      "Fresh and locally harvested",
+      "Gluten-free grain alternative",
+      "Rich in fiber and essential minerals",
+      "Versatile for cooking and baking",
+      "Supports sustainable farming",
+      "Non-GMO and pesticide-free"
+    ],
+    "rating": 4.3,
+    "reviewCount": 70,
+    "isOrganic": false,
+    "purchaseCount": 140,
+    "storageInstructions": "Store in a cool, dry place in an airtight container. Best used within 6 months for optimal freshness.",
+    "nutritionalInformation": {
+      "servingSize": "1/4 cup (45g)",
+      "calories": 170,
+      "totalFat": "1.5g",
+      "sodium": "0mg",
+      "totalCarbohydrates": "36g",
+      "fiber": "3.5g",
+      "protein": "6g",
+      "minerals": "High in magnesium, phosphorus, and iron"
+    },
+    "reviews": [
+      {
+        "user": "Sadia Islam",
+        "rating": 4.5,
+        "comment": "Great quality millet, cooks nicely and tastes good in my porridge."
+      },
+      {
+        "user": "Rashid Khan",
+        "rating": 4.0,
+        "comment": "Good value for money, fresh and clean grains. Perfect for gluten-free recipes."
+      },
+      {
+        "user": "Nusrat Jahan",
+        "rating": 4.2,
+        "comment": "Love the taste and texture, very versatile and healthy option."
+      }
+    ],
+    "createdAt": "2025-07-15T08:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+,
+  {
+    "_id": "688725de224d2f673382eae2",
+    "name": "Okra",
+    "category": "Vegetables",
+    "price": 55,
+    "unit": "kg",
+    "description": "High quality okra from local farmers, perfect for stir-fries, curries, and rich in dietary fiber.",
+    "farmer": {
+      "name": "Shapla Begum",
+      "farmName": "Farm 14",
+      "location": "Jhenaidah, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1725669087986-0915cb0961cd?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8T2tyYXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1425543103986-22abb7d7e8d2?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8T2tyYXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1666877059056-f42ada662ccc?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8T2tyYXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://plus.unsplash.com/premium_photo-1664476636559-6dbd29f4c31e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8T2tyYXxlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1583830123146-248ed4a8e1e1?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fE9rcmF8ZW58MHx8MHx8fDA%3D"
+    ],
+    "stock": 150,
+    "features": [
+      "Fresh and handpicked daily",
+      "Locally grown in Jhenaidah region",
+      "Rich in dietary fiber and vitamins",
+      "Supports digestive health",
+      "Perfect for diverse culinary uses",
+      "Non-GMO and pesticide-free",
+      "Organic certified"
+    ],
+    "rating": 4.4,
+    "reviewCount": 65,
+    "isOrganic": true,
+    "purchaseCount": 160,
+    "storageInstructions": "Keep okra in a perforated plastic bag in the refrigerator. Use within 2-3 days for optimal freshness.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 33,
+      "totalFat": "0.2g",
+      "sodium": "7mg",
+      "totalCarbohydrates": "7g",
+      "fiber": "3.2g",
+      "protein": "2g",
+      "vitamins": "High in Vitamin C and Vitamin K",
+      "minerals": "Contains magnesium and folate"
+    },
+    "reviews": [
+      {
+        "user": "Fahmida Rahman",
+        "rating": 4.5,
+        "comment": "Fresh and tender okra, cooks well in my curries. Great quality!"
+      },
+      {
+        "user": "Imran Hossain",
+        "rating": 4.2,
+        "comment": "Nice texture and flavor. The okra stays fresh for days when refrigerated properly."
+      },
+      {
+        "user": "Laila Ahmed",
+        "rating": 4.6,
+        "comment": "Love the organic quality and freshness. Perfect for stir-fries and soups."
+      }
+    ],
+    "createdAt": "2025-07-15T07:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+,
+  {
+    "_id": "688725de224d2f673382eae3",
+    "name": "Watermelons",
+    "category": "Fruits",
+    "price": 75,
+    "unit": "dozen",
+    "description": "High quality watermelons from local farmers, sweet, juicy, and refreshing — perfect for summer snacks and beverages.",
+    "farmer": {
+      "name": "Rafiqul Islam",
+      "farmName": "Farm 15",
+      "location": "Cox's Bazar, Bangladesh"
+    },
+    "images": [
+      "https://plus.unsplash.com/premium_photo-1658506994023-ee0b3a947f8d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8V2F0ZXJtZWxvbnN8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1655558132692-7eee4e77182b?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8V2F0ZXJtZWxvbnN8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1577003811926-53b288a6e5d0?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fFdhdGVybWVsb25zfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1622208489373-1fe93e2c6720?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8V2F0ZXJtZWxvbnN8ZW58MHx8MHx8fDA%3D",
+      "https://images.unsplash.com/photo-1629265824943-b0a19b32c7a0?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fFdhdGVybWVsb25zfGVufDB8fDB8fHww"
+    ],
+    "stock": 140,
+    "features": [
+      "Sweet and juicy",
+      "Locally grown in Cox's Bazar",
+      "Quality-assured",
+      "Rich in antioxidants and hydration",
+      "Perfect for summer refreshment",
+      "Non-GMO",
+      "Pesticide-free"
+    ],
+    "rating": 4.5,
+    "reviewCount": 80,
+    "isOrganic": false,
+    "purchaseCount": 170,
+    "storageInstructions": "Store whole watermelons at room temperature. Once cut, refrigerate and consume within 2-3 days for best taste.",
+    "nutritionalInformation": {
+      "servingSize": "100g",
+      "calories": 30,
+      "totalFat": "0.2g",
+      "sodium": "1mg",
+      "totalCarbohydrates": "8g",
+      "fiber": "0.4g",
+      "sugars": "6g",
+      "protein": "0.6g",
+      "vitamins": "High in Vitamin C and Vitamin A",
+      "minerals": "Contains potassium and magnesium"
+    },
+    "reviews": [
+      {
+        "user": "Anika Sultana",
+        "rating": 4.7,
+        "comment": "The watermelons were incredibly sweet and fresh! Perfect for hot days."
+      },
+      {
+        "user": "Rafiq Hasan",
+        "rating": 4.3,
+        "comment": "Good quality and very juicy. Delivered fresh and well-packaged."
+      },
+      {
+        "user": "Maya Chowdhury",
+        "rating": 4.5,
+        "comment": "Loved the local taste and texture. Great for juices and salads."
+      }
+    ],
+    "createdAt": "2025-07-15T06:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z"
+  }
+,
+  {
+    "_id": "688725de224d2f673382eae4",
+    "name": "Chickpeas",
+    "category": "Grains",
+    "price": 90,
+    "unit": "kg",
+    "description": "High quality chickpeas from local farmers, perfect for curries and snacks.",
+    "detailedDescription": "Our chickpeas are carefully harvested and cleaned to ensure premium quality. These legumes are rich in protein, fiber, and essential vitamins, making them a nutritious staple for your kitchen. Perfect for traditional curries, salads, and snacks, they offer a nutty flavor and firm texture.",
+    "storage": "Store in a cool, dry place away from direct sunlight. Keep in an airtight container to maintain freshness and prevent moisture absorption. Proper storage can extend shelf life up to 12 months.",
+    "nutritionFacts": {
+      "servingSize": "100g",
+      "calories": 364,
+      "protein": "19g",
+      "carbohydrates": "61g",
+      "fiber": "17g",
+      "fat": "6g",
+      "vitamins": ["Vitamin B6", "Folate"],
+      "minerals": ["Iron", "Magnesium", "Phosphorus"]
+    },
+    "farmer": {
+      "name": "Asma Begum",
+      "farmName": "Grain Haven",
+      "location": "Natore, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1641913712124-a58d267b6997?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8Q2hpY2twZWFzfGVufDB8fDB8fHww",
+      "https://plus.unsplash.com/premium_photo-1675237625827-38268aafc571?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8Q2hpY2twZWFzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1644432757699-bb5a01e8fb0e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8Q2hpY2twZWFzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1568747244129-86a6c6541414?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fENoaWNrcGVhc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1600841909485-03146c24b014?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fENoaWNrcGVhc3xlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 160,
+    "features": ["Fresh", "Local", "Quality"],
+    "rating": 4.4,
+    "reviewCount": 70,
+    "isOrganic": true,
+    "purchaseCount": 135,
+    "createdAt": "2025-07-14T10:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z",
+
+    "reviews": [
+      {
+        "reviewer": "Sabrina Rahman",
+        "date": "2025-07-20",
+        "rating": 5,
+        "comment": "These chickpeas are very fresh and cook perfectly every time. I love how they add great texture to my curries."
+      },
+      {
+        "reviewer": "Fahim Ahmed",
+        "date": "2025-07-22",
+        "rating": 4,
+        "comment": "Good quality chickpeas, slightly smaller than usual but taste is excellent. Will buy again."
+      },
+      {
+        "reviewer": "Maya Hasan",
+        "date": "2025-07-24",
+        "rating": 4,
+        "comment": "Nice local produce and fairly priced. They soak and cook well without any bitterness."
+      }
+    ]
+  }
+,
+  {
+    "_id": "688725de224d2f673382eae5",
+    "name": "Cucumbers",
+    "category": "Vegetables",
+    "price": 40,
+    "unit": "kg",
+    "description": "High quality cucumbers from local farmers, crisp and refreshing.",
+    "detailedDescription": "Our cucumbers are handpicked fresh from local farms, known for their crisp texture and refreshing taste. Ideal for salads, pickling, and hydration, these cucumbers are packed with essential nutrients and natural antioxidants.",
+    "storage": "Store cucumbers in the refrigerator, ideally wrapped in a paper towel and placed inside a plastic bag to maintain moisture without excess condensation. Use within 1 week for optimal freshness.",
+    "nutritionFacts": {
+      "servingSize": "100g",
+      "calories": 16,
+      "protein": "0.7g",
+      "carbohydrates": "3.6g",
+      "fiber": "0.5g",
+      "fat": "0.1g",
+      "vitamins": ["Vitamin K", "Vitamin C"],
+      "minerals": ["Potassium", "Magnesium"]
+    },
+    "farmer": {
+      "name": "Mizanur Rahman",
+      "farmName": "Fresh Greens Farm",
+      "location": "Tangail, Bangladesh"
+    },
+    "images": [
+      "https://images.unsplash.com/photo-1568584711271-6c929fb49b60?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Q3VjdW1iZXJzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1589621316382-008455b857cd?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8Q3VjdW1iZXJzfGVufDB8fDB8fHww",
+      "https://images.unsplash.com/photo-1462536738427-0725f3eb98f7?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fEN1Y3VtYmVyc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1588184124624-3c512fda196d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjB8fEN1Y3VtYmVyc3xlbnwwfHwwfHx8MA%3D%3D",
+      "https://images.unsplash.com/photo-1751778706641-49c24df0af97?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MzB8fEN1Y3VtYmVyc3xlbnwwfHwwfHx8MA%3D%3D"
+    ],
+    "stock": 160,
+    "features": ["Fresh", "Local", "Quality"],
+    "rating": 4.4,
+    "reviewCount": 70,
+    "isOrganic": true,
+    "purchaseCount": 135,
+    "createdAt": "2025-07-14T10:00:00.000Z",
+    "updatedAt": "2025-07-28T14:39:00.000Z",
+
+    "reviews": [
+      {
+        "reviewer": "Farhana Islam",
+        "date": "2025-07-18",
+        "rating": 5,
+        "comment": "The cucumbers are really fresh and crunchy. Perfect for my daily salads!"
+      },
+      {
+        "reviewer": "Rafiq Ahmed",
+        "date": "2025-07-20",
+        "rating": 4,
+        "comment": "Good quality cucumbers, stayed fresh for a week in my fridge."
+      },
+      {
+        "reviewer": "Nabila Chowdhury",
+        "date": "2025-07-22",
+        "rating": 4,
+        "comment": "Nice local produce with a great taste. A bit small in size but very fresh."
+      }
+    ]
+  }
+]

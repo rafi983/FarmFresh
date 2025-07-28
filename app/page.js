@@ -1,7 +1,82 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import ProductCard from "@/components/ProductCard";
 
 export default function Home() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All Categories");
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  const categoryOptions = [
+    "All Categories",
+    "Vegetables",
+    "Fruits",
+    "Grains",
+    "Dairy",
+    "Honey",
+    "Herbs",
+  ];
+
+  useEffect(() => {
+    fetchFeaturedProducts();
+    fetchCategories();
+  }, []);
+
+  const fetchFeaturedProducts = async () => {
+    try {
+      const response = await fetch("/api/products?featured=true&limit=8");
+      if (response.ok) {
+        const data = await response.json();
+        setFeaturedProducts(data.products);
+      }
+    } catch (error) {
+      console.error("Error fetching featured products:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch("/api/products");
+      if (response.ok) {
+        const data = await response.json();
+        // Get unique categories from products
+        const uniqueCategories = [
+          ...new Set(data.products.map((p) => p.category)),
+        ];
+        setCategories(uniqueCategories);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (searchTerm) params.append("search", searchTerm);
+    if (selectedCategory !== "All Categories")
+      params.append("category", selectedCategory);
+    router.push(`/products?${params.toString()}`);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
+
+  const handleCategoryClick = (category) => {
+    router.push(`/products?category=${encodeURIComponent(category)}`);
+  };
+
   return (
     <>
       {/* Hero Section */}
@@ -24,15 +99,25 @@ export default function Home() {
                   type="text"
                   placeholder="Search for vegetables, fruits, farmers..."
                   className="flex-1 px-6 py-4 text-gray-900 text-lg focus:outline-none"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={handleKeyPress}
                 />
-                <select className="px-4 py-4 text-gray-900 border-l border-gray-300 focus:outline-none">
-                  <option>All Categories</option>
-                  <option>Vegetables</option>
-                  <option>Fruits</option>
-                  <option>Grains</option>
-                  <option>Dairy</option>
+                <select
+                  className="px-4 py-4 text-gray-900 border-l border-gray-300 focus:outline-none"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                >
+                  {categoryOptions.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
                 </select>
-                <button className="bg-primary-700 hover:bg-primary-800 px-8 py-4 transition">
+                <button
+                  onClick={handleSearch}
+                  className="bg-primary-700 hover:bg-primary-800 px-8 py-4 transition"
+                >
                   <i className="fas fa-search text-xl"></i>
                 </button>
               </div>
@@ -70,7 +155,10 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            <div className="group cursor-pointer">
+            <div
+              className="group cursor-pointer"
+              onClick={() => handleCategoryClick("Vegetables")}
+            >
               <div className="bg-green-100 dark:bg-green-900 rounded-2xl p-6 text-center group-hover:bg-green-200 dark:group-hover:bg-green-800 transition">
                 <i className="fas fa-carrot text-3xl text-green-600 dark:text-green-400 mb-3"></i>
                 <h3 className="font-semibold text-gray-900 dark:text-white">
@@ -81,7 +169,10 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="group cursor-pointer">
+            <div
+              className="group cursor-pointer"
+              onClick={() => handleCategoryClick("Fruits")}
+            >
               <div className="bg-red-100 dark:bg-red-900 rounded-2xl p-6 text-center group-hover:bg-red-200 dark:group-hover:bg-red-800 transition">
                 <i className="fas fa-apple-alt text-3xl text-red-600 dark:text-red-400 mb-3"></i>
                 <h3 className="font-semibold text-gray-900 dark:text-white">
@@ -92,7 +183,10 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="group cursor-pointer">
+            <div
+              className="group cursor-pointer"
+              onClick={() => handleCategoryClick("Grains")}
+            >
               <div className="bg-yellow-100 dark:bg-yellow-900 rounded-2xl p-6 text-center group-hover:bg-yellow-200 dark:group-hover:bg-yellow-800 transition">
                 <i className="fas fa-seedling text-3xl text-yellow-600 dark:text-yellow-400 mb-3"></i>
                 <h3 className="font-semibold text-gray-900 dark:text-white">
@@ -103,7 +197,10 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="group cursor-pointer">
+            <div
+              className="group cursor-pointer"
+              onClick={() => handleCategoryClick("Dairy")}
+            >
               <div className="bg-blue-100 dark:bg-blue-900 rounded-2xl p-6 text-center group-hover:bg-blue-200 dark:group-hover:bg-blue-800 transition">
                 <i className="fas fa-cheese text-3xl text-blue-600 dark:text-blue-400 mb-3"></i>
                 <h3 className="font-semibold text-gray-900 dark:text-white">
@@ -114,7 +211,10 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="group cursor-pointer">
+            <div
+              className="group cursor-pointer"
+              onClick={() => handleCategoryClick("Honey")}
+            >
               <div className="bg-purple-100 dark:bg-purple-900 rounded-2xl p-6 text-center group-hover:bg-purple-200 dark:group-hover:bg-purple-800 transition">
                 <i className="fas fa-jar text-3xl text-purple-600 dark:text-purple-400 mb-3"></i>
                 <h3 className="font-semibold text-gray-900 dark:text-white">
@@ -125,7 +225,10 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="group cursor-pointer">
+            <div
+              className="group cursor-pointer"
+              onClick={() => handleCategoryClick("Herbs")}
+            >
               <div className="bg-orange-100 dark:bg-orange-900 rounded-2xl p-6 text-center group-hover:bg-orange-200 dark:group-hover:bg-orange-800 transition">
                 <i className="fas fa-leaf text-3xl text-orange-600 dark:text-orange-400 mb-3"></i>
                 <h3 className="font-semibold text-gray-900 dark:text-white">
@@ -160,406 +263,38 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Product Card 1 - Fresh Tomatoes */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300">
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&h=300&fit=crop"
-                  alt="Fresh Tomatoes"
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-3 left-3">
-                  <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                    Organic
-                  </span>
-                </div>
-                <div className="absolute top-3 right-3">
-                  <button className="bg-white dark:bg-gray-800 p-2 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                    <i className="far fa-heart text-gray-600 dark:text-gray-400"></i>
-                  </button>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
-                    Fresh Tomatoes
-                  </h3>
-                  <div className="flex items-center text-yellow-400">
-                    <i className="fas fa-star text-sm"></i>
-                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">
-                      4.8
-                    </span>
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, index) => (
+                <div
+                  key={index}
+                  className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden animate-pulse"
+                >
+                  <div className="w-full h-48 bg-gray-300 dark:bg-gray-600"></div>
+                  <div className="p-6">
+                    <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded mb-3 w-3/4"></div>
+                    <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded mb-4 w-1/2"></div>
+                    <div className="h-8 bg-gray-300 dark:bg-gray-600 rounded"></div>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  By Rahim's Farm • Sylhet
-                </p>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                      45
-                    </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      /kg
-                    </span>
-                  </div>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Stock: 50kg
-                  </span>
-                </div>
-                <button className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg font-medium transition">
-                  Add to Cart
-                </button>
-              </div>
+              ))}
             </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredProducts.map((product) => (
+                <ProductCard key={product._id} product={product} />
+              ))}
+            </div>
+          )}
 
-            {/* Product Card 2 - Fresh Carrots */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300">
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=400&h=300&fit=crop"
-                  alt="Fresh Carrots"
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-3 right-3">
-                  <button className="bg-white dark:bg-gray-800 p-2 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                    <i className="far fa-heart text-gray-600 dark:text-gray-400"></i>
-                  </button>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
-                    Fresh Carrots
-                  </h3>
-                  <div className="flex items-center text-yellow-400">
-                    <i className="fas fa-star text-sm"></i>
-                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">
-                      4.9
-                    </span>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  By Shumi's Garden • Rangpur
-                </p>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                      35
-                    </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      /kg
-                    </span>
-                  </div>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Stock: 30kg
-                  </span>
-                </div>
-                <button className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg font-medium transition">
-                  Add to Cart
-                </button>
-              </div>
+          {featuredProducts.length === 0 && !loading && (
+            <div className="text-center py-12">
+              <p className="text-gray-600 dark:text-gray-400">
+                No featured products available at the moment.
+              </p>
             </div>
-
-            {/* Product Card 3 - Fresh Spinach */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300">
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400&h=300&fit=crop"
-                  alt="Fresh Spinach"
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-3 left-3">
-                  <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                    Organic
-                  </span>
-                </div>
-                <div className="absolute top-3 right-3">
-                  <button className="bg-white dark:bg-gray-800 p-2 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                    <i className="fas fa-heart text-red-500"></i>
-                  </button>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
-                    Fresh Spinach
-                  </h3>
-                  <div className="flex items-center text-yellow-400">
-                    <i className="fas fa-star text-sm"></i>
-                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">
-                      4.7
-                    </span>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  By Sakib's Organics • Dhaka
-                </p>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                      25
-                    </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      /kg
-                    </span>
-                  </div>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Stock: 20kg
-                  </span>
-                </div>
-                <button className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg font-medium transition">
-                  Add to Cart
-                </button>
-              </div>
-            </div>
-
-            {/* Product Card 4 - Fresh Broccoli */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300">
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=400&h=300&fit=crop"
-                  alt="Fresh Broccoli"
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-3 right-3">
-                  <button className="bg-white dark:bg-gray-800 p-2 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                    <i className="far fa-heart text-gray-600 dark:text-gray-400"></i>
-                  </button>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
-                    Fresh Broccoli
-                  </h3>
-                  <div className="flex items-center text-yellow-400">
-                    <i className="fas fa-star text-sm"></i>
-                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">
-                      4.6
-                    </span>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  By Anika's Garden • Chittagong
-                </p>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                      55
-                    </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      /kg
-                    </span>
-                  </div>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Stock: 15kg
-                  </span>
-                </div>
-                <button className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg font-medium transition">
-                  Add to Cart
-                </button>
-              </div>
-            </div>
-
-            {/* Product Card 5 - More Broccoli */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300">
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=400&h=300&fit=crop"
-                  alt="Fresh Broccoli"
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-3 right-3">
-                  <button className="bg-white dark:bg-gray-800 p-2 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                    <i className="far fa-heart text-gray-600 dark:text-gray-400"></i>
-                  </button>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
-                    Fresh Broccoli
-                  </h3>
-                  <div className="flex items-center text-yellow-400">
-                    <i className="fas fa-star text-sm"></i>
-                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">
-                      4.6
-                    </span>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  By Anika's Garden • Chittagong
-                </p>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                      55
-                    </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      /kg
-                    </span>
-                  </div>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Stock: 15kg
-                  </span>
-                </div>
-                <button className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg font-medium transition">
-                  Add to Cart
-                </button>
-              </div>
-            </div>
-
-            {/* Product Card 6 - More Broccoli */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300">
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=400&h=300&fit=crop"
-                  alt="Fresh Broccoli"
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-3 right-3">
-                  <button className="bg-white dark:bg-gray-800 p-2 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                    <i className="far fa-heart text-gray-600 dark:text-gray-400"></i>
-                  </button>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
-                    Fresh Broccoli
-                  </h3>
-                  <div className="flex items-center text-yellow-400">
-                    <i className="fas fa-star text-sm"></i>
-                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">
-                      4.6
-                    </span>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  By Anika's Garden • Chittagong
-                </p>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                      55
-                    </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      /kg
-                    </span>
-                  </div>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Stock: 15kg
-                  </span>
-                </div>
-                <button className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg font-medium transition">
-                  Add to Cart
-                </button>
-              </div>
-            </div>
-
-            {/* Product Card 7 - More Carrots */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300">
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=400&h=300&fit=crop"
-                  alt="Fresh Carrots"
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-3 right-3">
-                  <button className="bg-white dark:bg-gray-800 p-2 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                    <i className="far fa-heart text-gray-600 dark:text-gray-400"></i>
-                  </button>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
-                    Fresh Carrots
-                  </h3>
-                  <div className="flex items-center text-yellow-400">
-                    <i className="fas fa-star text-sm"></i>
-                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">
-                      4.9
-                    </span>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  By Shumi's Garden • Rangpur
-                </p>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                      35
-                    </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      /kg
-                    </span>
-                  </div>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Stock: 30kg
-                  </span>
-                </div>
-                <button className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg font-medium transition">
-                  Add to Cart
-                </button>
-              </div>
-            </div>
-
-            {/* Product Card 8 - More Tomatoes */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300">
-              <div className="relative">
-                <img
-                  src="https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&h=300&fit=crop"
-                  alt="Fresh Tomatoes"
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-3 left-3">
-                  <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                    Organic
-                  </span>
-                </div>
-                <div className="absolute top-3 right-3">
-                  <button className="bg-white dark:bg-gray-800 p-2 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                    <i className="far fa-heart text-gray-600 dark:text-gray-400"></i>
-                  </button>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
-                    Fresh Tomatoes
-                  </h3>
-                  <div className="flex items-center text-yellow-400">
-                    <i className="fas fa-star text-sm"></i>
-                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">
-                      4.8
-                    </span>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  By Rahim's Farm • Sylhet
-                </p>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                      45
-                    </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      /kg
-                    </span>
-                  </div>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Stock: 50kg
-                  </span>
-                </div>
-                <button className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg font-medium transition">
-                  Add to Cart
-                </button>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </section>
 
