@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function CreateProduct() {
   const { data: session, status } = useSession();
@@ -12,6 +13,8 @@ export default function CreateProduct() {
   const [loading, setLoading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editProductId, setEditProductId] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -20,6 +23,7 @@ export default function CreateProduct() {
     stock: "",
     unit: "",
     features: [],
+    image: "",
   });
 
   useEffect(() => {
@@ -64,7 +68,13 @@ export default function CreateProduct() {
           stock: product.stock?.toString() || "",
           unit: product.unit || "",
           features: product.features || [],
+          image: product.image || "",
         });
+
+        // Set image preview if product has an image
+        if (product.image) {
+          setImagePreview(product.image);
+        }
       } else {
         console.error("Failed to fetch product for editing");
         alert(
@@ -100,6 +110,37 @@ export default function CreateProduct() {
         ? [...prev.features, value]
         : prev.features.filter((feature) => feature !== value),
     }));
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Image size must be less than 5MB");
+        return;
+      }
+
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        alert("Please select a valid image file");
+        return;
+      }
+
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+
+      // Convert image to base64 for storage
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64String = event.target.result;
+        setFormData((prev) => ({
+          ...prev,
+          image: base64String,
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const validateForm = () => {
@@ -204,7 +245,10 @@ export default function CreateProduct() {
             stock: "",
             unit: "",
             features: [],
+            image: "",
           });
+          setImagePreview(null);
+          setImageFile(null);
         }
 
         // Redirect to manage products page
@@ -454,11 +498,25 @@ export default function CreateProduct() {
                   name="images"
                   multiple
                   accept="image/*"
+                  onChange={handleImageChange}
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                   Upload up to 5 images (JPG, PNG, WebP)
                 </p>
+
+                {/* Image Preview */}
+                {imagePreview && (
+                  <div className="mt-4">
+                    <Image
+                      src={imagePreview}
+                      alt="Image Preview"
+                      width={500}
+                      height={300}
+                      className="rounded-lg object-cover"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Features */}
