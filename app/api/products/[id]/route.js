@@ -121,3 +121,120 @@ export async function GET(request, { params }) {
     );
   }
 }
+
+// PUT - Update a product
+export async function PUT(request, { params }) {
+  try {
+    const client = await clientPromise;
+    const db = client.db("farmfresh");
+    const { id } = params;
+    const updateData = await request.json();
+
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { error: "Invalid product ID" },
+        { status: 400 },
+      );
+    }
+
+    // Remove _id from updateData if it exists to avoid conflicts
+    delete updateData._id;
+
+    // Add updated timestamp
+    updateData.updatedAt = new Date().toISOString();
+
+    const result = await db
+      .collection("products")
+      .updateOne({ _id: new ObjectId(id) }, { $set: updateData });
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    // Fetch the updated product to return
+    const updatedProduct = await db
+      .collection("products")
+      .findOne({ _id: new ObjectId(id) });
+
+    return NextResponse.json({
+      message: "Product updated successfully",
+      product: updatedProduct,
+    });
+  } catch (error) {
+    console.error("Error updating product:", error);
+    return NextResponse.json(
+      { error: "Failed to update product" },
+      { status: 500 },
+    );
+  }
+}
+
+// DELETE - Delete a product
+export async function DELETE(request, { params }) {
+  try {
+    const client = await clientPromise;
+    const db = client.db("farmfresh");
+    const { id } = params;
+
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { error: "Invalid product ID" },
+        { status: 400 },
+      );
+    }
+
+    // First check if product exists
+    const product = await db
+      .collection("products")
+      .findOne({ _id: new ObjectId(id) });
+
+    if (!product) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    // Optional: Check if there are any pending orders with this product
+    const pendingOrders = await db.collection("orders").findOne({
+      "items.productId": id,
+      status: { $in: ["pending", "confirmed", "shipped"] },
+    });
+
+    if (pendingOrders) {
+      return NextResponse.json(
+        {
+          error:
+            "Cannot delete product with pending orders. Please wait for all orders to be completed or cancelled.",
+          hasPendingOrders: true,
+        },
+        { status: 409 },
+      );
+    }
+
+    // Delete the product
+    const result = await db
+      .collection("products")
+      .deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json(
+        { error: "Failed to delete product" },
+        { status: 500 },
+      );
+    }
+
+    // Optional: Remove product from any user favorites
+    await db
+      .collection("users")
+      .updateMany({ favorites: id }, { $pull: { favorites: id } });
+
+    return NextResponse.json({
+      message: "Product deleted successfully",
+      deletedProductId: id,
+    });
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    return NextResponse.json(
+      { error: "Failed to delete product" },
+      { status: 500 },
+    );
+  }
+}

@@ -2,13 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 export default function CreateProduct() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editProductId, setEditProductId] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -32,8 +35,54 @@ export default function CreateProduct() {
         router.push("/");
         return;
       }
+
+      // Check if we're in edit mode
+      const editId = searchParams.get("edit");
+      if (editId) {
+        setIsEditMode(true);
+        setEditProductId(editId);
+        fetchProductForEdit(editId);
+      }
     }
-  }, [session, status, router]);
+  }, [session, status, router, searchParams]);
+
+  const fetchProductForEdit = async (productId) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/products/${productId}`);
+
+      if (response.ok) {
+        const data = await response.json();
+        const product = data.product;
+
+        // Pre-populate form with existing product data
+        setFormData({
+          name: product.name || "",
+          category: product.category || "",
+          description: product.description || "",
+          price: product.price?.toString() || "",
+          stock: product.stock?.toString() || "",
+          unit: product.unit || "",
+          features: product.features || [],
+        });
+      } else {
+        console.error("Failed to fetch product for editing");
+        alert(
+          "Failed to load product data. Redirecting to create new product.",
+        );
+        // Reset to create mode
+        setIsEditMode(false);
+        setEditProductId(null);
+      }
+    } catch (error) {
+      console.error("Error fetching product for edit:", error);
+      alert("Error loading product data. Redirecting to create new product.");
+      setIsEditMode(false);
+      setEditProductId(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -92,13 +141,6 @@ export default function CreateProduct() {
       const userId = session.user.userId || session.user.id || session.user._id;
       const userEmail = session.user.email;
 
-      console.log(
-        "Creating product with session user:",
-        JSON.stringify(session.user, null, 2),
-      );
-      console.log("Using userId:", userId);
-      console.log("Using userEmail:", userEmail);
-
       const productData = {
         ...formData,
         price: parseFloat(formData.price),
@@ -111,13 +153,26 @@ export default function CreateProduct() {
           name: session.user.name,
         },
         status: "active",
-        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
-      console.log("Creating product with data:", productData);
+      // Only add createdAt for new products
+      if (!isEditMode) {
+        productData.createdAt = new Date().toISOString();
+      }
 
-      const response = await fetch("/api/products", {
-        method: "POST",
+      console.log(
+        isEditMode ? "Updating product:" : "Creating product:",
+        productData,
+      );
+
+      const url = isEditMode
+        ? `/api/products/${editProductId}`
+        : "/api/products";
+      const method = isEditMode ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -126,30 +181,56 @@ export default function CreateProduct() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log("Product created successfully:", result);
-        alert("Product added successfully!");
+        console.log(
+          isEditMode
+            ? "Product updated successfully:"
+            : "Product created successfully:",
+          result,
+        );
 
-        // Reset form
-        setFormData({
-          name: "",
-          category: "",
-          description: "",
-          price: "",
-          stock: "",
-          unit: "",
-          features: [],
-        });
+        alert(
+          isEditMode
+            ? "Product updated successfully!"
+            : "Product added successfully!",
+        );
+
+        // Reset form only for new products
+        if (!isEditMode) {
+          setFormData({
+            name: "",
+            category: "",
+            description: "",
+            price: "",
+            stock: "",
+            unit: "",
+            features: [],
+          });
+        }
 
         // Redirect to manage products page
         router.push("/manage");
       } else {
         const errorData = await response.json();
-        console.error("Failed to create product:", errorData);
-        alert(`Failed to add product: ${errorData.error || "Unknown error"}`);
+        console.error(
+          isEditMode
+            ? "Failed to update product:"
+            : "Failed to create product:",
+          errorData,
+        );
+        alert(
+          `Failed to ${isEditMode ? "update" : "add"} product: ${
+            errorData.error || "Unknown error"
+          }`,
+        );
       }
     } catch (error) {
-      console.error("Error creating product:", error);
-      alert("Failed to add product. Please try again.");
+      console.error(
+        isEditMode ? "Error updating product:" : "Error creating product:",
+        error,
+      );
+      alert(
+        `Failed to ${isEditMode ? "update" : "add"} product. Please try again.`,
+      );
     } finally {
       setLoading(false);
     }
@@ -219,7 +300,7 @@ export default function CreateProduct() {
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
-              Add New Product
+              {isEditMode ? "Edit Product" : "Add New Product"}
             </h1>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -420,12 +501,12 @@ export default function CreateProduct() {
                   {loading ? (
                     <>
                       <i className="fas fa-spinner fa-spin mr-2"></i>
-                      Adding Product...
+                      {isEditMode ? "Updating Product..." : "Adding Product..."}
                     </>
                   ) : (
                     <>
                       <i className="fas fa-plus mr-2"></i>
-                      Add Product
+                      {isEditMode ? "Update Product" : "Add Product"}
                     </>
                   )}
                 </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -18,38 +18,49 @@ export default function FarmerOrders() {
   const [refreshing, setRefreshing] = useState(false);
   const ordersPerPage = 10;
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-      return;
+  // Memoize the filterOrders function to prevent infinite re-renders
+  const filterOrders = useCallback(() => {
+    let filtered = [...orders];
+
+    // Apply status filter
+    if (statusFilter !== "All Orders") {
+      filtered = filtered.filter(
+        (order) => order.status.toLowerCase() === statusFilter.toLowerCase(),
+      );
     }
 
-    if (status === "authenticated" && session?.user) {
-      // Check if user is a farmer
-      const userType = session.user.userType || session.user.role || "user";
-      if (userType !== "farmer") {
-        router.push("/");
-        return;
-      }
-      fetchOrders();
-    }
-  }, [session, status, router]);
+    // Apply search filter
+    if (searchTerm) {
+      const searchRegex = new RegExp(searchTerm, "i");
+      filtered = filtered.filter((order) => {
+        const orderItemsMatch = order.items?.some(
+          (item) =>
+            searchRegex.test(item.name) || searchRegex.test(item.productName),
+        );
+        const customerMatch =
+          searchRegex.test(order.customerName) ||
+          searchRegex.test(order.customerEmail);
+        const orderIdMatch = searchRegex.test(order._id);
 
-  useEffect(() => {
-    filterOrders();
+        return orderItemsMatch || customerMatch || orderIdMatch;
+      });
+    }
+
+    setFilteredOrders(filtered);
+    setCurrentPage(1);
   }, [orders, statusFilter, searchTerm]);
 
-  const fetchOrders = async () => {
-    setLoading(true);
+  // Apply filters whenever dependencies change
+  useEffect(() => {
+    filterOrders();
+  }, [filterOrders]);
+
+  const fetchOrders = useCallback(async () => {
+    if (!session?.user) return;
+
     try {
       const userId = session.user.userId || session.user.id || session.user._id;
       const userEmail = session.user.email;
-
-      if (!userId && !userEmail) {
-        console.error("No user ID or email found in session");
-        setLoading(false);
-        return;
-      }
 
       // Fetch orders for this farmer using farmerId and farmerEmail parameters
       const params = new URLSearchParams();
@@ -101,38 +112,11 @@ export default function FarmerOrders() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session]);
 
-  const filterOrders = () => {
-    let filtered = [...orders];
-
-    // Apply status filter
-    if (statusFilter !== "All Orders") {
-      filtered = filtered.filter(
-        (order) => order.status.toLowerCase() === statusFilter.toLowerCase(),
-      );
-    }
-
-    // Apply search filter
-    if (searchTerm) {
-      const searchRegex = new RegExp(searchTerm, "i");
-      filtered = filtered.filter((order) => {
-        const orderItemsMatch = order.items?.some(
-          (item) =>
-            searchRegex.test(item.name) || searchRegex.test(item.productName),
-        );
-        const customerMatch =
-          searchRegex.test(order.customerName) ||
-          searchRegex.test(order.customerEmail);
-        const orderIdMatch = searchRegex.test(order._id);
-
-        return orderItemsMatch || customerMatch || orderIdMatch;
-      });
-    }
-
-    setFilteredOrders(filtered);
-    setCurrentPage(1);
-  };
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   const handleStatusChange = (e) => {
     setStatusFilter(e.target.value);
@@ -195,9 +179,12 @@ export default function FarmerOrders() {
                   estimatedDeliveryDate:
                     updateData.estimatedDeliveryDate ||
                     order.estimatedDeliveryDate,
-                  statusHistory: Array.isArray(order.statusHistory)
-                    ? [...order.statusHistory, updateData.statusHistory]
-                    : [updateData.statusHistory],
+                  statusHistory: [
+                    ...(Array.isArray(order.statusHistory)
+                      ? order.statusHistory
+                      : []),
+                    updateData.statusHistory,
+                  ],
                 }
               : order,
           ),

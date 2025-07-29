@@ -28,6 +28,7 @@ export default function Navigation() {
     "/manage",
     "/payment",
     "/bookings",
+    "/farmer-orders",
     "/review",
   ];
 
@@ -257,11 +258,11 @@ export default function Navigation() {
                         {user?.userType === "farmer" && (
                           <>
                             <Link
-                              href="/bookings"
+                              href="/farmer-orders"
                               className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                               onClick={() => setShowUserMenu(false)}
                             >
-                              <i className="fas fa-box mr-2"></i>
+                              <i className="fas fa-clipboard-list mr-2"></i>
                               Order Management
                             </Link>
                             <Link
