@@ -1,27 +1,20 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-import { getServerSession } from "next-auth";
 
 export async function PUT(request, { params }) {
   try {
     const { reviewId } = params;
-    const session = await getServerSession();
+    const { rating, comment, userId } = await request.json();
 
-    if (!session) {
+    if (!rating || !comment || !userId) {
       return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 },
+        { error: "Rating, comment, and user ID are required" },
+        { status: 400 },
       );
     }
 
-    if (!ObjectId.isValid(reviewId)) {
-      return NextResponse.json({ error: "Invalid review ID" }, { status: 400 });
-    }
-
-    const { rating, comment } = await request.json();
-
-    if (!rating || rating < 1 || rating > 5) {
+    if (rating < 1 || rating > 5) {
       return NextResponse.json(
         { error: "Rating must be between 1 and 5" },
         { status: 400 },
@@ -31,37 +24,63 @@ export async function PUT(request, { params }) {
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
-    // Check if the review belongs to the current user
+    // Check if review exists and belongs to user
     const existingReview = await db.collection("reviews").findOne({
       _id: new ObjectId(reviewId),
-      userEmail: session.user.email,
+      userId,
     });
 
     if (!existingReview) {
       return NextResponse.json(
-        { error: "Review not found or you don't have permission to edit it" },
+        { error: "Review not found or unauthorized" },
         { status: 404 },
       );
     }
 
-    // Update the review
-    const result = await db.collection("reviews").updateOne(
+    // Update review
+    await db.collection("reviews").updateOne(
       { _id: new ObjectId(reviewId) },
       {
         $set: {
-          rating,
+          rating: parseInt(rating),
           comment,
           updatedAt: new Date(),
         },
       },
     );
 
-    if (result.matchedCount === 0) {
-      return NextResponse.json({ error: "Review not found" }, { status: 404 });
-    }
+    // Recalculate product average rating
+    const allReviews = await db
+      .collection("reviews")
+      .find({
+        productId: existingReview.productId,
+      })
+      .toArray();
+
+    const averageRating =
+      allReviews.reduce(
+        (sum, review) =>
+          sum +
+          (review._id.toString() === reviewId
+            ? parseInt(rating)
+            : review.rating),
+        0,
+      ) / allReviews.length;
+
+    await db.collection("products").updateOne(
+      { _id: new ObjectId(existingReview.productId) },
+      {
+        $set: {
+          averageRating: Math.round(averageRating * 10) / 10,
+          totalRatings: allReviews.length,
+        },
+      },
+    );
 
     return NextResponse.json({
-      message: "Review updated successfully",
+      success: true,
+      averageRating: Math.round(averageRating * 10) / 10,
+      totalRatings: allReviews.length,
     });
   } catch (error) {
     console.error("Error updating review:", error);
@@ -75,46 +94,63 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const { reviewId } = params;
-    const session = await getServerSession();
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
 
-    if (!session) {
+    if (!userId) {
       return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 },
+        { error: "User ID is required" },
+        { status: 400 },
       );
-    }
-
-    if (!ObjectId.isValid(reviewId)) {
-      return NextResponse.json({ error: "Invalid review ID" }, { status: 400 });
     }
 
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
-    // Check if the review belongs to the current user
+    // Check if review exists and belongs to user
     const existingReview = await db.collection("reviews").findOne({
       _id: new ObjectId(reviewId),
-      userEmail: session.user.email,
+      userId,
     });
 
     if (!existingReview) {
       return NextResponse.json(
-        { error: "Review not found or you don't have permission to delete it" },
+        { error: "Review not found or unauthorized" },
         { status: 404 },
       );
     }
 
-    // Delete the review
-    const result = await db.collection("reviews").deleteOne({
-      _id: new ObjectId(reviewId),
-    });
+    // Delete review
+    await db.collection("reviews").deleteOne({ _id: new ObjectId(reviewId) });
 
-    if (result.deletedCount === 0) {
-      return NextResponse.json({ error: "Review not found" }, { status: 404 });
-    }
+    // Recalculate product average rating
+    const allReviews = await db
+      .collection("reviews")
+      .find({
+        productId: existingReview.productId,
+      })
+      .toArray();
+
+    const averageRating =
+      allReviews.length > 0
+        ? allReviews.reduce((sum, review) => sum + review.rating, 0) /
+          allReviews.length
+        : 0;
+
+    await db.collection("products").updateOne(
+      { _id: new ObjectId(existingReview.productId) },
+      {
+        $set: {
+          averageRating: Math.round(averageRating * 10) / 10,
+          totalRatings: allReviews.length,
+        },
+      },
+    );
 
     return NextResponse.json({
-      message: "Review deleted successfully",
+      success: true,
+      averageRating: Math.round(averageRating * 10) / 10,
+      totalRatings: allReviews.length,
     });
   } catch (error) {
     console.error("Error deleting review:", error);

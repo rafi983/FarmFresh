@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useCart } from "@/contexts/CartContext";
 import ProductCard from "@/components/ProductCard";
 import StarRating from "@/components/StarRating";
 import Footer from "@/components/Footer";
@@ -13,6 +14,7 @@ export default function ProductDetails() {
   const searchParams = useSearchParams();
   const productId = searchParams.get("id");
   const { data: session } = useSession();
+  const { addToCart } = useCart();
 
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
@@ -75,21 +77,89 @@ export default function ProductDetails() {
   };
 
   const handleAddToCart = async () => {
+    if (!session?.user) {
+      // Redirect to login if not authenticated
+      window.location.href = "/login";
+      return;
+    }
+
     setIsAddingToCart(true);
     try {
-      // TODO: Implement add to cart API
-      console.log("Adding to cart:", { productId, quantity });
-      // Show success message
+      // Use consistent user ID format
+      const userId =
+        session.user.userId ||
+        session.user.id ||
+        session.user._id ||
+        session.user.email;
+
+      const response = await fetch("/api/cart", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          productId: productId,
+          quantity: quantity,
+          userId: userId,
+        }),
+      });
+
+      if (response.ok) {
+        alert("Product added to cart successfully!");
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to add to cart");
+      }
     } catch (error) {
       console.error("Error adding to cart:", error);
+      alert("Failed to add product to cart. Please try again.");
     } finally {
       setIsAddingToCart(false);
     }
   };
 
-  const handleBuyNow = () => {
-    // TODO: Navigate to payment page
-    console.log("Buy now:", { productId, quantity });
+  const handleBuyNow = async () => {
+    if (!session?.user) {
+      // Redirect to login if not authenticated
+      window.location.href = "/login";
+      return;
+    }
+
+    // First add to cart, then navigate to payment
+    setIsAddingToCart(true);
+    try {
+      // Use consistent user ID format
+      const userId =
+        session.user.userId ||
+        session.user.id ||
+        session.user._id ||
+        session.user.email;
+
+      const response = await fetch("/api/cart", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          productId: productId,
+          quantity: quantity,
+          userId: userId,
+        }),
+      });
+
+      if (response.ok) {
+        // Navigate to payment page
+        window.location.href = "/payment";
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to add to cart");
+      }
+    } catch (error) {
+      console.error("Error processing buy now:", error);
+      alert("Failed to process order. Please try again.");
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   const handleFavoriteToggle = async () => {

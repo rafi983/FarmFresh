@@ -1,10 +1,261 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Footer from "@/components/Footer";
 
 export default function Bookings() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [orders, setOrders] = useState([]);
+  const [filteredOrders, setFilteredOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("All Orders");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 5;
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+      return;
+    }
+
+    if (status === "authenticated" && session?.user) {
+      fetchOrders();
+    }
+  }, [session, status, router]);
+
+  useEffect(() => {
+    filterOrders();
+  }, [orders, statusFilter]);
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const userId =
+        session.user.userId ||
+        session.user.id ||
+        session.user._id ||
+        session.user.email;
+
+      // Check for userType or role in session to determine farmer vs customer
+      const userRole = session.user.userType || session.user.role || "customer";
+
+      console.log("Debug - User session:", session.user);
+      console.log("Debug - User role/userType:", userRole);
+      console.log("Debug - User ID:", userId);
+
+      let apiUrl;
+
+      if (userRole === "farmer") {
+        // For farmers, fetch orders placed by customers to this farmer
+        const farmerId =
+          session.user.userId || session.user.id || session.user._id;
+        const farmerEmail = session.user.email;
+
+        console.log("Debug - Farmer ID:", farmerId);
+        console.log("Debug - Farmer Email:", farmerEmail);
+
+        if (farmerId) {
+          apiUrl = `/api/orders?farmerId=${encodeURIComponent(farmerId)}`;
+        } else if (farmerEmail) {
+          apiUrl = `/api/orders?farmerEmail=${encodeURIComponent(farmerEmail)}`;
+        } else {
+          console.error("No farmer ID or email found");
+          setOrders([]);
+          setLoading(false);
+          return;
+        }
+      } else {
+        // For customers, fetch their own orders
+        apiUrl = `/api/orders?userId=${encodeURIComponent(userId)}`;
+      }
+
+      console.log("Debug - API URL:", apiUrl);
+
+      const response = await fetch(apiUrl);
+
+      console.log("Debug - Response status:", response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Debug - Orders data:", data);
+        setOrders(data.orders || []);
+      } else {
+        const errorText = await response.text();
+        console.error("Failed to fetch orders:", response.status, errorText);
+        setOrders([]);
+      }
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filterOrders = () => {
+    if (statusFilter === "All Orders") {
+      setFilteredOrders(orders);
+    } else {
+      setFilteredOrders(
+        orders.filter(
+          (order) => order.status.toLowerCase() === statusFilter.toLowerCase(),
+        ),
+      );
+    }
+    setCurrentPage(1); // Reset to first page when filtering
+  };
+
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    if (!confirm("Are you sure you want to cancel this order?")) return;
+
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled" }),
+      });
+
+      if (response.ok) {
+        alert("Order cancelled successfully");
+        fetchOrders(); // Refresh orders
+      } else {
+        alert("Failed to cancel order");
+      }
+    } catch (error) {
+      console.error("Error cancelling order:", error);
+      alert("Error cancelling order");
+    }
+  };
+
+  const handleReorder = (order) => {
+    // Redirect to products page with order items for reordering
+    router.push("/products");
+  };
+
+  const formatPrice = (price) => {
+    const numericPrice =
+      typeof price === "number" ? price : parseFloat(price) || 0;
+    return `৳${numericPrice.toFixed(0)}`;
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      confirmed: {
+        bg: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+        icon: "fas fa-check",
+      },
+      pending: {
+        bg: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+        icon: "fas fa-clock",
+      },
+      delivered: {
+        bg: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+        icon: "fas fa-check-circle",
+      },
+      cancelled: {
+        bg: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+        icon: "fas fa-times-circle",
+      },
+      shipped: {
+        bg: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+        icon: "fas fa-truck",
+      },
+    };
+
+    const config = statusConfig[status?.toLowerCase()] || statusConfig.pending;
+
+    return (
+      <span
+        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config.bg}`}
+      >
+        <i className={`${config.icon} mr-1`}></i>
+        {status?.charAt(0).toUpperCase() + status?.slice(1) || "Pending"}
+      </span>
+    );
+  };
+
+  const getStatusTimeline = (status, createdAt) => {
+    const statuses = ["confirmed", "shipped", "delivered"];
+    const currentIndex = statuses.indexOf(status?.toLowerCase());
+
+    return (
+      <div className="flex items-center space-x-4 text-sm">
+        {statuses.map((statusItem, index) => {
+          const isCompleted = index <= currentIndex;
+          const isActive = index === currentIndex;
+
+          return (
+            <div key={statusItem} className="flex items-center">
+              <div
+                className={`flex items-center ${
+                  isCompleted
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-gray-400"
+                }`}
+              >
+                <i
+                  className={`${
+                    isCompleted ? "fas fa-check-circle" : "fas fa-circle"
+                  } mr-1`}
+                ></i>
+                <span className="capitalize">{statusItem}</span>
+              </div>
+              {index < statuses.length - 1 && (
+                <div
+                  className={`w-8 h-0.5 ml-4 ${
+                    isCompleted
+                      ? "bg-green-500"
+                      : "bg-gray-300 dark:bg-gray-600"
+                  }`}
+                ></div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Pagination
+  const indexOfLastOrder = currentPage * ordersPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+  const currentOrders = filteredOrders.slice(
+    indexOfFirstOrder,
+    indexOfLastOrder,
+  );
+  const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
+
+  if (status === "loading" || loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <i className="fas fa-spinner fa-spin text-4xl text-primary-600 mb-4"></i>
+          <p className="text-gray-600 dark:text-gray-400">
+            Loading your orders...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
-      {/* Remove inline navigation - use global Navigation component instead */}
-
       {/* Bookings Content */}
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
         {/* Breadcrumb */}
@@ -32,14 +283,19 @@ export default function Bookings() {
                 My Orders
               </h1>
               <p className="text-gray-600 dark:text-gray-400 mt-2">
-                Track and manage your orders
+                Track and manage your orders ({filteredOrders.length} orders)
               </p>
             </div>
             <div className="mt-4 sm:mt-0 flex space-x-3">
-              <select className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+              <select
+                value={statusFilter}
+                onChange={handleStatusChange}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              >
                 <option>All Orders</option>
                 <option>Pending</option>
                 <option>Confirmed</option>
+                <option>Shipped</option>
                 <option>Delivered</option>
                 <option>Cancelled</option>
               </select>
@@ -47,367 +303,197 @@ export default function Bookings() {
           </div>
 
           {/* Orders List */}
-          <div className="space-y-6">
-            {/* Order 1 - Delivered */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-              <div className="p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
-                  <div className="flex items-center space-x-4 mb-4 lg:mb-0">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        Order #FB-2024-001234
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Placed on Dec 20, 2024
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                      <i className="fas fa-check-circle mr-1"></i>
-                      Delivered
-                    </span>
-                    <span className="text-lg font-bold text-gray-900 dark:text-white">
-                      ৳300
-                    </span>
-                  </div>
-                </div>
-
-                {/* Order Items */}
-                <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <img
-                      src="https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=80&h=80&fit=crop"
-                      alt="Fresh Tomatoes"
-                      className="w-16 h-16 rounded-lg object-cover"
-                    />
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 dark:text-white">
-                        Fresh Tomatoes
-                      </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        By Rahim&apos;s Farm
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Quantity: 5 kg • ৳45/kg
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        ৳225
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Order Status Timeline */}
-                <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-3">
-                    Order Status
-                  </h4>
-                  <div className="flex items-center space-x-4 text-sm">
-                    <div className="flex items-center text-green-600 dark:text-green-400">
-                      <i className="fas fa-check-circle mr-1"></i>
-                      <span>Order Placed</span>
-                    </div>
-                    <div className="w-8 h-0.5 bg-green-500"></div>
-                    <div className="flex items-center text-green-600 dark:text-green-400">
-                      <i className="fas fa-check-circle mr-1"></i>
-                      <span>Confirmed</span>
-                    </div>
-                    <div className="w-8 h-0.5 bg-green-500"></div>
-                    <div className="flex items-center text-green-600 dark:text-green-400">
-                      <i className="fas fa-check-circle mr-1"></i>
-                      <span>Shipped</span>
-                    </div>
-                    <div className="w-8 h-0.5 bg-green-500"></div>
-                    <div className="flex items-center text-green-600 dark:text-green-400">
-                      <i className="fas fa-check-circle mr-1"></i>
-                      <span>Delivered</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="border-t border-gray-200 dark:border-gray-600 pt-4 flex flex-wrap gap-3">
-                  <button className="flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition">
-                    <i className="fas fa-download mr-2"></i>
-                    Download Receipt
-                  </button>
-                  <button className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition">
-                    <i className="fas fa-star mr-2"></i>
-                    Write Review
-                  </button>
-                  <button className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition">
-                    <i className="fas fa-redo mr-2"></i>
-                    Reorder
-                  </button>
-                </div>
-              </div>
+          {currentOrders.length === 0 ? (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-12 text-center">
+              <i className="fas fa-shopping-bag text-6xl text-gray-400 mb-4"></i>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                No orders found
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                {statusFilter === "All Orders"
+                  ? "You haven't placed any orders yet. Start shopping to see your orders here!"
+                  : `No ${statusFilter.toLowerCase()} orders found.`}
+              </p>
+              <Link
+                href="/products"
+                className="inline-flex items-center px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition"
+              >
+                <i className="fas fa-shopping-cart mr-2"></i>
+                Start Shopping
+              </Link>
             </div>
-
-            {/* Order 2 - Pending */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
-              <div className="p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
-                  <div className="flex items-center space-x-4 mb-4 lg:mb-0">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        Order #FB-2024-001236
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Placed on Dec 15, 2024
-                      </p>
+          ) : (
+            <div className="space-y-6">
+              {currentOrders.map((order) => (
+                <div
+                  key={order._id}
+                  className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden"
+                >
+                  <div className="p-6">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
+                      <div className="flex items-center space-x-4 mb-4 lg:mb-0">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            Order #
+                            {order._id?.slice(-8)?.toUpperCase() || "N/A"}
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Placed on {formatDate(order.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        {getStatusBadge(order.status)}
+                        <span className="text-lg font-bold text-gray-900 dark:text-white">
+                          {formatPrice(order.total)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                      <i className="fas fa-clock mr-1"></i>
-                      Pending
-                    </span>
-                    <span className="text-lg font-bold text-gray-900 dark:text-white">
-                      ৳120
-                    </span>
-                  </div>
-                </div>
 
-                {/* Order Items */}
-                <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <img
-                      src="https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=80&h=80&fit=crop"
-                      alt="Fresh Broccoli"
-                      className="w-16 h-16 rounded-lg object-cover"
-                    />
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 dark:text-white">
-                        Fresh Broccoli
+                    {/* Order Items */}
+                    <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
+                      {order.items?.slice(0, 3).map((item, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center space-x-4 mb-4"
+                        >
+                          <img
+                            src={
+                              item.image ||
+                              "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=80&h=80&fit=crop"
+                            }
+                            alt={item.productName}
+                            className="w-16 h-16 rounded-lg object-cover"
+                          />
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900 dark:text-white">
+                              {item.productName}
+                            </h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              By {item.farmerName || "Local Farmer"}
+                            </p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Quantity: {item.quantity} •{" "}
+                              {formatPrice(item.price)}/unit
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {formatPrice(item.price * item.quantity)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                      {order.items?.length > 3 && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          +{order.items.length - 3} more items
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Order Status Timeline */}
+                    <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
+                      <h4 className="font-medium text-gray-900 dark:text-white mb-3">
+                        Order Status
                       </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        By Anika&apos;s Garden
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Quantity: 2 kg • ৳55/kg
-                      </p>
+                      {getStatusTimeline(order.status, order.createdAt)}
+                      {order.status === "pending" && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                          Waiting for farmer confirmation
+                        </p>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        ৳110
-                      </p>
+
+                    {/* Action Buttons */}
+                    <div className="border-t border-gray-200 dark:border-gray-600 pt-4 flex flex-wrap gap-3">
+                      {order.status === "delivered" && (
+                        <>
+                          <button className="flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition">
+                            <i className="fas fa-download mr-2"></i>
+                            Download Receipt
+                          </button>
+                          <Link
+                            href={`/review?orderId=${order._id}`}
+                            className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition"
+                          >
+                            <i className="fas fa-star mr-2"></i>
+                            Write Review
+                          </Link>
+                          <button
+                            onClick={() => handleReorder(order)}
+                            className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition"
+                          >
+                            <i className="fas fa-redo mr-2"></i>
+                            Reorder
+                          </button>
+                        </>
+                      )}
+                      {(order.status === "pending" ||
+                        order.status === "confirmed") && (
+                        <button
+                          onClick={() => handleCancelOrder(order._id)}
+                          className="flex items-center px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded-lg font-medium transition"
+                        >
+                          <i className="fas fa-times mr-2"></i>
+                          Cancel Order
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
-
-                {/* Order Status Timeline */}
-                <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-3">
-                    Order Status
-                  </h4>
-                  <div className="flex items-center space-x-4 text-sm">
-                    <div className="flex items-center text-yellow-600 dark:text-yellow-400">
-                      <i className="fas fa-clock mr-1"></i>
-                      <span>Order Placed</span>
-                    </div>
-                    <div className="w-8 h-0.5 bg-gray-300 dark:bg-gray-600"></div>
-                    <div className="flex items-center text-gray-400">
-                      <i className="fas fa-circle mr-1"></i>
-                      <span>Confirmed</span>
-                    </div>
-                    <div className="w-8 h-0.5 bg-gray-300 dark:bg-gray-600"></div>
-                    <div className="flex items-center text-gray-400">
-                      <i className="fas fa-circle mr-1"></i>
-                      <span>Shipped</span>
-                    </div>
-                    <div className="w-8 h-0.5 bg-gray-300 dark:bg-gray-600"></div>
-                    <div className="flex items-center text-gray-400">
-                      <i className="fas fa-circle mr-1"></i>
-                      <span>Delivered</span>
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    Waiting for farmer confirmation
-                  </p>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="border-t border-gray-200 dark:border-gray-600 pt-4 flex flex-wrap gap-3">
-                  <button className="flex items-center px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded-lg font-medium transition">
-                    <i className="fas fa-times mr-2"></i>
-                    Cancel Order
-                  </button>
-                </div>
-              </div>
+              ))}
             </div>
-          </div>
+          )}
 
           {/* Pagination */}
-          <div className="flex justify-center mt-12">
-            <nav aria-label="Pagination">
-              <ul className="inline-flex items-center -space-x-px text-gray-600 dark:text-gray-300">
-                <li>
-                  <a
-                    href="#"
-                    className="block px-3 py-2 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
-                  >
-                    <i className="fas fa-chevron-left"></i>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="px-3 py-2 leading-tight text-white bg-primary-600 border border-primary-600 hover:bg-primary-700 hover:text-white"
-                  >
-                    1
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
-                  >
-                    2
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
-                  >
-                    3
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#"
-                    className="block px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
-                  >
-                    <i className="fas fa-chevron-right"></i>
-                  </a>
-                </li>
-              </ul>
-            </nav>
-          </div>
+          {totalPages > 1 && (
+            <div className="flex justify-center mt-12">
+              <nav aria-label="Pagination">
+                <ul className="inline-flex items-center -space-x-px text-gray-600 dark:text-gray-300">
+                  <li>
+                    <button
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
+                      disabled={currentPage === 1}
+                      className="block px-3 py-2 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50"
+                    >
+                      <i className="fas fa-chevron-left"></i>
+                    </button>
+                  </li>
+                  {[...Array(totalPages)].map((_, index) => (
+                    <li key={index}>
+                      <button
+                        onClick={() => setCurrentPage(index + 1)}
+                        className={`px-3 py-2 leading-tight border ${
+                          currentPage === index + 1
+                            ? "text-white bg-primary-600 border-primary-600 hover:bg-primary-700"
+                            : "text-gray-500 bg-white border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+                        }`}
+                      >
+                        {index + 1}
+                      </button>
+                    </li>
+                  ))}
+                  <li>
+                    <button
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                      }
+                      disabled={currentPage === totalPages}
+                      className="block px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50"
+                    >
+                      <i className="fas fa-chevron-right"></i>
+                    </button>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="bg-primary-500 p-2 rounded-lg">
-                  <i className="fas fa-seedling text-white text-xl"></i>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold">FarmFresh</h3>
-                  <p className="text-sm text-gray-400">Local Farmer Booking</p>
-                </div>
-              </div>
-              <p className="text-gray-400 mb-4">
-                Connecting communities with fresh, local produce directly from
-                farmers.
-              </p>
-              <div className="flex space-x-4">
-                <a href="#" className="text-gray-400 hover:text-white">
-                  <i className="fab fa-facebook"></i>
-                </a>
-                <a href="#" className="text-gray-400 hover:text-white">
-                  <i className="fab fa-twitter"></i>
-                </a>
-                <a href="#" className="text-gray-400 hover:text-white">
-                  <i className="fab fa-instagram"></i>
-                </a>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Quick Links</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li>
-                  <Link href="/" className="hover:text-white">
-                    Home
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/products" className="hover:text-white">
-                    Products
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/farmers" className="hover:text-white">
-                    Farmers
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/about" className="hover:text-white">
-                    About Us
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">For Farmers</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li>
-                  <Link href="/register" className="hover:text-white">
-                    Join as Farmer
-                  </Link>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white">
-                    Add Products
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white">
-                    Manage Listings
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white">
-                    Farmer Support
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Support</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li>
-                  <a href="#" className="hover:text-white">
-                    Help Center
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white">
-                    Contact Us
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white">
-                    Terms of Service
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white">
-                    Privacy Policy
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>
-              &copy; 2025 FarmFresh - Local Farmer Booking. All rights reserved
-              by LWS.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </>
   );
 }

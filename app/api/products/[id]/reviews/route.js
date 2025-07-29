@@ -1,53 +1,75 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-import { getServerSession } from "next-auth";
 
 export async function GET(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = params; // product ID
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page")) || 1;
-    const limit = 5;
-    const skip = (page - 1) * limit;
+    const limit = parseInt(searchParams.get("limit")) || 5;
+    const userId = searchParams.get("userId");
 
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
-    // Find the product
-    let targetProduct = await db.collection("products").findOne({ _id: id });
+    // Build query
+    const query = { productId: id };
 
-    if (!targetProduct && ObjectId.isValid(id)) {
-      targetProduct = await db
-        .collection("products")
-        .findOne({ _id: new ObjectId(id) });
+    // Get total count
+    const totalReviews = await db.collection("reviews").countDocuments(query);
+
+    // Get reviews with pagination
+    let reviews = await db
+      .collection("reviews")
+      .find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .toArray();
+
+    // If user is logged in, prioritize their review
+    if (userId && page === 1) {
+      const userReview = await db
+        .collection("reviews")
+        .findOne({ productId: id, userId });
+
+      if (userReview) {
+        // Remove user review from regular results if it exists
+        reviews = reviews.filter((review) => review.userId !== userId);
+        // Add user review at the beginning
+        reviews.unshift(userReview);
+        // Limit to requested number
+        reviews = reviews.slice(0, limit);
+      }
     }
 
-    if (!targetProduct) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    // Populate user information
+    const populatedReviews = [];
+    for (const review of reviews) {
+      const user = await db
+        .collection("users")
+        .findOne(
+          { _id: new ObjectId(review.userId) },
+          { projection: { name: 1, email: 1 } },
+        );
+
+      populatedReviews.push({
+        ...review,
+        user: user ? { name: user.name, email: user.email } : null,
+      });
     }
 
-    // ONLY use the reviews array from the product
-    const reviews = targetProduct.reviews || [];
-
-    // Format the reviews for consistent structure
-    const formattedReviews = reviews.map((review, index) => ({
-      _id: index,
-      userName: review.reviewer,
-      rating: review.rating,
-      comment: review.comment,
-      createdAt: new Date(review.date),
-      isCurrentUser: false,
-    }));
-
-    // Apply pagination
-    const paginatedReviews = formattedReviews.slice(skip, skip + limit);
-    const totalReviews = formattedReviews.length;
+    const hasMore = totalReviews > page * limit;
 
     return NextResponse.json({
-      reviews: paginatedReviews,
-      totalReviews,
-      hasMore: page * limit < totalReviews,
+      reviews: populatedReviews,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(totalReviews / limit),
+        totalReviews,
+        hasMore,
+      },
     });
   } catch (error) {
     console.error("Error fetching reviews:", error);
@@ -60,26 +82,17 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   try {
-    const { id } = params;
-    const session = await getServerSession();
+    const { id } = params; // product ID
+    const { rating, comment, userId } = await request.json();
 
-    if (!session) {
+    if (!rating || !comment || !userId) {
       return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 },
-      );
-    }
-
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: "Invalid product ID" },
+        { error: "Rating, comment, and user ID are required" },
         { status: 400 },
       );
     }
 
-    const { rating, comment } = await request.json();
-
-    if (!rating || rating < 1 || rating > 5) {
+    if (rating < 1 || rating > 5) {
       return NextResponse.json(
         { error: "Rating must be between 1 and 5" },
         { status: 400 },
@@ -91,9 +104,9 @@ export async function POST(request, { params }) {
 
     // Check if user has purchased this product
     const hasPurchased = await db.collection("orders").findOne({
-      userEmail: session.user.email,
-      "items.productId": new ObjectId(id),
-      status: "completed",
+      userId,
+      "items.productId": id,
+      status: "delivered",
     });
 
     if (!hasPurchased) {
@@ -103,10 +116,10 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Check if user already reviewed this product
+    // Check if user has already reviewed this product
     const existingReview = await db.collection("reviews").findOne({
-      productId: new ObjectId(id),
-      userEmail: session.user.email,
+      productId: id,
+      userId,
     });
 
     if (existingReview) {
@@ -118,9 +131,9 @@ export async function POST(request, { params }) {
 
     // Create review
     const review = {
-      productId: new ObjectId(id),
-      userEmail: session.user.email,
-      rating,
+      productId: id,
+      userId,
+      rating: parseInt(rating),
       comment,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -128,14 +141,35 @@ export async function POST(request, { params }) {
 
     const result = await db.collection("reviews").insertOne(review);
 
+    // Update product average rating
+    const allReviews = await db
+      .collection("reviews")
+      .find({ productId: id })
+      .toArray();
+    const averageRating =
+      allReviews.reduce((sum, review) => sum + review.rating, 0) /
+      allReviews.length;
+
+    await db.collection("products").updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          averageRating: Math.round(averageRating * 10) / 10,
+          totalRatings: allReviews.length,
+        },
+      },
+    );
+
     return NextResponse.json({
-      message: "Review added successfully",
+      success: true,
       reviewId: result.insertedId,
+      averageRating: Math.round(averageRating * 10) / 10,
+      totalRatings: allReviews.length,
     });
   } catch (error) {
-    console.error("Error adding review:", error);
+    console.error("Error creating review:", error);
     return NextResponse.json(
-      { error: "Failed to add review" },
+      { error: "Failed to create review" },
       { status: 500 },
     );
   }

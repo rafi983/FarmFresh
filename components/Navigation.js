@@ -2,12 +2,18 @@
 
 import Link from "next/link";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
+import { useFavorites } from "../contexts/FavoritesContext";
+import { useCart } from "../contexts/CartContext";
 import { signOut } from "next-auth/react";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 
 export default function Navigation() {
   const { user, isAuthenticated, logout } = useAuth();
+  const { isDarkMode, toggleDarkMode } = useTheme();
+  const { favorites } = useFavorites();
+  const { cartItems, cartCount } = useCart();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const pathname = usePathname();
 
@@ -52,153 +58,305 @@ export default function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-3">
-            <Link href="/" className="flex items-center space-x-3">
-              <div className="bg-primary-500 p-2 rounded-lg">
-                <i className="fas fa-seedling text-white text-xl"></i>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                  FarmFresh
-                </h1>
-                {/* Hide subtitle on details page to match static version */}
-                {!isDetailsPage && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Local Farmer Booking
-                  </p>
-                )}
-              </div>
-            </Link>
-          </div>
+          <Link href="/" className="flex items-center space-x-3">
+            <div className="bg-primary-500 p-2 rounded-lg">
+              <i className="fas fa-seedling text-white text-xl"></i>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                FarmFresh
+              </h1>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Local Farmer Booking
+              </p>
+            </div>
+          </Link>
 
-          {/* Desktop Navigation - Hide on details page */}
+          {/* Search Bar (conditional) */}
+          {shouldShowSearchAndCart && (
+            <div className="hidden md:flex flex-1 max-w-lg mx-8">
+              <div className="relative w-full">
+                <input
+                  type="text"
+                  placeholder={getSearchPlaceholder()}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <i className="fas fa-search text-gray-400"></i>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation Links (conditional) */}
           {shouldShowNavLinks && (
-            <div className="hidden md:flex items-center space-x-8">
+            <div className="hidden lg:flex items-center space-x-8">
               <Link
                 href="/"
-                className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
+                className={`text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition ${
+                  pathname === "/"
+                    ? "text-primary-600 dark:text-primary-400"
+                    : ""
+                }`}
               >
                 Home
               </Link>
               <Link
                 href="/products"
-                className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
+                className={`text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition ${
+                  pathname === "/products"
+                    ? "text-primary-600 dark:text-primary-400"
+                    : ""
+                }`}
               >
                 Products
               </Link>
               <Link
                 href="/farmers"
-                className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
+                className={`text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition ${
+                  pathname === "/farmers"
+                    ? "text-primary-600 dark:text-primary-400"
+                    : ""
+                }`}
               >
                 Farmers
               </Link>
+
+              {/* Show different menu items based on user type */}
+              {isAuthenticated && user?.userType === "farmer" && (
+                <>
+                  <Link
+                    href="/create"
+                    className={`text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition ${
+                      pathname === "/create"
+                        ? "text-primary-600 dark:text-primary-400"
+                        : ""
+                    }`}
+                  >
+                    Add Product
+                  </Link>
+                  <Link
+                    href="/manage"
+                    className={`text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition ${
+                      pathname === "/manage"
+                        ? "text-primary-600 dark:text-primary-400"
+                        : ""
+                    }`}
+                  >
+                    Manage Products
+                  </Link>
+                </>
+              )}
+
+              {/* Show My Orders for regular users */}
+              {isAuthenticated && user?.userType !== "farmer" && (
+                <Link
+                  href="/bookings"
+                  className={`text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition ${
+                    pathname === "/bookings"
+                      ? "text-primary-600 dark:text-primary-400"
+                      : ""
+                  }`}
+                >
+                  My Orders
+                </Link>
+              )}
+
               <Link
                 href="/about"
-                className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
+                className={`text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition ${
+                  pathname === "/about"
+                    ? "text-primary-600 dark:text-primary-400"
+                    : ""
+                }`}
               >
                 About
               </Link>
             </div>
           )}
 
-          {/* User Actions */}
+          {/* Right side icons and user menu */}
           <div className="flex items-center space-x-4">
-            {/* Search - Show on main pages and farmers page */}
-            {shouldShowSearchAndCart && (
-              <div className="hidden sm:block relative">
-                <input
-                  type="text"
-                  placeholder={getSearchPlaceholder()}
-                  className="w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                />
-                <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-              </div>
-            )}
-
-            {/* Cart - Only show on main pages, not on farmers page */}
-            {shouldShowSearchAndCart && !isFarmersPage && (
-              <button className="relative p-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
-                <i className="fas fa-shopping-cart text-xl"></i>
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  3
-                </span>
-              </button>
-            )}
-
-            {/* User Menu - Hide on details page */}
-            {shouldShowUserAuth && isAuthenticated ? (
-              <div className="relative">
-                <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400"
+            {/* Cart and Favorites (only for authenticated users and not on simplified pages) */}
+            {shouldShowSearchAndCart && isAuthenticated && (
+              <>
+                <Link
+                  href="/favorites"
+                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition relative"
                 >
-                  <div className="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center text-white font-medium">
-                    {user?.name?.charAt(0).toUpperCase() ||
-                      user?.email?.charAt(0).toUpperCase() ||
-                      "U"}
-                  </div>
-                  <span className="hidden sm:block">
-                    {user?.name || user?.email}
-                  </span>
-                  <i className="fas fa-chevron-down text-sm"></i>
-                </button>
-
-                {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50">
-                    <Link
-                      href="/profile"
-                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      onClick={() => setShowUserMenu(false)}
-                    >
-                      Profile
-                    </Link>
-                    <Link
-                      href="/bookings"
-                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      onClick={() => setShowUserMenu(false)}
-                    >
-                      My Bookings
-                    </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Sign out
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              shouldShowUserAuth && (
-                <div className="flex items-center space-x-2">
-                  <Link
-                    href="/login"
-                    className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 font-medium"
-                  >
-                    Sign in
-                  </Link>
-                  <Link
-                    href="/register"
-                    className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium"
-                  >
-                    Sign up
-                  </Link>
-                </div>
-              )
+                  <i className="far fa-heart text-xl"></i>
+                  {favorites.length > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-primary-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {favorites.length}
+                    </span>
+                  )}
+                </Link>
+                <Link
+                  href="/cart"
+                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition relative"
+                >
+                  <i className="fas fa-shopping-cart text-xl"></i>
+                  {cartCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-primary-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {cartCount}
+                    </span>
+                  )}
+                </Link>
+              </>
             )}
 
-            {/* Dark Mode Toggle - Always show */}
-            <button className="p-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400">
-              <i className="fas fa-moon text-lg dark:hidden"></i>
-              {/*<i className="fas fa-sun text-lg hidden dark:block"></i>*/}
+            {/* Dark mode toggle */}
+            <button
+              onClick={toggleDarkMode}
+              className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
+              title={
+                isDarkMode ? "Switch to light mode" : "Switch to dark mode"
+              }
+            >
+              {isDarkMode ? (
+                <i className="fas fa-sun text-xl"></i>
+              ) : (
+                <i className="fas fa-moon text-xl"></i>
+              )}
             </button>
 
-            {/* Mobile Menu Button - Hide on details page */}
-            {shouldShowNavLinks && (
-              <button className="md:hidden p-2 text-gray-700 dark:text-gray-300">
-                <i className="fas fa-bars text-xl"></i>
-              </button>
+            {/* User Authentication (conditional) */}
+            {shouldShowUserAuth && (
+              <>
+                {isAuthenticated ? (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowUserMenu(!showUserMenu)}
+                      className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
+                    >
+                      <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-sm font-medium">
+                          {user?.name?.charAt(0)?.toUpperCase() || "U"}
+                        </span>
+                      </div>
+                      <span className="hidden md:block">{user?.name}</span>
+                      <i className="fas fa-chevron-down text-sm"></i>
+                    </button>
+
+                    {/* User Dropdown Menu */}
+                    {showUserMenu && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2">
+                        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {user?.name}
+                          </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {user?.email}
+                          </p>
+                          <p className="text-xs text-primary-600 dark:text-primary-400 capitalize">
+                            {user?.userType || "User"}
+                          </p>
+                        </div>
+
+                        {/* Farmer-specific menu items */}
+                        {user?.userType === "farmer" && (
+                          <>
+                            <Link
+                              href="/bookings"
+                              className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              onClick={() => setShowUserMenu(false)}
+                            >
+                              <i className="fas fa-box mr-2"></i>
+                              Order Management
+                            </Link>
+                            <Link
+                              href="/create"
+                              className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              onClick={() => setShowUserMenu(false)}
+                            >
+                              <i className="fas fa-plus mr-2"></i>
+                              Add Product
+                            </Link>
+                            <Link
+                              href="/manage"
+                              className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              onClick={() => setShowUserMenu(false)}
+                            >
+                              <i className="fas fa-cog mr-2"></i>
+                              Manage Products
+                            </Link>
+                          </>
+                        )}
+
+                        {/* Regular user menu items */}
+                        {user?.userType !== "farmer" && (
+                          <>
+                            <Link
+                              href="/bookings"
+                              className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              onClick={() => setShowUserMenu(false)}
+                            >
+                              <i className="fas fa-list mr-2"></i>
+                              My Orders
+                            </Link>
+                            <Link
+                              href="/favorites"
+                              className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              onClick={() => setShowUserMenu(false)}
+                            >
+                              <i className="fas fa-heart mr-2"></i>
+                              Favorites
+                            </Link>
+                            <Link
+                              href="/cart"
+                              className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              onClick={() => setShowUserMenu(false)}
+                            >
+                              <i className="fas fa-shopping-cart mr-2"></i>
+                              Cart
+                            </Link>
+                          </>
+                        )}
+
+                        {/* Common menu items */}
+                        <div className="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2">
+                          <Link
+                            href="/profile"
+                            className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            onClick={() => setShowUserMenu(false)}
+                          >
+                            <i className="fas fa-user mr-2"></i>
+                            Profile Settings
+                          </Link>
+                          <button
+                            onClick={handleLogout}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            <i className="fas fa-sign-out-alt mr-2"></i>
+                            Logout
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-3">
+                    <Link
+                      href="/login"
+                      className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
+                    >
+                      Login
+                    </Link>
+                    <Link
+                      href="/register"
+                      className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition"
+                    >
+                      Sign Up
+                    </Link>
+                  </div>
+                )}
+              </>
             )}
+
+            {/* Mobile menu button */}
+            <button className="lg:hidden text-gray-700 dark:text-gray-300">
+              <i className="fas fa-bars text-xl"></i>
+            </button>
           </div>
         </div>
       </div>

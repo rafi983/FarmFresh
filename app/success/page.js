@@ -1,24 +1,220 @@
 "use client";
+
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 
 export default function Success() {
-  const downloadReceipt = () => {
-    // This would integrate with a PDF generation library
-    alert(
-      "PDF receipt download functionality will be implemented with a PDF library like jsPDF or server-side PDF generation.",
-    );
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { data: session } = useSession();
+  const orderId = searchParams.get("orderId");
+
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (orderId) {
+      fetchOrderDetails();
+    } else {
+      router.push("/");
+    }
+  }, [orderId, router]);
+
+  const fetchOrderDetails = async () => {
+    try {
+      const response = await fetch(`/api/orders?orderId=${orderId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setOrder(data.order);
+      } else {
+        router.push("/");
+      }
+    } catch (error) {
+      console.error("Error fetching order details:", error);
+      router.push("/");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const copyTransactionId = () => {
-    const transactionId = "TXN-FB-20241220-001234";
-    navigator.clipboard.writeText(transactionId).then(() => {
-      alert("Transaction ID copied to clipboard!");
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat("en-BD", {
+      style: "currency",
+      currency: "BDT",
+      minimumFractionDigits: 0,
+    }).format(price);
+  };
+
+  const downloadInvoice = async () => {
+    try {
+      const response = await fetch(`/api/orders/${orderId}/invoice`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/pdf",
+        },
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `invoice-${order.orderNumber}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } else {
+        // Fallback: Generate simple invoice using browser print
+        generateSimpleInvoice();
+      }
+    } catch (error) {
+      console.error("Error downloading invoice:", error);
+      generateSimpleInvoice();
+    }
+  };
+
+  const generateSimpleInvoice = () => {
+    const invoiceWindow = window.open("", "_blank");
+    const invoiceContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Invoice - ${order.orderNumber}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .company-info { margin-bottom: 20px; }
+            .order-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+            .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            .items-table th { background-color: #f2f2f2; }
+            .total-section { text-align: right; }
+            .total-row { font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>FarmFresh</h1>
+            <p>Local Farmer Booking Platform</p>
+            <h2>INVOICE</h2>
+          </div>
+          
+          <div class="company-info">
+            <strong>FarmFresh Ltd.</strong><br>
+            123 Agriculture Street<br>
+            Dhaka, Bangladesh<br>
+            Phone: +880-1234-567890<br>
+            Email: info@farmfresh.com
+          </div>
+          
+          <div class="order-info">
+            <div>
+              <strong>Bill To:</strong><br>
+              ${order.deliveryAddress.name}<br>
+              ${order.deliveryAddress.address}<br>
+              ${order.deliveryAddress.city}<br>
+              Phone: ${order.deliveryAddress.phone}
+            </div>
+            <div>
+              <strong>Order Details:</strong><br>
+              Order #: ${order.orderNumber}<br>
+              Date: ${new Date(order.createdAt).toLocaleDateString()}<br>
+              Payment Method: ${order.paymentMethod}
+            </div>
+          </div>
+          
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Farmer</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${order.items
+                .map(
+                  (item) => `
+                <tr>
+                  <td>${item.productName}</td>
+                  <td>${item.farmerName}</td>
+                  <td>${item.quantity}</td>
+                  <td>${formatPrice(item.price)}</td>
+                  <td>${formatPrice(item.price * item.quantity)}</td>
+                </tr>
+              `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+          
+          <div class="total-section">
+            <p>Subtotal: ${formatPrice(order.subtotal)}</p>
+            <p>Delivery Fee: ${formatPrice(order.deliveryFee)}</p>
+            <p>Service Fee: ${formatPrice(order.serviceFee)}</p>
+            <p class="total-row">Total: ${formatPrice(order.total)}</p>
+          </div>
+          
+          <p style="margin-top: 30px; text-align: center; color: #666;">
+            Thank you for choosing FarmFresh!
+          </p>
+        </body>
+      </html>
+    `;
+
+    invoiceWindow.document.write(invoiceContent);
+    invoiceWindow.document.close();
+    invoiceWindow.print();
+  };
+
+  const copyOrderNumber = () => {
+    navigator.clipboard.writeText(order.orderNumber).then(() => {
+      alert("Order number copied to clipboard!");
     });
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <i className="fas fa-spinner fa-spin text-4xl text-primary-600 mb-4"></i>
+          <p className="text-gray-600 dark:text-gray-400">
+            Loading order details...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <i className="fas fa-exclamation-triangle text-6xl text-gray-400 mb-6"></i>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Order Not Found
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-8">
+            The requested order could not be found.
+          </p>
+          <Link
+            href="/"
+            className="inline-block bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-lg font-medium transition"
+          >
+            Go Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Success Icon and Message */}
         <div className="text-center mb-12">
@@ -31,13 +227,184 @@ export default function Success() {
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-2">
             Thank you for your order
           </p>
-          <p className="text-gray-500 dark:text-gray-500">
-            Order #FB-2024-001234
-          </p>
+          <div className="flex items-center justify-center space-x-2">
+            <p className="text-gray-500 dark:text-gray-500">
+              Order #{order.orderNumber}
+            </p>
+            <button
+              onClick={copyOrderNumber}
+              className="text-primary-600 hover:text-primary-700 text-sm"
+            >
+              <i className="fas fa-copy"></i>
+            </button>
+          </div>
+        </div>
+
+        {/* Order Details Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+            Order Details
+          </h2>
+
+          {/* Order Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
+                Order Information
+              </h3>
+              <div className="space-y-2 text-sm">
+                <p>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Order Number:
+                  </span>{" "}
+                  {order.orderNumber}
+                </p>
+                <p>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Order Date:
+                  </span>{" "}
+                  {new Date(order.createdAt).toLocaleDateString()}
+                </p>
+                <p>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Payment Method:
+                  </span>{" "}
+                  {order.paymentMethod}
+                </p>
+                <p>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Status:
+                  </span>{" "}
+                  <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full text-xs">
+                    {order.status}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
+                Delivery Address
+              </h3>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {order.deliveryAddress.name}
+                </p>
+                <p>{order.deliveryAddress.address}</p>
+                <p>
+                  {order.deliveryAddress.city}{" "}
+                  {order.deliveryAddress.postalCode}
+                </p>
+                <p>Phone: {order.deliveryAddress.phone}</p>
+                {order.deliveryAddress.instructions && (
+                  <p className="mt-2 italic">
+                    Instructions: {order.deliveryAddress.instructions}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Order Items */}
+          <div className="mb-8">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+              Order Items
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">
+                      Product
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-white">
+                      Farmer
+                    </th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-900 dark:text-white">
+                      Quantity
+                    </th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-900 dark:text-white">
+                      Unit Price
+                    </th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-900 dark:text-white">
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {order.items.map((item, index) => (
+                    <tr
+                      key={index}
+                      className="border-b border-gray-100 dark:border-gray-700"
+                    >
+                      <td className="py-4 px-4">
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          {item.productName}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-gray-600 dark:text-gray-400">
+                        {item.farmerName}
+                      </td>
+                      <td className="py-4 px-4 text-center text-gray-600 dark:text-gray-400">
+                        {item.quantity}
+                      </td>
+                      <td className="py-4 px-4 text-right text-gray-600 dark:text-gray-400">
+                        {formatPrice(item.price)}
+                      </td>
+                      <td className="py-4 px-4 text-right font-medium text-gray-900 dark:text-white">
+                        {formatPrice(item.price * item.quantity)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Payment Summary */}
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+              Payment Summary
+            </h3>
+            <div className="space-y-2 max-w-sm ml-auto">
+              <div className="flex justify-between">
+                <span className="text-gray-600 dark:text-gray-400">
+                  Subtotal:
+                </span>
+                <span className="text-gray-900 dark:text-white">
+                  {formatPrice(order.subtotal)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600 dark:text-gray-400">
+                  Delivery Fee:
+                </span>
+                <span className="text-gray-900 dark:text-white">
+                  {formatPrice(order.deliveryFee)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600 dark:text-gray-400">
+                  Service Fee:
+                </span>
+                <span className="text-gray-900 dark:text-white">
+                  {formatPrice(order.serviceFee)}
+                </span>
+              </div>
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
+                <div className="flex justify-between font-bold text-lg">
+                  <span className="text-gray-900 dark:text-white">Total:</span>
+                  <span className="text-gray-900 dark:text-white">
+                    {formatPrice(order.total)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Email Confirmation Notice */}
-        <div className="mt-8 bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+        <div className="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-8">
           <div className="flex items-center">
             <i className="fas fa-envelope text-blue-600 dark:text-blue-400 mr-3"></i>
             <div>
@@ -52,291 +419,89 @@ export default function Success() {
           </div>
         </div>
 
-        {/* Order Details */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 my-8">
-          {/* Order Summary */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-              Order Details
-            </h2>
-
-            {/* Product */}
-            <div className="flex items-center space-x-4 mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <img
-                src="https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=80&h=80&fit=crop"
-                alt="Fresh Tomatoes"
-                className="w-16 h-16 rounded-lg object-cover"
-              />
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900 dark:text-white">
-                  Fresh Tomatoes
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  By Rahim's Farm
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Quantity: 5 kg
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  ৳225
-                </p>
-              </div>
-            </div>
-
-            {/* Delivery Information */}
-            <div className="space-y-3 mb-6">
-              <h3 className="font-semibold text-gray-900 dark:text-white">
-                Delivery Information
-              </h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Delivery Date:
-                  </span>
-                  <span className="text-gray-900 dark:text-white">
-                    Dec 22, 2024
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Delivery Time:
-                  </span>
-                  <span className="text-gray-900 dark:text-white">
-                    10:00 AM - 12:00 PM
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Address:
-                  </span>
-                  <span className="text-gray-900 dark:text-white text-right">
-                    123 Main St, Dhaka 1000
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Payment Summary */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-              Payment Summary
-            </h2>
-
-            {/* Payment Details */}
-            <div className="space-y-3 mb-6">
-              <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">
-                  Subtotal:
-                </span>
-                <span className="text-gray-900 dark:text-white">৳225</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">
-                  Delivery Fee:
-                </span>
-                <span className="text-gray-900 dark:text-white">৳50</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">
-                  Service Fee:
-                </span>
-                <span className="text-gray-900 dark:text-white">৳25</span>
-              </div>
-              <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
-                <div className="flex justify-between text-lg font-bold text-gray-900 dark:text-white">
-                  <span>Total Paid:</span>
-                  <span>৳300</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Method */}
-            <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
-                Payment Method
-              </h3>
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <i className="fas fa-credit-card text-lg text-gray-600 dark:text-gray-400"></i>
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    Visa ending in 1234
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Paid on Dec 20, 2024
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Transaction ID */}
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Transaction ID
-                  </p>
-                  <p className="font-mono text-sm text-gray-900 dark:text-white">
-                    TXN-FB-20241220-001234
-                  </p>
-                </div>
-                <button
-                  onClick={copyTransactionId}
-                  className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
-                >
-                  <i className="fas fa-copy"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <button
-            onClick={downloadReceipt}
-            className="flex items-center justify-center px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition"
+            onClick={downloadInvoice}
+            className="flex items-center justify-center px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition"
           >
             <i className="fas fa-download mr-2"></i>
-            Download Receipt (PDF)
+            Download Invoice
           </button>
+
           <Link
             href="/bookings"
-            className="flex items-center justify-center px-8 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition"
+            className="flex items-center justify-center px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition"
           >
             <i className="fas fa-list mr-2"></i>
             View All Orders
           </Link>
+
+          <Link
+            href="/products"
+            className="flex items-center justify-center px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition"
+          >
+            <i className="fas fa-shopping-bag mr-2"></i>
+            Continue Shopping
+          </Link>
+
           <Link
             href="/"
-            className="flex items-center justify-center px-8 py-3 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium transition"
+            className="flex items-center justify-center px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition"
           >
             <i className="fas fa-home mr-2"></i>
             Back to Home
           </Link>
         </div>
-      </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="bg-green-500 p-2 rounded-lg">
-                  <i className="fas fa-seedling text-white text-xl"></i>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold">FarmFresh</h3>
-                  <p className="text-sm text-gray-400">Local Farmer Booking</p>
-                </div>
+        {/* What's Next Section */}
+        <div className="mt-12 bg-gray-100 dark:bg-gray-800 rounded-lg p-6">
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
+            What happens next?
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                1
               </div>
-              <p className="text-gray-400 mb-4">
-                Connecting communities with fresh, local produce directly from
-                farmers.
-              </p>
-              <div className="flex space-x-4">
-                <a href="#" className="text-gray-400 hover:text-white">
-                  <i className="fab fa-facebook"></i>
-                </a>
-                <a href="#" className="text-gray-400 hover:text-white">
-                  <i className="fab fa-twitter"></i>
-                </a>
-                <a href="#" className="text-gray-400 hover:text-white">
-                  <i className="fab fa-instagram"></i>
-                </a>
+              <div>
+                <h4 className="font-medium text-gray-900 dark:text-white">
+                  Order Confirmation
+                </h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Farmers will confirm your order within 2 hours
+                </p>
               </div>
             </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Quick Links</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li>
-                  <Link href="/" className="hover:text-white">
-                    Home
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/products" className="hover:text-white">
-                    Products
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/farmers" className="hover:text-white">
-                    Farmers
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/about" className="hover:text-white">
-                    About Us
-                  </Link>
-                </li>
-              </ul>
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                2
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900 dark:text-white">
+                  Preparation
+                </h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Fresh products will be prepared for delivery
+                </p>
+              </div>
             </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">For Farmers</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li>
-                  <Link href="/register" className="hover:text-white">
-                    Join as Farmer
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/create" className="hover:text-white">
-                    Add Products
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/manage" className="hover:text-white">
-                    Manage Listings
-                  </Link>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white">
-                    Farmer Support
-                  </a>
-                </li>
-              </ul>
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                3
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900 dark:text-white">
+                  Delivery
+                </h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Your order will be delivered within 24 hours
+                </p>
+              </div>
             </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Support</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li>
-                  <a href="#" className="hover:text-white">
-                    Help Center
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white">
-                    Contact Us
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white">
-                    Terms of Service
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-white">
-                    Privacy Policy
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>
-              &copy; 2025 FarmFresh - Local Farmer Booking. All rights reserved
-              by LWS.
-            </p>
           </div>
         </div>
-      </footer>
-    </>
+      </div>
+    </div>
   );
 }

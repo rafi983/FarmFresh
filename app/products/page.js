@@ -25,7 +25,7 @@ export default function Products() {
   const [selectedRatings, setSelectedRatings] = useState([]);
   const [selectedFarmers, setSelectedFarmers] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
-  const [priceRangeSlider, setPriceRangeSlider] = useState([0, 1000]);
+  const [priceRangeSlider, setPriceRangeSlider] = useState([0, 10000]); // Increased default max to 10000
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -165,7 +165,7 @@ export default function Products() {
       setPriceRangeSlider(newPriceSlider);
     } else {
       console.log("️ Resetting price slider to default");
-      setPriceRangeSlider([0, 1000]);
+      setPriceRangeSlider([0, 10000]);
     }
 
     // Restore sort option from URL
@@ -208,8 +208,9 @@ export default function Products() {
       if (searchTerm) params.append("search", searchTerm);
       if (selectedCategory !== "All Categories")
         params.append("category", selectedCategory);
-      // Remove the limit parameter to fetch all products
-      params.append("sort", sortBy);
+      // Add high limit to fetch all products for client-side pagination
+      params.append("limit", "1000");
+      params.append("sortBy", sortBy);
 
       const apiUrl = `/api/products?${params}`;
       console.log(" API call URL:", apiUrl);
@@ -219,7 +220,18 @@ export default function Products() {
         let data = await response.json();
         let allProducts = data.products;
 
-        console.log(" Raw products from API:", allProducts.length);
+        console.log("🔍 Raw products from API:", allProducts.length);
+        console.log(
+          "🔍 Sample of all products:",
+          allProducts.slice(0, 3).map((p) => ({
+            name: p.name,
+            _id: p._id,
+            farmerId: p.farmerId,
+            farmerEmail: p.farmerEmail,
+            category: p.category,
+            price: p.price,
+          })),
+        );
 
         // Apply client-side filters to all products
         let filteredProducts = applyFilters(allProducts);
@@ -287,15 +299,29 @@ export default function Products() {
 
     // Custom price range slider
     const beforeSlider = filtered.length;
-    filtered = filtered.filter(
-      (product) =>
+    const filteredOutProducts = [];
+
+    filtered = filtered.filter((product) => {
+      const withinRange =
         product.price >= priceRangeSlider[0] &&
-        product.price <= priceRangeSlider[1],
-    );
-    console.log(" Price slider filter:", {
+        product.price <= priceRangeSlider[1];
+
+      if (!withinRange) {
+        filteredOutProducts.push({
+          name: product.name,
+          price: product.price,
+          priceType: typeof product.price,
+        });
+      }
+
+      return withinRange;
+    });
+
+    console.log("💰 Price slider filter:", {
       before: beforeSlider,
       after: filtered.length,
       range: priceRangeSlider,
+      filteredOut: filteredOutProducts,
     });
 
     // Rating filters
@@ -368,8 +394,6 @@ export default function Products() {
         filtered.sort(
           (a, b) => (b.averageRating || 0) - (a.averageRating || 0),
         );
-        break;
-      case "popular":
         filtered.sort(
           (a, b) => (b.purchaseCount || 0) - (a.purchaseCount || 0),
         );
@@ -392,9 +416,21 @@ export default function Products() {
     return filtered;
   };
 
+  // Handle search functionality
   const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (searchTerm) params.append("search", searchTerm);
+    if (selectedCategory !== "All Categories")
+      params.append("category", selectedCategory);
+    router.push(`/products?${params.toString()}`);
     setCurrentPage(1);
     fetchProducts();
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
   };
 
   const handleCategoryChange = (category) => {
@@ -519,7 +555,7 @@ export default function Products() {
     setSelectedRatings([]);
     setSelectedFarmers([]);
     setSelectedTags([]);
-    setPriceRangeSlider([0, 1000]);
+    setPriceRangeSlider([0, 10000]);
     setCurrentPage(1);
     updateURL();
   };
@@ -567,7 +603,7 @@ export default function Products() {
     }
 
     // Add price range slider
-    if (priceRangeSlider[0] !== 0 || priceRangeSlider[1] !== 1000) {
+    if (priceRangeSlider[0] !== 0 || priceRangeSlider[1] !== 10000) {
       params.append("minPrice", priceRangeSlider[0]);
       params.append("maxPrice", priceRangeSlider[1]);
     }
@@ -675,7 +711,7 @@ export default function Products() {
     }
 
     // Add price range slider
-    if (currentPriceSlider[0] !== 0 || currentPriceSlider[1] !== 1000) {
+    if (currentPriceSlider[0] !== 0 || currentPriceSlider[1] !== 10000) {
       params.append("minPrice", currentPriceSlider[0]);
       params.append("maxPrice", currentPriceSlider[1]);
     }
@@ -711,7 +747,7 @@ export default function Products() {
     if (selectedRatings.length > 0) count++;
     if (selectedFarmers.length > 0) count++;
     if (selectedTags.length > 0) count++;
-    if (priceRangeSlider[0] !== 0 || priceRangeSlider[1] !== 1000) count++;
+    if (priceRangeSlider[0] !== 0 || priceRangeSlider[1] !== 10000) count++;
     return count;
   };
 
@@ -881,11 +917,11 @@ export default function Products() {
                   </span>
                 ))}
                 {(priceRangeSlider[0] !== 0 ||
-                  priceRangeSlider[1] !== 1000) && (
+                  priceRangeSlider[1] !== 10000) && (
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
                     ৳{priceRangeSlider[0]} - ৳{priceRangeSlider[1]}
                     <button
-                      onClick={() => setPriceRangeSlider([0, 1000])}
+                      onClick={() => setPriceRangeSlider([0, 10000])}
                       className="ml-2 text-orange-600 hover:text-orange-800"
                     >
                       ×
@@ -953,7 +989,7 @@ export default function Products() {
                       <input
                         type="range"
                         min="0"
-                        max="1000"
+                        max="10000"
                         step="10"
                         value={priceRangeSlider[0]}
                         onChange={(e) =>
@@ -967,7 +1003,7 @@ export default function Products() {
                       <input
                         type="range"
                         min="0"
-                        max="1000"
+                        max="10000"
                         step="10"
                         value={priceRangeSlider[1]}
                         onChange={(e) =>
@@ -982,8 +1018,8 @@ export default function Products() {
                         <div
                           className="absolute h-2 bg-primary-600 rounded-lg"
                           style={{
-                            left: `${(priceRangeSlider[0] / 1000) * 100}%`,
-                            width: `${((priceRangeSlider[1] - priceRangeSlider[0]) / 1000) * 100}%`,
+                            left: `${(priceRangeSlider[0] / 10000) * 100}%`,
+                            width: `${((priceRangeSlider[1] - priceRangeSlider[0]) / 10000) * 100}%`,
                           }}
                         ></div>
                       </div>

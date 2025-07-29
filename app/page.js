@@ -34,10 +34,25 @@ export default function Home() {
 
   const fetchFeaturedProducts = async () => {
     try {
-      const response = await fetch("/api/products?featured=true&limit=8");
+      // First try to get products with highest purchase count
+      const response = await fetch("/api/products?sortBy=purchases&limit=8");
       if (response.ok) {
         const data = await response.json();
-        setFeaturedProducts(data.products);
+        // If no products have purchases, get most recent products
+        if (
+          data.products.length === 0 ||
+          !data.products.some((p) => p.purchaseCount > 0)
+        ) {
+          const recentResponse = await fetch(
+            "/api/products?sortBy=newest&limit=8",
+          );
+          if (recentResponse.ok) {
+            const recentData = await recentResponse.json();
+            setFeaturedProducts(recentData.products);
+          }
+        } else {
+          setFeaturedProducts(data.products);
+        }
       }
     } catch (error) {
       console.error("Error fetching featured products:", error);
