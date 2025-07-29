@@ -44,7 +44,7 @@ export default function LoginModal() {
 
   return (
     <Modal onClose={() => router.back()}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-md w-full mx-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-md w-full">
         <div className="text-center mb-6">
           <div className="bg-primary-500 p-3 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
             <i className="fas fa-seedling text-white text-2xl"></i>

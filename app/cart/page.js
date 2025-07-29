@@ -71,7 +71,6 @@ export default function Cart() {
                           <i className="fas fa-plus text-sm"></i>
                         </button>
                       </div>
-
                       {/* Item Total */}
                       <div className="text-right min-w-[80px]">
                         <p className="font-bold text-lg text-gray-900 dark:text-white">
@@ -87,7 +86,6 @@ export default function Cart() {
                   </div>
                 ))}
               </div>
-
               {/* Cart Footer */}
               <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
                 <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
@@ -100,7 +98,6 @@ export default function Cart() {
                       ৳210
                     </p>
                   </div>
-
                   {/* Action Buttons */}
                   <div className="flex space-x-4">
                     <Link
@@ -118,16 +115,13 @@ export default function Cart() {
                       <i className="fas fa-arrow-right ml-2"></i>
                     </Link>
                   </div>
-                </div>
               </div>
             </div>
-
             {/* Additional Cart Information */}
             <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center">
                 <div className="text-green-500 text-2xl mb-2">
                   <i className="fas fa-truck"></i>
-                </div>
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
                   Free Delivery
                 </h3>
@@ -135,11 +129,9 @@ export default function Cart() {
                   On orders over ৳500
                 </p>
               </div>
-
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center">
                 <div className="text-blue-500 text-2xl mb-2">
                   <i className="fas fa-shield-alt"></i>
-                </div>
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
                   Secure Payment
                 </h3>
@@ -147,11 +139,9 @@ export default function Cart() {
                   100% secure transactions
                 </p>
               </div>
-
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center">
                 <div className="text-orange-500 text-2xl mb-2">
                   <i className="fas fa-undo"></i>
-                </div>
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
                   Easy Returns
                 </h3>
@@ -161,6 +151,16 @@ export default function Cart() {
               </div>
             </div>
           </div>
+                  Continue Shopping
+                </Link>
+                </button>
+
+                <Link
+                  href="/products"
+                  className="block w-full text-center py-2 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition"
+                >
+                  Continue Shopping
+                </Link>
         </div>
       </section>
     </>

@@ -1,6 +1,5 @@
 [
   {
-    "_id": "688725de224d2f673382eac1",
     "name": "Golden Wheat",
     "category": "Grains",
     "price": 117,
@@ -8,7 +7,7 @@
     "description": "Golden Wheat is premium-grade, sun-ripened whole grain harvested from the fertile fields of Rajshahi. With a naturally rich golden hue and high protein content, it's ideal for baking, grinding into flour, or preparing nutritious traditional meals. Grown organically by Abdul Rahman at Farm 35, this wheat is free from synthetic chemicals and processed with care to retain its wholesome quality. Whether you’re making rotis, bread, or porridges, it ensures both taste and nourishment.",
     "farmer": {
       "name": "Abdul Rahman",
-      "farmName": "Farm 35",
+      "farmName": "Farm 001",
       "location": "Rajshahi, Bangladesh"
     },
     "images": [
@@ -28,8 +27,6 @@
       "Packed fresh and delivered with zero preservatives",
       "Perfect for traditional recipes like roti, bread, and porridge"
     ],
-    "rating": 4.7,
-    "reviewCount": 3,
     "isOrganic": true,
     "purchaseCount": 306,
     "storageInstructions": "Store in a cool, dry place in an airtight container to preserve freshness. Avoid exposure to moisture and direct sunlight. Shelf life is up to 12 months if stored properly.",
@@ -70,7 +67,6 @@
   },
 
   {
-    "_id": "688725de224d2f673382eab9",
     "name": "Green Cauliflower",
     "category": "Vegetables",
     "price": 108,
@@ -78,7 +74,7 @@
     "description": "Green Cauliflower is a vibrant, nutrient-dense vegetable known for its unique color and slightly sweeter, nuttier taste compared to white cauliflower. Grown locally by farmer Fatema Begum at Farm 27 in Dhaka, this hybrid variety is not only rich in antioxidants but also versatile in cooking. Whether steamed, roasted, stir-fried, or blended into soups, it delivers both flavor and health benefits. A fresh pick straight from local soil to your kitchen, this cauliflower is a colorful addition to healthy diets and plant-based recipes.",
     "farmer": {
       "name": "Fatema Begum",
-      "farmName": "Farm 27",
+      "farmName": "Farm 003",
       "location": "Dhaka, Bangladesh"
     },
     "images": [
@@ -98,8 +94,6 @@
       "Hand-harvested for maximum freshness and quality",
       "Packed and delivered fresh within 24 hours of harvesting"
     ],
-    "rating": 3.7,
-    "reviewCount": 3,
     "isOrganic": false,
     "purchaseCount": 208,
     "storageInstructions": "Keep refrigerated at 0–4°C in a loosely closed bag or container. Do not wash until ready to use. Best consumed within 4–5 days of purchase.",
@@ -142,16 +136,15 @@
   }
 ,
   {
-    "_id": "688725de224d2f673382eacb",
     "name": "Fresh Broccoli",
     "category": "Vegetables",
     "price": 85,
     "unit": "bundle",
     "description": "Fresh Broccoli is a nutrient-rich green vegetable grown organically in the fertile lands of Rajshahi by Mohammad Ali at Farm 45. Known for its vibrant green florets and crisp stalks, this broccoli is ideal for steaming, roasting, stir-frying, or adding to salads. Packed with fiber, vitamins, and antioxidants, it's a staple in healthy diets and a go-to ingredient for fitness enthusiasts and home cooks alike. With no chemical pesticides or additives, every bundle brings freshness and wellness straight to your kitchen.",
     "farmer": {
-      "name": "Mohammad Ali",
-      "farmName": "Farm 45",
-      "location": "Rajshahi, Bangladesh"
+      "name": "Mostafa Kamal",
+      "farmName": "Farm 006",
+      "location": "Gazipur, Bangladesh"
     },
     "images": [
       "https://images.unsplash.com/photo-1594885270039-f8871b502f7f?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8RnJlc2glMjBCcm9jY29saXxlbnwwfHwwfHx8MA%3D%3D",
@@ -170,8 +163,6 @@
       "Supports heart health, immune function, and digestion",
       "Suitable for vegan, keto, and low-calorie diets"
     ],
-    "rating": 4.5,
-    "reviewCount": 3,
     "isOrganic": true,
     "purchaseCount": 303,
     "storageInstructions": "Store unwashed in the refrigerator in a breathable bag or loosely wrapped in a paper towel. Best consumed within 4–6 days. Wash thoroughly before cooking.",
@@ -214,16 +205,15 @@
   }
 ,
   {
-    "_id": "688725de224d2f673382eac3",
     "name": "Wildflower Honey",
     "category": "Honey",
     "price": 116,
     "unit": "kg",
     "description": "Wildflower Honey is a rich, aromatic natural sweetener harvested from the nectar of a diverse blend of wildflowers. Sourced directly from Dhaka’s local apiaries, this golden honey is collected with care by Shahnaz Parvin at Farm 37. Its deep flavor, floral notes, and smooth texture make it perfect for drizzling over toast, mixing into tea, or using in healthy baking recipes. Raw and unfiltered, this honey retains its natural enzymes, antioxidants, and antibacterial properties, making it not just a treat but a wellness booster.",
     "farmer": {
-      "name": "Shahnaz Parvin",
-      "farmName": "Farm 37",
-      "location": "Dhaka, Bangladesh"
+      "name": "Abdul Rahman",
+      "farmName": "Farm 001",
+      "location": "Rajshahi, Bangladesh"
     },
     "images": [
       "https://images.unsplash.com/photo-1551492020-7630c76eb6c6?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8V2lsZGZsb3dlciUyMEhvbmV5fGVufDB8fDB8fHww",
@@ -242,8 +232,6 @@
       "Perfect for tea, toast, yogurt, desserts, and baking",
       "Supports local beekeeping and eco-friendly farming"
     ],
-    "rating": 4.8,
-    "reviewCount": 3,
     "isOrganic": false,
     "purchaseCount": 189,
     "storageInstructions": "Store in a cool, dry place away from direct sunlight. Do not refrigerate. Crystallization is natural—place the jar in warm water to liquefy.",
@@ -284,16 +272,15 @@
   }
 ,
   {
-    "_id": "688725de224d2f673382eaa1",
     "name": "Red Onions",
     "category": "Vegetables",
     "price": 25,
     "unit": "kg",
     "description": "These vibrant, fresh Red Onions are harvested from fertile lands in Jessore by local grower Karim Uddin at Sunrise Farm. Known for their bold flavor, crispy texture, and deep purplish-red color, these onions are a staple in Bengali cooking. Perfect for curries, salads, biryanis, and chutneys, red onions bring sharp taste and color to any dish. They are hand-picked, naturally grown, and delivered fresh to preserve their pungency and shelf life. A must-have in every kitchen.",
     "farmer": {
-      "name": "Karim Uddin",
-      "farmName": "Sunrise Farm",
-      "location": "Jessore, Bangladesh"
+      "name": "Mostafa Kamal",
+      "farmName": "Farm 006",
+      "location": "Gazipur, Bangladesh"
     },
     "images": [
       "https://images.unsplash.com/photo-1668295037469-8b0e8d11cd2a?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8UmVkJTIwT25pb25zfGVufDB8fDB8fHww",
@@ -312,8 +299,7 @@
       "Chemical-free and naturally matured",
       "Long shelf life when stored properly"
     ],
-    "rating": 4.4,
-    "reviewCount": 3,
+
     "isOrganic": false,
     "purchaseCount": 203,
     "storageInstructions": "Store in a cool, dry, well-ventilated place. Avoid refrigeration to prevent softening. Do not store in plastic bags.",
@@ -354,16 +340,15 @@
   },
 
   {
-    "_id": "688725de224d2f673382eab5",
     "name": "Farm Fresh Eggs",
     "category": "Dairy",
     "price": 120,
     "unit": "dozen",
     "description": "Our Farm Fresh Eggs come from healthy, free-range hens raised on open pastures at Free Range Poultry in Kishoreganj. These organic, protein-rich eggs are laid by hens that roam freely, enjoying natural feed and clean environments. Each egg boasts a rich golden yolk, firm white, and superior flavor—perfect for frying, boiling, baking, or scrambling. Rich in nutrients and free from antibiotics or hormones, these eggs offer natural taste and nutrition with every bite.",
     "farmer": {
-      "name": "Rahima Khatun",
-      "farmName": "Free Range Poultry",
-      "location": "Kishoreganj, Bangladesh"
+      "name": "Ibrahim Khalil",
+      "farmName": "Farm 004",
+      "location": "Barishal, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1708715380817-31e20c61b18d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8RmFybSUyMEZyZXNoJTIwRWdnc3xlbnwwfHwwfHx8MA%3D%3D",
@@ -382,8 +367,7 @@
       "Collected fresh daily and hand-packed",
       "Ethically farmed and 100% organic certified"
     ],
-    "rating": 4.9,
-    "reviewCount": 3,
+
     "isOrganic": true,
     "purchaseCount": 267,
     "storageInstructions": "Store eggs in the refrigerator at 4°C or below. Keep in original carton to retain freshness. Consume within 3 weeks of purchase for best taste and safety.",
@@ -425,7 +409,6 @@
   }
 ,
   {
-    "_id": "688725de224d2f673382eac0",
     "name": "Ripe Mangoes",
     "category": "Fruits",
     "price": 87,
@@ -433,7 +416,7 @@
     "description": "Delicious, sun-ripened mangoes freshly harvested from the lush orchards of Sylhet. Carefully handpicked at peak ripeness by local farmer Sufia Begum, these mangoes are bursting with tropical sweetness, rich aroma, and soft, juicy flesh. Perfect for eating fresh, making smoothies, or preparing desserts, our organic mangoes are naturally grown without any synthetic chemicals, preserving their authentic taste and nutrition.",
     "farmer": {
       "name": "Sufia Begum",
-      "farmName": "Farm 34",
+      "farmName": "Farm 002",
       "location": "Sylhet, Bangladesh"
     },
     "images": [
@@ -453,8 +436,6 @@
       "Locally sourced and ethically grown",
       "100% organic certified"
     ],
-    "rating": 3.9,
-    "reviewCount": 3,
     "isOrganic": true,
     "purchaseCount": 59,
     "storageInstructions": "Store in a cool, dry place. Once ripe, refrigerate to extend freshness. Best consumed within 5–7 days after ripening.",
@@ -497,16 +478,15 @@
 
 
   {
-    "_id": "688725de224d2f673382eab1",
     "name": "Sweet Corn",
     "category": "Vegetables",
     "price": 40,
     "unit": "kg",
     "description": "Crisp, golden-yellow sweet corn grown in the fertile lands of Rangpur. Harvested at peak ripeness, each kernel bursts with juicy sweetness and flavor. Whether grilled, boiled, or added to soups and salads, this non-GMO corn is a delicious and versatile addition to any meal. Carefully grown by Anwar Hossain of Sweet Valley Farm using natural farming practices.",
     "farmer": {
-      "name": "Anwar Hossain",
-      "farmName": "Sweet Valley",
-      "location": "Rangpur, Bangladesh"
+      "name": "Fatema Begum",
+      "farmName": "003",
+      "location": "Dhaka, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1667047165840-803e47970128?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8U3dlZXQlMjBDb3JufGVufDB8fDB8fHww",
@@ -525,8 +505,6 @@
       "High in dietary fiber",
       "Versatile cooking ingredient"
     ],
-    "rating": 4.6,
-    "reviewCount": 3,
     "isOrganic": false,
     "purchaseCount": 112,
     "storageInstructions": "Store unshucked corn in the refrigerator and use within 3–5 days. For best flavor, cook soon after harvest.",
@@ -575,17 +553,17 @@
     "createdAt": "2025-07-26T00:48:50.266Z",
     "updatedAt": "2025-07-28T14:39:00.000Z"
   },
+
   {
-    "_id": "688725de224d2f673382eac7",
     "name": "Brown Rice",
     "category": "Grains",
     "price": 102,
     "unit": "kg",
     "description": "Naturally grown brown rice with its nutritious bran layer intact. This whole grain rice is rich in fiber, essential minerals, and antioxidants. Grown by Jahanara Begum at Farm 41 in Khulna, this rice is minimally processed to retain its natural texture and nutty flavor. Ideal for health-conscious diets and perfect for making wholesome meals like khichuri, biryani, or grain bowls.",
     "farmer": {
-      "name": "Jahanara Begum",
-      "farmName": "Farm 41",
-      "location": "Khulna, Bangladesh"
+      "name": "Abdul Rahman",
+      "farmName": "Farm 001",
+      "location": "Rajshahi, Bangladesh"
     },
     "images": [
       "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8QnJvd24lMjBSaWNlfGVufDB8fDB8fHww",
@@ -604,8 +582,7 @@
       "Nutty flavor and chewy texture",
       "Eco-friendly farming practices"
     ],
-    "rating": 3.7,
-    "reviewCount": 207,
+
     "isOrganic": true,
     "purchaseCount": 275,
     "storageInstructions": "Store in an airtight container in a cool, dry place. Best used within 6 months for optimal freshness.",
@@ -656,7 +633,6 @@
 
 ,
   {
-    "_id": "688725de224d2f673382eab0",
     "name": "Fresh Lettuce",
     "category": "Vegetables",
     "price": 55,
@@ -664,7 +640,7 @@
     "description": "Crisp and naturally grown green lettuce leaves from Green Leaf Gardens in Gazipur. Packed with vitamins and minerals, these tender leaves are perfect for salads, wraps, burgers, and sandwiches. Grown organically using clean water and sustainable methods to preserve freshness, flavor, and nutrients. A must-have for healthy meal lovers.",
     "farmer": {
       "name": "Mostafa Kamal",
-      "farmName": "Green Leaf Gardens",
+      "farmName": "Farm 006",
       "location": "Gazipur, Bangladesh"
     },
     "images": [
@@ -684,8 +660,6 @@
       "Low in calories, high in fiber",
       "Handpicked from Green Leaf Gardens"
     ],
-    "rating": 4.4,
-    "reviewCount": 45,
     "isOrganic": true,
     "purchaseCount": 67,
     "storageInstructions": "Keep refrigerated at 1–4°C. Store in a breathable vegetable bag or wrapped in a damp paper towel to maintain crispness. Use within 4–5 days.",
@@ -729,16 +703,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382eaa6",
     "name": "Fresh Potatoes",
     "category": "Vegetables",
     "price": 30,
     "unit": "kg",
     "description": "Farm-fresh potatoes grown in the fertile lands of Munshiganj, ideal for boiling, frying, baking, or mashing. These versatile tubers are a staple in every Bangladeshi kitchen, known for their smooth skin, dense texture, and earthy taste. Perfect for everyday meals, from curries to fries and stews.",
     "farmer": {
-      "name": "Ruma Akter",
-      "farmName": "Earth's Bounty Farm",
-      "location": "Munshiganj, Bangladesh"
+      "name": "Fatema Begum",
+      "farmName": "Farm 003",
+      "location": "Dhaka, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1724256032011-4f9e9548fe34?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0",
@@ -757,8 +730,7 @@
       "Great source of energy and carbs",
       "Family kitchen essential"
     ],
-    "rating": 4.2,
-    "reviewCount": 178,
+
     "isOrganic": false,
     "purchaseCount": 267,
     "storageInstructions": "Store in a cool, dry, and dark place away from onions. Avoid refrigeration to prevent starch-to-sugar conversion. Use within 3–4 weeks for best results.",
@@ -802,16 +774,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382eaad",
     "name": "Sweet Pineapple",
     "category": "Fruits",
     "price": 80,
     "unit": "piece",
     "description": "Juicy, sweet, and mildly tangy pineapples harvested from the tropical fields of Tangail. These golden-fleshed fruits are packed with flavor and nutrition — perfect for fresh juices, fruit salads, smoothies, or as a refreshing standalone snack. Each piece delivers a burst of tropical sunshine in every bite.",
     "farmer": {
-      "name": "Nurul Islam",
-      "farmName": "Tropical Paradise",
-      "location": "Tangail, Bangladesh"
+      "name": "Sufia Begum",
+      "farmName": "Farm 002",
+      "location": "Sylhet, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1724849318956-c17403245ce4?w=600&auto=format&fit=crop&q=60",
@@ -830,8 +801,6 @@
       "Hand-picked with care from Tangail",
       "Tropical taste in every bite"
     ],
-    "rating": 4.8,
-    "reviewCount": 67,
     "isOrganic": false,
     "purchaseCount": 89,
     "storageInstructions": "Store at room temperature until ripe. Once ripe, refrigerate and consume within 3–4 days for best flavor. For cut pineapple, refrigerate in an airtight container and consume within 2 days.",
@@ -876,7 +845,6 @@
 
 ,
   {
-    "_id": "688725de224d2f673382eacc",
     "name": "Guava",
     "category": "Fruits",
     "price": 82,
@@ -884,7 +852,7 @@
     "description": "Fresh, juicy guavas harvested from the fertile farms of Khulna. These guavas are known for their sweet aroma, crunchy texture, and rich vitamin content. Ideal for eating raw, juicing, or adding to desserts and salads. A nutritious tropical fruit loved across Bangladesh.",
     "farmer": {
       "name": "Ayesha Siddika",
-      "farmName": "Farm 46",
+      "farmName": "Farm 008",
       "location": "Khulna, Bangladesh"
     },
     "images": [
@@ -903,8 +871,6 @@
       "Naturally ripened",
       "Versatile for raw eating or cooking"
     ],
-    "rating": 4.3,
-    "reviewCount": 104,
     "isOrganic": false,
     "purchaseCount": 86,
     "storageInstructions": "Keep guavas refrigerated at 4°C to extend freshness. Consume within 5–7 days for optimal taste and nutrition.",
@@ -948,16 +914,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382eab7",
     "name": "Fresh Mint Leaves",
     "category": "Herbs",
     "price": 40,
     "unit": "bundle",
     "description": "Handpicked fresh mint leaves from Aromatic Herbs Farm in Mymensingh, bursting with a refreshing aroma and vibrant green color. Ideal for enhancing teas, salads, sauces, and various culinary dishes with a cool, invigorating flavor.",
     "farmer": {
-      "name": "Selim Reza",
-      "farmName": "Aromatic Herbs Farm",
-      "location": "Mymensingh, Bangladesh"
+      "name": "Rubina Akter",
+      "farmName": "Farm 007",
+      "location": "Netrokona, Bangladesh"
     },
     "images": [
       "https://images.unsplash.com/photo-1648036933917-762235e009c7?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8RnJlc2glMjBNaW50JTIwTGVhdmVzfGVufDB8fDB8fHww",
@@ -974,8 +939,6 @@
       "Grown organically",
       "Handpicked for quality"
     ],
-    "rating": 4.6,
-    "reviewCount": 67,
     "isOrganic": true,
     "purchaseCount": 89,
     "storageInstructions": "Store wrapped in a damp paper towel inside a sealed container in the refrigerator. Use within 5-7 days for best freshness and aroma.",
@@ -1020,16 +983,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382eaaa",
     "name": "Fresh Bananas",
     "category": "Fruits",
     "price": 60,
     "unit": "dozen",
     "description": "Yellow ripe bananas harvested from Tropical Fruits Farm in Patuakhali, Bangladesh. These bananas are naturally sweet, rich in potassium and dietary fiber, making them a healthy and delicious snack or ingredient for smoothies, desserts, and breakfast dishes.",
     "farmer": {
-      "name": "Rashida Khatun",
-      "farmName": "Tropical Fruits Farm",
-      "location": "Patuakhali, Bangladesh"
+      "name": "Ayesha Siddika",
+      "farmName": "Farm 008",
+      "location": "Khulna, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1724250081106-4bb1be9bf950?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8RnJlc2glMjBCYW5hbmFzfGVufDB8fDB8fHww",
@@ -1046,8 +1008,7 @@
       "Naturally grown",
       "Perfect for snacks and smoothies"
     ],
-    "rating": 4.5,
-    "reviewCount": 89,
+
     "isOrganic": false,
     "purchaseCount": 234,
     "storageInstructions": "Store at room temperature away from direct sunlight. To slow ripening, refrigerate once bananas are ripe; peel may darken but fruit remains fresh. Avoid storing near ethylene-sensitive fruits.",
@@ -1090,16 +1051,15 @@
   }
 ,
   {
-    "_id": "688725de224d2f673382eabd",
     "name": "Sundarbans Honey",
     "category": "Honey",
     "price": 24,
     "unit": "dozen",
     "description": "Pure, high-quality honey sourced from the wildflowers of the Sundarbans forest in Khulna, Bangladesh. Known for its rich aroma, golden color, and natural sweetness, this honey is packed with antioxidants and beneficial enzymes, making it a healthy choice for sweetening foods and beverages or as a natural remedy.",
     "farmer": {
-      "name": "Khalilur Rahman",
-      "farmName": "Farm 31",
-      "location": "Khulna, Bangladesh"
+      "name": "Rubina Akter",
+      "farmName": "Farm 007",
+      "location": "Netrokona, Bangladesh"
     },
     "images": [
       "https://images.unsplash.com/photo-1719871766551-b9ecf87eee51?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fFN1bmRhcmJhbnMlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
@@ -1116,8 +1076,6 @@
       "High antioxidant content",
       "Locally harvested"
     ],
-    "rating": 4.2,
-    "reviewCount": 112,
     "isOrganic": true,
     "purchaseCount": 264,
     "storageInstructions": "Store in a cool, dry place away from direct sunlight. Keep the container tightly sealed to prevent moisture absorption and crystallization. Do not refrigerate.",
@@ -1161,16 +1119,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382eaba",
     "name": "Lychees",
     "category": "Fruits",
     "price": 49,
     "unit": "piece",
     "description": "Fresh and juicy lychees cultivated by local farmers in Chittagong, Bangladesh. These lychees have a sweet, floral flavor and a refreshing aroma, making them perfect for eating fresh or adding to desserts and beverages. Known for their bright red skin and succulent white flesh, they are a popular tropical fruit rich in vitamins and antioxidants.",
     "farmer": {
-      "name": "Nasima Akter",
-      "farmName": "Farm 28",
-      "location": "Chittagong, Bangladesh"
+      "name": "Sufia Begum",
+      "farmName": "Farm 002",
+      "location": "Sylhet, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1709146958860-d29e4c08a3b1?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8THljaGVlc3xlbnwwfHwwfHx8MA%3D%3D",
@@ -1187,8 +1144,6 @@
       "Rich in antioxidants",
       "Ideal for fresh eating or desserts"
     ],
-    "rating": 3.9,
-    "reviewCount": 49,
     "isOrganic": false,
     "purchaseCount": 260,
     "storageInstructions": "Store lychees in a cool, dry place or refrigerate in a perforated plastic bag to maintain freshness. Consume within 3-5 days for optimal taste.",
@@ -1232,16 +1187,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382eacf",
     "name": "Forest Honey",
     "category": "Honey",
     "price": 92,
     "unit": "liter",
     "description": "Premium forest honey harvested from wildflowers in the Sylhet region of Bangladesh. This honey is known for its rich aroma, smooth texture, and natural sweetness. Sourced sustainably from local farmers, it offers a pure taste of the forest with natural health benefits including antioxidants and antimicrobial properties.",
     "farmer": {
-      "name": "Mokbul Hossain",
-      "farmName": "Farm 49",
-      "location": "Sylhet, Bangladesh"
+      "name": "Ayesha Siddika",
+      "farmName": "Farm 008",
+      "location": "Khulna, Bangladesh"
     },
     "images": [
       "https://images.unsplash.com/photo-1658922251481-b49205905aff?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fEZvcmVzdCUyMEhvbmV5fGVufDB8fDB8fHww",
@@ -1258,8 +1212,7 @@
       "Smooth texture and rich aroma",
       "Locally harvested from Sylhet forests"
     ],
-    "rating": 3.9,
-    "reviewCount": 76,
+
     "isOrganic": false,
     "purchaseCount": 308,
     "storageInstructions": "Store in a cool, dry place away from direct sunlight. Keep the container tightly sealed to prevent moisture absorption and crystallization. Avoid refrigeration to maintain smooth texture.",
@@ -1303,16 +1256,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382eace",
     "name": "Fresh Cheese",
     "category": "Dairy",
     "price": 113,
     "unit": "piece",
     "description": "Creamy, fresh cheese made from locally sourced milk in Chittagong, Bangladesh. This high-quality cheese offers a mild, slightly tangy flavor, perfect for snacks, cooking, and adding richness to meals. Produced with care by local farmers, it brings authentic taste and nutrition to your table.",
     "farmer": {
-      "name": "Rokeya Begum",
-      "farmName": "Farm 48",
-      "location": "Chittagong, Bangladesh"
+      "name": "Mizanur Rahman",
+      "farmName": "Farm 005",
+      "location": "Tangail, Bangladesh"
     },
     "images": [
       "https://images.unsplash.com/photo-1642702678273-d0927e765695?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8RnJlc2glMjBjaGVlc2V8ZW58MHx8MHx8fDA%3D",
@@ -1331,8 +1283,7 @@
       "High nutritional value",
       "Trusted by local chefs"
     ],
-    "rating": 3.7,
-    "reviewCount": 173,
+
     "isOrganic": true,
     "purchaseCount": 292,
     "storageInstructions": "Keep refrigerated between 2°C and 5°C. Store in an airtight container to maintain freshness. Consume within 7-10 days after opening.",
@@ -1374,15 +1325,14 @@
 
 ,
   {
-    "_id": "688725de224d2f673382eab6",
     "name": "Pure Honey",
     "category": "Honey",
     "price": 450,
     "unit": "kg",
     "description": "100% pure natural honey harvested from wildflowers in Sylhet, Bangladesh. This raw, unprocessed honey retains all natural enzymes and antioxidants, offering a rich, sweet flavor and numerous health benefits. Perfect for sweetening, cooking, or medicinal use.",
     "farmer": {
-      "name": "Abdur Rahim",
-      "farmName": "Golden Nectar Apiaries",
+      "name": "Khanzad Ali",
+      "farmName": "Farm 009",
       "location": "Sylhet, Bangladesh"
     },
     "images": [
@@ -1402,8 +1352,7 @@
       "Medicinal Properties",
       "Locally Harvested in Sylhet"
     ],
-    "rating": 4.9,
-    "reviewCount": 234,
+
     "isOrganic": true,
     "purchaseCount": 156,
     "storageInstructions": "Store in a cool, dry place away from direct sunlight. Keep the container tightly closed to prevent moisture absorption. Avoid refrigeration to maintain texture and flavor.",
@@ -1446,16 +1395,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382ead0",
     "name": "Basmati Rice",
     "category": "Grains",
     "price": 150,
     "unit": "kg",
     "description": "Premium aromatic basmati rice grown in the fertile fields of Dinajpur, Bangladesh. Known for its long grains, distinctive fragrance, and fluffy texture, this rice is perfect for biryani, pulao, and everyday meals. Carefully harvested and processed to retain quality and flavor.",
     "farmer": {
-      "name": "Abdul Haque",
-      "farmName": "Rice Fields",
-      "location": "Dinajpur, Bangladesh"
+      "name": "Abdul Rahman",
+      "farmName": "Farm 001",
+      "location": "Rajshahi, Bangladesh"
     },
     "images": [
       "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8QmFzbWF0aSUyMFJpY2V8ZW58MHx8MHx8fDA%3D",
@@ -1474,8 +1422,7 @@
       "Non-GMO and organic",
       "Hand-harvested with care"
     ],
-    "rating": 4.8,
-    "reviewCount": 120,
+
     "isOrganic": true,
     "purchaseCount": 345,
     "storageInstructions": "Store in a cool, dry place in an airtight container to preserve freshness and prevent moisture. Keep away from strong odors and sunlight.",
@@ -1514,16 +1461,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382ead1",
     "name": "Fresh Tomatoes",
     "category": "Vegetables",
     "price": 35,
     "unit": "kg",
     "description": "Juicy red tomatoes grown in the fertile fields of Comilla, Bangladesh. Ideal for curries, salads, and sauces, these tomatoes are known for their vibrant color, rich flavor, and perfect balance of sweetness and acidity. Freshly harvested and packed to ensure quality.",
     "farmer": {
-      "name": "Fatima Begum",
-      "farmName": "Red Harvest Farm",
-      "location": "Comilla, Bangladesh"
+      "name": "Khanzad Ali",
+      "farmName": "Farm 009",
+      "location": "Sylhet, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1686529591640-876ef71ab2ac?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8RnJlc2glMjBUb21hdG9lc3xlbnwwfHwwfHx8MA%3D%3D",
@@ -1541,8 +1487,7 @@
       "Rich in antioxidants",
       "Versatile for cooking"
     ],
-    "rating": 4.5,
-    "reviewCount": 95,
+
     "isOrganic": false,
     "purchaseCount": 210,
     "storageInstructions": "Store in a cool, dry place away from direct sunlight. Avoid refrigeration to preserve flavor and texture. Use within 5-7 days for best freshness.",
@@ -1582,16 +1527,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382ead2",
     "name": "Himsagar Mangoes",
     "category": "Fruits",
     "price": 120,
     "unit": "dozen",
     "description": "Sweet and juicy Himsagar mangoes, often hailed as the king of fruits. These mangoes are prized for their rich aroma, smooth texture, and delicious sweetness, freshly harvested from Chapainawabganj, Bangladesh.",
     "farmer": {
-      "name": "Siddique Ali",
-      "farmName": "Mango Orchard",
-      "location": "Chapainawabganj, Bangladesh"
+      "name": "Fatema Begum",
+      "farmName": "Farm 003",
+      "location": "Dhaka, Bangladesh"
     },
     "images": [
       "https://images.unsplash.com/photo-1686544304650-36640704097a?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8SGltc2FnYXIlMjBNYW5nb2VzfGVufDB8fDB8fHww",
@@ -1608,8 +1552,7 @@
       "Fragrant",
       "Smooth Texture"
     ],
-    "rating": 4.9,
-    "reviewCount": 150,
+
     "isOrganic": true,
     "purchaseCount": 180,
     "storageInstructions": "Store in a cool, dry place. For best taste, consume fresh or refrigerate for up to 5 days after ripening.",
@@ -1649,16 +1592,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382ead3",
     "name": "Fresh Milk",
     "category": "Dairy",
     "price": 80,
     "unit": "liter",
     "description": "Pure fresh milk sourced from local dairy farms in Sirajganj, Bangladesh. Rich in calcium and essential nutrients, perfect for daily consumption.",
     "farmer": {
-      "name": "Kamrul Hasan",
-      "farmName": "Pure Milk Farm",
-      "location": "Sirajganj, Bangladesh"
+      "name": "Mostafa Kamal",
+      "farmName": "Farm 006",
+      "location": "Gazipur, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1695042864778-6d67ec3953e9?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTN8fEZyZXNoJTIwTWlsa3xlbnwwfHwwfHx8MA%3D%3D",
@@ -1675,8 +1617,7 @@
       "Calcium Rich",
       "Nutrient Dense"
     ],
-    "rating": 4.7,
-    "reviewCount": 88,
+
     "isOrganic": true,
     "purchaseCount": 200,
     "storageInstructions": "Keep refrigerated at or below 4°C. Consume within 3 days after opening for best freshness.",
@@ -1715,16 +1656,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382ead4",
     "name": "Coriander Leaves",
     "category": "Herbs",
     "price": 25,
     "unit": "bundle",
     "description": "Fresh coriander leaves, perfect for garnishing, cooking, and enhancing flavor with their aromatic freshness.",
     "farmer": {
-      "name": "Nurjahan Begum",
-      "farmName": "Herb Haven",
-      "location": "Narsingdi, Bangladesh"
+      "name": "Sufia Begum",
+      "farmName": "Farm 002",
+      "location": "Sylhet, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1675430785093-239946363048?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8Q29yaWFuZGVyJTIwTGVhdmVzfGVufDB8fDB8fHww",
@@ -1740,8 +1680,7 @@
       "Local",
       "Organic"
     ],
-    "rating": 4.6,
-    "reviewCount": 70,
+
     "isOrganic": true,
     "purchaseCount": 110,
     "storageInstructions": "Keep refrigerated and use within 3 days for optimal freshness and aroma.",
@@ -1778,16 +1717,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382ead5",
     "name": "Red Lentils",
     "category": "Grains",
     "price": 95,
     "unit": "kg",
     "description": "High quality red lentils from local farmers, perfect for dal and rich in protein.",
     "farmer": {
-      "name": "Shafiqul Islam",
-      "farmName": "Farm 1",
-      "location": "Bogra, Bangladesh"
+      "name": "Abdul Rahman",
+      "farmName": "Farm 001",
+      "location": "Rajshahi, Bangladesh"
     },
     "images": [
       "https://images.unsplash.com/photo-1730591857303-0fa44be3f677?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8UmVkJTIwTGVudGlsc3xlbnwwfHwwfHx8MA%3D%3D",
@@ -1803,8 +1741,7 @@
       "Quality",
       "Protein-Rich"
     ],
-    "rating": 4.3,
-    "reviewCount": 65,
+
     "isOrganic": false,
     "purchaseCount": 150,
     "storageInstructions": "Store in a cool, dry place away from sunlight. Use within 6 months for best quality.",
@@ -1842,16 +1779,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382ead6",
     "name": "Green Beans",
     "category": "Vegetables",
     "price": 45,
     "unit": "kg",
     "description": "High quality green beans from local farmers, great for stir-fries and salads.",
     "farmer": {
-      "name": "Monira Khatun",
-      "farmName": "Farm 2",
-      "location": "Faridpur, Bangladesh"
+      "name": "Mizanur Rahman",
+      "farmName": "Farm 005",
+      "location": "Tangail, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1725384940646-ef6aa8c2a091?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8R3JlZW4lMjBCZWFuc3xlbnwwfHwwfHx8MA%3D%3D",
@@ -1867,8 +1803,7 @@
       "Quality",
       "Crisp"
     ],
-    "rating": 4.2,
-    "reviewCount": 55,
+
     "isOrganic": true,
     "purchaseCount": 140,
     "storageInstructions": "Keep refrigerated and consume within 3-4 days for best freshness.",
@@ -1906,7 +1841,6 @@
 
 ,
   {
-    "_id": "688725de224d2f673382ead7",
     "name": "Jackfruit",
     "category": "Fruits",
     "price": 70,
@@ -1914,7 +1848,7 @@
     "description": "High quality jackfruits from local farmers, sweet and versatile.",
     "farmer": {
       "name": "Ibrahim Khalil",
-      "farmName": "Farm 3",
+      "farmName": "Farm 004",
       "location": "Barisal, Bangladesh"
     },
     "images": [
@@ -1930,8 +1864,7 @@
       "Local",
       "Quality"
     ],
-    "rating": 4.4,
-    "reviewCount": 80,
+
     "isOrganic": false,
     "purchaseCount": 170,
     "storageInstructions": "Store in a cool, dry place. Consume within a week after cutting.",
@@ -1969,16 +1902,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382ead8",
     "name": "Mangrove Honey",
     "category": "Honey",
     "price": 200,
     "unit": "kg",
     "description": "High quality honey from local farmers, sourced from Sundarbans mangroves.",
     "farmer": {
-      "name": "Salma Begum",
-      "farmName": "Farm 4",
-      "location": "Sundarbans, Bangladesh"
+      "name": "Fatema Begum",
+      "farmName": "Farm 003",
+      "location": "Dhaka, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1713316834449-d8fbe5f2aad3?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8TWFuZ3JvdmUlMjBIb25leXxlbnwwfHwwfHx8MA%3D%3D",
@@ -1996,8 +1928,7 @@
       "Locally Produced by Experienced Farmers",
       "Distinctive Flavor Profile Unique to Mangrove Honey"
     ],
-    "rating": 4.8,
-    "reviewCount": 90,
+
     "isOrganic": true,
     "purchaseCount": 130,
     "storageInstructions": "Store in a cool, dry place away from direct sunlight.",
@@ -2034,16 +1965,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382ead9",
     "name": "Fresh Yogurt",
     "category": "Dairy",
     "price": 90,
     "unit": "liter",
     "description": "High quality yogurt from local farmers, creamy and tangy, made with traditional methods ensuring rich flavor and probiotics.",
     "farmer": {
-      "name": "Hasan Mahmud",
-      "farmName": "Farm 5",
-      "location": "Pabna, Bangladesh"
+      "name": "Mostafa Kamal",
+      "farmName": "Farm 006",
+      "location": "Gazipur, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1663924211639-ed3b554132e2?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8RnJlc2glMjBZb2d1cnR8ZW58MHx8MHx8fDA%3D",
@@ -2063,8 +1993,7 @@
       "Traditional fermentation process",
       "Free from antibiotics and hormones"
     ],
-    "rating": 4.6,
-    "reviewCount": 85,
+
     "isOrganic": true,
     "purchaseCount": 160,
     "storageInstructions": "Keep refrigerated at or below 4°C. Consume within 7 days after opening. Shake gently before use.",
@@ -2105,7 +2034,6 @@
 
 ,
   {
-    "_id": "688725de224d2f673382eada",
     "name": "Basil Leaves",
     "category": "Herbs",
     "price": 30,
@@ -2113,7 +2041,7 @@
     "description": "High quality basil leaves from local farmers, aromatic and fresh, perfect for garnishing and enhancing the flavor of your dishes.",
     "farmer": {
       "name": "Rubina Akter",
-      "farmName": "Farm 6",
+      "farmName": "Farm 007",
       "location": "Netrokona, Bangladesh"
     },
     "images": [
@@ -2134,8 +2062,7 @@
       "Contains antioxidants and vitamins",
       "Sustainably farmed locally"
     ],
-    "rating": 4.5,
-    "reviewCount": 60,
+
     "isOrganic": true,
     "purchaseCount": 100,
     "storageInstructions": "Store in a perforated plastic bag in the refrigerator. Keep leaves dry and avoid crushing to maintain freshness for up to 7 days.",
@@ -2178,16 +2105,15 @@
 
 ,
   {
-    "_id": "688725de224d2f673382eadb",
     "name": "Barley",
     "category": "Grains",
     "price": 110,
     "unit": "kg",
     "description": "High quality barley from local farmers, ideal for soups, brewing, and nutritious meals.",
     "farmer": {
-      "name": "Kuddus Mia",
-      "farmName": "Farm 7",
-      "location": "Naogaon, Bangladesh"
+      "name": "Abdul Rahman",
+      "farmName": "Farm 001",
+      "location": "Rajshahi, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1705404738459-c4cb25ad7933?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8QmFybGV5fGVufDB8fDB8fHww",
@@ -2207,8 +2133,7 @@
       "Versatile grain for various recipes",
       "Sustainably farmed"
     ],
-    "rating": 4.4,
-    "reviewCount": 70,
+
     "isOrganic": false,
     "purchaseCount": 145,
     "storageInstructions": "Store in a cool, dry place in an airtight container. Keep away from moisture and direct sunlight to maintain freshness for several months.",
@@ -2250,16 +2175,15 @@
   }
 ,
   {
-    "_id": "688725de224d2f673382eadc",
     "name": "Eggplant",
     "category": "Vegetables",
     "price": 50,
     "unit": "kg",
     "description": "High quality eggplants from local farmers, perfect for curries and a variety of dishes.",
     "farmer": {
-      "name": "Latifa Begum",
-      "farmName": "Farm 8",
-      "location": "Kushtia, Bangladesh"
+      "name": "Mizanur Rahman",
+      "farmName": "Farm 005",
+      "location": "Tangail, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1666270423836-864dfa7071e5?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8RWdncGxhbnR8ZW58MHx8MHx8fDA%3D",
@@ -2279,8 +2203,7 @@
       "Firm texture with glossy skin",
       "Versatile vegetable for various cuisines"
     ],
-    "rating": 4.3,
-    "reviewCount": 60,
+
     "isOrganic": true,
     "purchaseCount": 155,
     "storageInstructions": "Store in a cool, dry place or refrigerate wrapped in paper to maintain freshness up to one week. Avoid direct sunlight and moisture.",
@@ -2321,16 +2244,15 @@
   }
 ,
   {
-    "_id": "688725de224d2f673382eadd",
     "name": "Pomegranates",
     "category": "Fruits",
     "price": 65,
     "unit": "dozen",
     "description": "High quality pomegranates from local farmers, juicy and antioxidant-rich, perfect for fresh eating and juicing.",
     "farmer": {
-      "name": "Arif Hossain",
-      "farmName": "Farm 9",
-      "location": "Satkhira, Bangladesh"
+      "name": "Ibrahim Khalil",
+      "farmName": "Farm 004",
+      "location": "Barishal, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1668076515507-c5bc223c99a4?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8UG9tZWdyYW5hdGVzfGVufDB8fDB8fHww",
@@ -2350,8 +2272,7 @@
       "Non-GMO and pesticide-free",
       "Supports heart health and digestion"
     ],
-    "rating": 4.5,
-    "reviewCount": 75,
+
     "isOrganic": false,
     "purchaseCount": 165,
     "storageInstructions": "Store in a cool, dry place or refrigerate for up to two weeks. Avoid bruising for best freshness.",
@@ -2392,16 +2313,15 @@
   }
 ,
   {
-    "_id": "688725de224d2f673382eade",
     "name": "Mustard Honey",
     "category": "Honey",
     "price": 180,
     "unit": "kg",
     "description": "High quality honey from local farmers, sourced from mustard fields, known for its unique floral aroma and rich taste.",
     "farmer": {
-      "name": "Shirin Akter",
-      "farmName": "Farm 10",
-      "location": "Sylhet, Bangladesh"
+      "name": "Fatema Begum",
+      "farmName": "Farm 003",
+      "location": "Dhaka, Bangladesh"
     },
     "images": [
       "https://images.unsplash.com/photo-1743213747490-7e66ab4fe13d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8TXVzdGFyZCUyMEhvbmV5fGVufDB8fDB8fHww",
@@ -2421,8 +2341,7 @@
       "Natural energy booster",
       "Ideal for sweetening and medicinal uses"
     ],
-    "rating": 4.7,
-    "reviewCount": 85,
+
     "isOrganic": true,
     "purchaseCount": 140,
     "storageInstructions": "Store in a cool, dry place away from direct sunlight. Avoid moisture to prevent fermentation. Keep container tightly closed.",
@@ -2459,16 +2378,15 @@
   }
 ,
   {
-    "_id": "688725de224d2f673382eadf",
     "name": "Butter",
     "category": "Dairy",
     "price": 85,
     "unit": "liter",
     "description": "High quality butter from local farmers, rich and creamy with a fresh natural taste.",
     "farmer": {
-      "name": "Jasim Uddin",
-      "farmName": "Farm 11",
-      "location": "Manikganj, Bangladesh"
+      "name": "Mizanur Rahman",
+      "farmName": "Farm 005",
+      "location": "Tangail, Bangladesh"
     },
     "images": [
       "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8QnV0dGVyfGVufDB8fDB8fHww",
@@ -2488,8 +2406,7 @@
       "Supports local farmers and sustainable farming",
       "Smooth consistency and natural golden color"
     ],
-    "rating": 4.5,
-    "reviewCount": 80,
+
     "isOrganic": true,
     "purchaseCount": 150,
     "storageInstructions": "Keep refrigerated below 5°C. Store in an airtight container to preserve freshness and prevent absorption of odors.",
@@ -2526,16 +2443,15 @@
   }
 ,
   {
-    "_id": "688725de224d2f673382eae0",
     "name": "Parsley",
     "category": "Herbs",
     "price": 35,
     "unit": "bundle",
     "description": "High quality parsley from local farmers, fresh and aromatic, perfect for cooking and garnishing.",
     "farmer": {
-      "name": "Rina Begum",
-      "farmName": "Farm 12",
-      "location": "Brahmanbaria, Bangladesh"
+      "name": "Ibrahim Khalil",
+      "farmName": "Farm 004",
+      "location": "Barishal, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1726862972631-00709ba547b0?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8UGFyc2xleXxlbnwwfHwwfHx8MA%3D%3D",
@@ -2553,8 +2469,7 @@
       "Perfect for culinary use and garnishing",
       "Supports local farmers and sustainable agriculture"
     ],
-    "rating": 4.6,
-    "reviewCount": 65,
+
     "isOrganic": true,
     "purchaseCount": 105,
     "storageInstructions": "Keep refrigerated in a sealed plastic bag or container to maintain freshness. Use within 5-7 days.",
@@ -2590,16 +2505,15 @@
   }
 ,
   {
-    "_id": "688725de224d2f673382eae1",
     "name": "Millet",
     "category": "Grains",
     "price": 105,
     "unit": "kg",
     "description": "High quality millet from local farmers, nutritious and versatile, ideal for porridges, breads, and more.",
     "farmer": {
-      "name": "Alamgir Hossain",
-      "farmName": "Farm 13",
-      "location": "Joypurhat, Bangladesh"
+      "name": "Abdul Rahman",
+      "farmName": "Farm 001",
+      "location": "Rajshahi, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1670909649685-7e1aabc56837?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8TWlsbGV0fGVufDB8fDB8fHww",
@@ -2617,8 +2531,7 @@
       "Supports sustainable farming",
       "Non-GMO and pesticide-free"
     ],
-    "rating": 4.3,
-    "reviewCount": 70,
+
     "isOrganic": false,
     "purchaseCount": 140,
     "storageInstructions": "Store in a cool, dry place in an airtight container. Best used within 6 months for optimal freshness.",
@@ -2654,16 +2567,15 @@
   }
 ,
   {
-    "_id": "688725de224d2f673382eae2",
     "name": "Okra",
     "category": "Vegetables",
     "price": 55,
     "unit": "kg",
     "description": "High quality okra from local farmers, perfect for stir-fries, curries, and rich in dietary fiber.",
     "farmer": {
-      "name": "Shapla Begum",
-      "farmName": "Farm 14",
-      "location": "Jhenaidah, Bangladesh"
+      "name": "Mostafa Kamal",
+      "farmName": "Farm 006",
+      "location": "Gazipur, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1725669087986-0915cb0961cd?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8T2tyYXxlbnwwfHwwfHx8MA%3D%3D",
@@ -2682,8 +2594,7 @@
       "Non-GMO and pesticide-free",
       "Organic certified"
     ],
-    "rating": 4.4,
-    "reviewCount": 65,
+
     "isOrganic": true,
     "purchaseCount": 160,
     "storageInstructions": "Keep okra in a perforated plastic bag in the refrigerator. Use within 2-3 days for optimal freshness.",
@@ -2720,16 +2631,15 @@
   }
 ,
   {
-    "_id": "688725de224d2f673382eae3",
     "name": "Watermelons",
     "category": "Fruits",
     "price": 75,
     "unit": "dozen",
     "description": "High quality watermelons from local farmers, sweet, juicy, and refreshing — perfect for summer snacks and beverages.",
     "farmer": {
-      "name": "Rafiqul Islam",
-      "farmName": "Farm 15",
-      "location": "Cox's Bazar, Bangladesh"
+      "name": "Ibrahim Khalil",
+      "farmName": "Farm 004",
+      "location": "Barishal, Bangladesh"
     },
     "images": [
       "https://plus.unsplash.com/premium_photo-1658506994023-ee0b3a947f8d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8V2F0ZXJtZWxvbnN8ZW58MHx8MHx8fDA%3D",
@@ -2748,8 +2658,7 @@
       "Non-GMO",
       "Pesticide-free"
     ],
-    "rating": 4.5,
-    "reviewCount": 80,
+
     "isOrganic": false,
     "purchaseCount": 170,
     "storageInstructions": "Store whole watermelons at room temperature. Once cut, refrigerate and consume within 2-3 days for best taste.",
@@ -2787,7 +2696,6 @@
   }
 ,
   {
-    "_id": "688725de224d2f673382eae4",
     "name": "Chickpeas",
     "category": "Grains",
     "price": 90,
@@ -2806,9 +2714,9 @@
       "minerals": ["Iron", "Magnesium", "Phosphorus"]
     },
     "farmer": {
-      "name": "Asma Begum",
-      "farmName": "Grain Haven",
-      "location": "Natore, Bangladesh"
+      "name": "Abdul Rahman",
+      "farmName": "Farm 001",
+      "location": "Rajshahi, Bangladesh"
     },
     "images": [
       "https://images.unsplash.com/photo-1641913712124-a58d267b6997?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8Q2hpY2twZWFzfGVufDB8fDB8fHww",
@@ -2819,8 +2727,6 @@
     ],
     "stock": 160,
     "features": ["Fresh", "Local", "Quality"],
-    "rating": 4.4,
-    "reviewCount": 70,
     "isOrganic": true,
     "purchaseCount": 135,
     "createdAt": "2025-07-14T10:00:00.000Z",
@@ -2849,7 +2755,6 @@
   }
 ,
   {
-    "_id": "688725de224d2f673382eae5",
     "name": "Cucumbers",
     "category": "Vegetables",
     "price": 40,
@@ -2869,7 +2774,7 @@
     },
     "farmer": {
       "name": "Mizanur Rahman",
-      "farmName": "Fresh Greens Farm",
+      "farmName": "Farm 005",
       "location": "Tangail, Bangladesh"
     },
     "images": [
@@ -2881,8 +2786,6 @@
     ],
     "stock": 160,
     "features": ["Fresh", "Local", "Quality"],
-    "rating": 4.4,
-    "reviewCount": 70,
     "isOrganic": true,
     "purchaseCount": 135,
     "createdAt": "2025-07-14T10:00:00.000Z",

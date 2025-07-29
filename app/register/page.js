@@ -82,13 +82,6 @@ export default function Register() {
 
   const handleUserTypeChange = (type) => {
     setFormData({ ...formData, userType: type });
-    // Show/hide farmer fields
-    const farmerFields = document.getElementById("farmerFields");
-    if (type === "farmer") {
-      farmerFields.classList.remove("hidden");
-    } else {
-      farmerFields.classList.add("hidden");
-    }
   };
 
   const handleBioChange = (e) => {
@@ -441,99 +434,124 @@ export default function Register() {
                 </div>
 
                 {/* Farmer-specific fields */}
-                <div id="farmerFields" className="hidden space-y-4">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {formData.userType === "farmer" && (
+                  <div className="space-y-4 border-t border-gray-200 dark:border-gray-600 pt-6">
+                    <div className="mb-4">
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                        Farm Information
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Please provide details about your farm
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <div>
+                        <label
+                          htmlFor="farmName"
+                          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                        >
+                          Farm Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          id="farmName"
+                          name="farmName"
+                          type="text"
+                          required={formData.userType === "farmer"}
+                          value={formData.farmName}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              farmName: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                          placeholder="Green Valley Farm"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="specialization"
+                          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                        >
+                          Specialization <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          id="specialization"
+                          name="specialization"
+                          required={formData.userType === "farmer"}
+                          value={formData.specialization}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              specialization: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                        >
+                          <option value="">Select specialization</option>
+                          <option value="Vegetables">Vegetables</option>
+                          <option value="Fruits">Fruits</option>
+                          <option value="Grains">Grains & Cereals</option>
+                          <option value="Dairy">Dairy Products</option>
+                          <option value="Herbs">Herbs & Spices</option>
+                          <option value="Honey">Honey & Bee Products</option>
+                          <option value="Mixed">Mixed Farming</option>
+                        </select>
+                      </div>
+                    </div>
+
                     <div>
                       <label
-                        htmlFor="farmName"
+                        htmlFor="farmSize"
                         className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                       >
-                        Farm Name
+                        Farm Size{" "}
+                        <span className="text-gray-400 text-xs">
+                          (Optional)
+                        </span>
                       </label>
-                      <input
-                        id="farmName"
-                        name="farmName"
-                        type="text"
-                        value={formData.farmName}
-                        onChange={(e) =>
-                          setFormData({ ...formData, farmName: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                        placeholder="Green Valley Farm"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="specialization"
-                        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                      >
-                        Specialization
-                      </label>
-                      <select
-                        id="specialization"
-                        name="specialization"
-                        value={formData.specialization}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            specialization: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                      >
-                        <option value="">Select specialization</option>
-                        <option value="vegetables">Vegetables</option>
-                        <option value="fruits">Fruits</option>
-                        <option value="grains">Grains</option>
-                        <option value="dairy">Dairy</option>
-                        <option value="mixed">Mixed Farming</option>
-                      </select>
+                      <div className="flex space-x-2">
+                        <input
+                          id="farmSize"
+                          name="farmSize"
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={formData.farmSize}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              farmSize: e.target.value,
+                            })
+                          }
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                          placeholder="5.5"
+                        />
+                        <select
+                          id="farmSizeUnit"
+                          name="farmSizeUnit"
+                          value={formData.farmSizeUnit}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              farmSizeUnit: e.target.value,
+                            })
+                          }
+                          className="w-24 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm"
+                        >
+                          <option value="acres">Acres</option>
+                          <option value="hectares">Hectares</option>
+                          <option value="sq_ft">Sq Ft</option>
+                          <option value="sq_m">Sq M</option>
+                        </select>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Enter the total area of your farm
+                      </p>
                     </div>
                   </div>
-                  <div>
-                    <label
-                      htmlFor="farmSize"
-                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >
-                      Farm Size
-                    </label>
-                    <div className="flex space-x-2">
-                      <input
-                        id="farmSize"
-                        name="farmSize"
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        value={formData.farmSize}
-                        onChange={(e) =>
-                          setFormData({ ...formData, farmSize: e.target.value })
-                        }
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                        placeholder="5.5"
-                      />
-                      <select
-                        id="farmSizeUnit"
-                        name="farmSizeUnit"
-                        value={formData.farmSizeUnit}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            farmSizeUnit: e.target.value,
-                          })
-                        }
-                        className="w-24 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm"
-                      >
-                        <option value="acres">Acres</option>
-                        <option value="hectares">Hectares</option>
-                        <option value="sq_ft">Sq Ft</option>
-                        <option value="sq_m">Sq M</option>
-                      </select>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Enter the total area of your farm
-                    </p>
-                  </div>
-                </div>
+                )}
 
                 {/* Terms and Conditions */}
                 <div className="flex items-start">

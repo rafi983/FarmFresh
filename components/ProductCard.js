@@ -6,12 +6,12 @@ import { useState } from "react";
 import StarRating from "./StarRating";
 
 export default function ProductCard({ product, showAddToCart = true }) {
-  const [isFavorite, setIsFavorite] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
 
-  const handleFavoriteToggle = async () => {
+  const handleFavoriteToggle = () => {
     setIsFavorite(!isFavorite);
-    // TODO: Implement favorite API call
+    // TODO: Implement favorite functionality
   };
 
   const handleAddToCart = async () => {
@@ -85,16 +85,14 @@ export default function ProductCard({ product, showAddToCart = true }) {
             </h3>
           </Link>
 
-          <div className="flex items-center gap-1">
-            {product.averageRating > 0 && (
-              <>
-                <StarRating rating={product.averageRating} />
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  ({product.reviewCount})
-                </span>
-              </>
-            )}
-          </div>
+          {product.averageRating && (
+            <div className="flex items-center text-yellow-400">
+              <i className="fas fa-star text-sm"></i>
+              <span className="text-sm text-gray-600 dark:text-gray-400 ml-1">
+                {product.averageRating.toFixed(1)}
+              </span>
+            </div>
+          )}
         </div>
 
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
