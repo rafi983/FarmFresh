@@ -48,25 +48,24 @@ export default function ProductDetails() {
     }
   }, [productId]);
 
-  const fetchProductDetails = async () => {
-    console.log("🔍 FETCHING PRODUCT DETAILS - START");
-    console.log("Product ID from URL:", productId);
-    console.log("View Mode:", viewMode);
+  // Add a separate effect to refresh performance metrics periodically
+  useEffect(() => {
+    if (productId && isOwner && viewMode !== "customer") {
+      // Refresh performance data every 30 seconds when viewing as owner
+      const interval = setInterval(() => {
+        fetchProductDetails();
+      }, 30000);
 
+      return () => clearInterval(interval);
+    }
+  }, [productId, isOwner, viewMode]);
+
+  const fetchProductDetails = async () => {
     try {
       const response = await fetch(`/api/products/${productId}`);
-      console.log("API Response Status:", response.status);
 
       if (response.ok) {
         const data = await response.json();
-        console.log("🔍 RAW API RESPONSE:", data);
-        console.log("🔍 PRODUCT DATA:", data.product);
-        console.log("🔍 PRODUCT IMAGES:", data.product?.images);
-        console.log("🔍 IMAGES TYPE:", typeof data.product?.images);
-        console.log(
-          "🔍 IMAGES ARRAY CHECK:",
-          Array.isArray(data.product?.images),
-        );
 
         setProduct(data.product);
         setRelatedProducts(data.relatedProducts);
@@ -609,31 +608,6 @@ export default function ProductDetails() {
 
                     {/* Current Images Display */}
                     {(() => {
-                      // Debug logging for farmer view
-                      console.log("=== FARMER VIEW IMAGE DEBUG ===");
-                      console.log("Product object:", product);
-                      console.log("Product images array:", product.images);
-                      console.log("Product single image:", product.image);
-                      console.log("Images length:", product.images?.length);
-                      console.log("Has single image:", !!product.image);
-
-                      // Combine both image sources
-                      const allImages = [];
-                      if (product.image) {
-                        allImages.push(product.image);
-                      }
-                      if (product.images && product.images.length > 0) {
-                        allImages.push(...product.images);
-                      }
-
-                      console.log("Combined images:", allImages);
-                      console.log("Total image count:", allImages.length);
-                      console.log("=== END DEBUG ===");
-
-                      return null;
-                    })()}
-
-                    {(() => {
                       // Combine both image sources
                       const allImages = [];
                       if (product.image) {
@@ -645,60 +619,40 @@ export default function ProductDetails() {
 
                       return allImages.length > 0 ? (
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          {allImages.map((image, index) => {
-                            console.log(
-                              `Rendering farmer view image ${index + 1}:`,
-                              image,
-                            );
-                            return (
-                              <div key={index} className="relative group">
-                                <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                                  <Image
-                                    src={image}
-                                    alt={`${product.name} ${index + 1}`}
-                                    width={200}
-                                    height={200}
-                                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                    onError={(e) => {
-                                      console.log(
-                                        "Farmer view image load ERROR:",
-                                        {
-                                          index,
-                                          originalSrc: image,
-                                          errorEvent: e,
-                                        },
-                                      );
-                                      e.target.src =
-                                        "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=200&h=200&fit=crop";
-                                    }}
-                                    onLoad={() => {
-                                      console.log(
-                                        `Farmer view image ${index + 1} loaded successfully:`,
-                                        image,
-                                      );
-                                    }}
-                                  />
-                                </div>
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button className="bg-red-500 hover:bg-red-600 text-white p-1 rounded text-xs">
-                                    <i className="fas fa-trash"></i>
-                                  </button>
-                                </div>
-                                {index === 0 && (
-                                  <div className="absolute bottom-2 left-2">
-                                    <span className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
-                                      Primary
-                                    </span>
-                                  </div>
-                                )}
-                                <div className="absolute bottom-2 right-2">
-                                  <span className="bg-black bg-opacity-50 text-white px-1 py-0.5 rounded text-xs">
-                                    {index + 1}
+                          {allImages.map((image, index) => (
+                            <div key={index} className="relative group">
+                              <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+                                <Image
+                                  src={image}
+                                  alt={`${product.name} ${index + 1}`}
+                                  width={200}
+                                  height={200}
+                                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                  onError={(e) => {
+                                    e.target.src =
+                                      "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=200&h=200&fit=crop";
+                                  }}
+                                />
+                              </div>
+                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button className="bg-red-500 hover:bg-red-600 text-white p-1 rounded text-xs">
+                                  <i className="fas fa-trash"></i>
+                                </button>
+                              </div>
+                              {index === 0 && (
+                                <div className="absolute bottom-2 left-2">
+                                  <span className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
+                                    Primary
                                   </span>
                                 </div>
+                              )}
+                              <div className="absolute bottom-2 right-2">
+                                <span className="bg-black bg-opacity-50 text-white px-1 py-0.5 rounded text-xs">
+                                  {index + 1}
+                                </span>
                               </div>
-                            );
-                          })}
+                            </div>
+                          ))}
 
                           {/* Add Image Placeholder */}
                           <div className="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition cursor-pointer">
@@ -729,52 +683,6 @@ export default function ProductDetails() {
                     })()}
 
                     {/* Enhanced Debug info for farmer view */}
-                    <div className="mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-                      <p className="text-xs font-semibold text-yellow-800 dark:text-yellow-200 mb-1">
-                        🐛 DEBUG - Farmer View Images:
-                      </p>
-                      <div className="text-xs text-yellow-700 dark:text-yellow-300 space-y-1">
-                        <p>
-                          <strong>Images Array Length:</strong>{" "}
-                          {product.images?.length || 0}
-                        </p>
-                        <p>
-                          <strong>Single Image Field:</strong>{" "}
-                          {product.image ? "Yes" : "No"}
-                        </p>
-                        <p>
-                          <strong>Total Images:</strong>{" "}
-                          {(() => {
-                            const allImages = [];
-                            if (product.image) allImages.push(product.image);
-                            if (product.images && product.images.length > 0)
-                              allImages.push(...product.images);
-                            return allImages.length;
-                          })()}
-                        </p>
-                        <p>
-                          <strong>Product ID:</strong> {productId}
-                        </p>
-                        {product.image && (
-                          <div className="ml-2 p-1 bg-yellow-100 dark:bg-yellow-900 rounded text-xs break-all">
-                            <strong>Single Image:</strong>{" "}
-                            {product.image.substring(0, 50)}...
-                          </div>
-                        )}
-                        {product.images?.map((img, idx) => (
-                          <div
-                            key={idx}
-                            className="ml-2 p-1 bg-yellow-100 dark:bg-yellow-900 rounded text-xs break-all"
-                          >
-                            <strong>Array Image {idx + 1}:</strong> {img}
-                          </div>
-                        ))}
-                        <p>
-                          <strong>API Response Check:</strong> Open browser
-                          console for detailed logs
-                        </p>
-                      </div>
-                    </div>
                   </div>
 
                   {/* Product Information */}
@@ -1168,19 +1076,6 @@ export default function ProductDetails() {
                         allImages.push(...product.images);
                       }
 
-                      console.log(
-                        "Customer view - Combined images:",
-                        allImages,
-                      );
-                      console.log(
-                        "Customer view - Selected image index:",
-                        selectedImage,
-                      );
-                      console.log(
-                        "Customer view - Displaying image:",
-                        allImages[selectedImage],
-                      );
-
                       return (
                         <Image
                           src={
@@ -1192,10 +1087,6 @@ export default function ProductDetails() {
                           height={600}
                           className="w-full h-full object-cover"
                           onError={(e) => {
-                            console.log(
-                              "Customer view main image load ERROR:",
-                              e.target.src,
-                            );
                             e.target.src =
                               "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&h=600&fit=crop";
                           }}
@@ -1240,10 +1131,6 @@ export default function ProductDetails() {
                               height={100}
                               className="w-full h-full object-cover"
                               onError={(e) => {
-                                console.log(
-                                  "Customer view thumbnail load ERROR:",
-                                  e.target.src,
-                                );
                                 e.target.src =
                                   "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=100&h=100&fit=crop";
                               }}
@@ -1776,13 +1663,6 @@ export default function ProductDetails() {
                                         product.rating ||
                                         0;
                                     }
-
-                                    console.log(
-                                      "Star rendering - Average rating:",
-                                      avgRating,
-                                      "Star index:",
-                                      i,
-                                    );
 
                                     return (
                                       <i

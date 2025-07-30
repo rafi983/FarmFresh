@@ -286,7 +286,7 @@ async function calculateProductPerformance(db, productId) {
       .aggregate([
         {
           $match: {
-            status: "completed",
+            status: { $in: ["completed", "delivered", "shipped"] },
           },
         },
         { $unwind: "$items" },
@@ -295,6 +295,7 @@ async function calculateProductPerformance(db, productId) {
             $or: [
               { "items.productId": productId },
               { "items.productId": productIdQuery },
+              { "items.productId": productId.toString() },
             ],
           },
         },
@@ -317,7 +318,11 @@ async function calculateProductPerformance(db, productId) {
       .aggregate([
         {
           $match: {
-            $or: [{ productId: productId }, { productId: productIdQuery }],
+            $or: [
+              { productId: productId },
+              { productId: productIdQuery },
+              { productId: productId.toString() },
+            ],
           },
         },
         {
@@ -339,7 +344,10 @@ async function calculateProductPerformance(db, productId) {
       .aggregate([
         {
           $match: {
-            createdAt: { $gte: thirtyDaysAgo.toISOString() },
+            $or: [
+              { createdAt: { $gte: thirtyDaysAgo.toISOString() } },
+              { createdAt: { $gte: thirtyDaysAgo } },
+            ],
             status: { $in: ["completed", "shipped", "delivered"] },
           },
         },
@@ -349,6 +357,7 @@ async function calculateProductPerformance(db, productId) {
             $or: [
               { "items.productId": productId },
               { "items.productId": productIdQuery },
+              { "items.productId": productId.toString() },
             ],
           },
         },
@@ -367,6 +376,12 @@ async function calculateProductPerformance(db, productId) {
     const salesMetrics = salesData[0] || {};
     const reviewsMetrics = reviewsData[0] || {};
     const recentMetrics = recentOrdersData[0] || {};
+
+    console.log(`📊 Performance metrics for product ${productId}:`, {
+      salesMetrics,
+      reviewsMetrics,
+      recentMetrics,
+    });
 
     return {
       totalSales: salesMetrics.totalSales || 0,
