@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCart } from "@/contexts/CartContext";
+import Footer from "@/components/Footer";
 
 export default function Cart() {
   const {
@@ -106,8 +107,8 @@ export default function Cart() {
                           {typeof item.farmer === "object" && item.farmer?.name
                             ? item.farmer.name
                             : typeof item.farmer === "string"
-                            ? item.farmer
-                            : "Local Farmer"}
+                              ? item.farmer
+                              : "Local Farmer"}
                         </p>
                         <p className="text-sm text-green-600 dark:text-green-400">
                           {item.category} • Available
@@ -235,6 +236,7 @@ export default function Cart() {
           </div>
         </div>
       </section>
+      <Footer />
     </>
   );
 }

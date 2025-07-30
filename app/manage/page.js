@@ -1118,101 +1118,221 @@ export default function FarmerDashboard() {
                 </div>
               ) : (
                 <>
-                  {/* Enhanced Grid View with Unique Design */}
+                  {/* Enhanced Grid View with Redesigned Product Cards */}
                   {viewMode === "grid" && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                       {paginatedProducts.map((product) => (
                         <div
                           key={product._id}
-                          className="bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 dark:border-gray-700"
+                          className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600"
                         >
-                          {/* Product Image */}
-                          <div className="relative h-48 bg-gray-200 dark:bg-gray-700">
+                          {/* Product Image with Overlay Actions */}
+                          <div className="relative h-52 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 overflow-hidden">
                             <Image
                               src={
+                                product.images?.[0] ||
                                 product.image ||
                                 "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&h=300&fit=crop"
                               }
                               alt={product.name}
                               fill
-                              className="object-cover"
+                              className="object-cover group-hover:scale-105 transition-transform duration-300"
                             />
-                            <div className="absolute top-3 right-3">
+
+                            {/* Status Badge */}
+                            <div className="absolute top-3 left-3">
                               {getProductStatusBadge(product)}
+                            </div>
+
+                            {/* Quick Actions Overlay */}
+                            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                              <div className="flex flex-col space-y-2">
+                                <Link
+                                  href={`/create?edit=${product._id}`}
+                                  className="p-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full text-blue-600 hover:text-blue-700 hover:bg-white dark:hover:bg-gray-700 transition-all duration-200 shadow-lg"
+                                  title="Edit Product"
+                                >
+                                  <i className="fas fa-edit text-sm"></i>
+                                </Link>
+                                <Link
+                                  href={`/details?id=${product._id}`}
+                                  className="p-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full text-green-600 hover:text-green-700 hover:bg-white dark:hover:bg-gray-700 transition-all duration-200 shadow-lg"
+                                  title="View Details"
+                                >
+                                  <i className="fas fa-eye text-sm"></i>
+                                </Link>
+                              </div>
+                            </div>
+
+                            {/* Stock Level Indicator */}
+                            <div className="absolute bottom-3 left-3">
+                              <div
+                                className={`px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm ${
+                                  product.stock === 0
+                                    ? "bg-red-500/90 text-white"
+                                    : product.stock <= 5
+                                      ? "bg-yellow-500/90 text-black"
+                                      : "bg-green-500/90 text-white"
+                                }`}
+                              >
+                                {product.stock === 0
+                                  ? "Out of Stock"
+                                  : product.stock <= 5
+                                    ? `Only ${product.stock} left`
+                                    : `${product.stock} available`}
+                              </div>
                             </div>
                           </div>
 
                           {/* Product Info */}
-                          <div className="p-6">
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex-1">
-                                <h3 className="font-semibold text-gray-900 dark:text-white text-lg mb-1 line-clamp-2">
+                          <div className="p-5">
+                            {/* Header */}
+                            <div className="mb-3">
+                              <div className="flex items-start justify-between mb-2">
+                                <h3 className="font-bold text-gray-900 dark:text-white text-lg leading-tight line-clamp-2 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
                                   {product.name}
                                 </h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
                                   {product.category}
-                                </p>
+                                </span>
+                                <div className="text-right">
+                                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                    {formatPrice(product.price)}
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    per {product.unit || "kg"}
+                                  </div>
+                                </div>
                               </div>
                             </div>
 
-                            <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">
-                              {product.description}
+                            {/* Description */}
+                            <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2 leading-relaxed">
+                              {product.description ||
+                                "No description available"}
                             </p>
 
-                            <div className="space-y-3">
-                              {/* Price and Stock */}
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <span className="text-2xl font-bold text-green-600 dark:text-green-400">
-                                    {formatPrice(product.price)}
-                                  </span>
-                                  <span className="text-gray-500 dark:text-gray-400 text-sm ml-1">
-                                    /{product.unit || "kg"}
-                                  </span>
+                            {/* Metrics Row */}
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                              <div className="text-center p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <div className="text-lg font-bold text-gray-900 dark:text-white">
+                                  {product.purchaseCount || 0}
                                 </div>
-                                <div className="text-right">
-                                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                                    Stock
-                                  </div>
-                                  <div
-                                    className={`font-semibold ${
-                                      product.stock === 0
-                                        ? "text-red-600 dark:text-red-400"
-                                        : product.stock <= 5
-                                          ? "text-yellow-600 dark:text-yellow-400"
-                                          : "text-green-600 dark:text-green-400"
-                                    }`}
-                                  >
-                                    {product.stock} {product.unit || "kg"}
-                                  </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Sales
                                 </div>
                               </div>
+                              <div className="text-center p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <div className="text-lg font-bold text-gray-900 dark:text-white">
+                                  {product.averageRating
+                                    ? product.averageRating.toFixed(1)
+                                    : "—"}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Rating
+                                </div>
+                              </div>
+                            </div>
 
-                              {/* Action Buttons */}
-                              <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-600">
-                                <Link
-                                  href={`/products/${product._id}`}
-                                  className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
+                            {/* Stock Progress Bar */}
+                            <div className="mb-4">
+                              <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                <span>Stock Level</span>
+                                <span>
+                                  {product.stock} {product.unit || "kg"}
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                                <div
+                                  className={`h-2 rounded-full transition-all duration-300 ${
+                                    product.stock === 0
+                                      ? "bg-red-500"
+                                      : product.stock <= 5
+                                        ? "bg-yellow-500"
+                                        : "bg-green-500"
+                                  }`}
+                                  style={{
+                                    width: `${Math.min((product.stock / Math.max(product.stock, 20)) * 100, 100)}%`,
+                                  }}
+                                ></div>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-2">
+                              {product.status === "inactive" ? (
+                                <button
+                                  onClick={() =>
+                                    handleStatusToggle(
+                                      product._id,
+                                      product.status,
+                                    )
+                                  }
+                                  disabled={
+                                    actionLoading[product._id] === "status"
+                                  }
+                                  className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex items-center justify-center"
                                 >
-                                  <i className="fas fa-eye mr-1"></i>
-                                  View Details
-                                </Link>
-                                {product.status === "inactive" && (
-                                  <div className="flex space-x-2">
-                                    <button
-                                      onClick={() =>
-                                        handleStatusToggle(
-                                          product._id,
-                                          product.status,
-                                        )
-                                      }
-                                      className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition"
-                                    >
-                                      <i className="fas fa-check mr-1"></i>
+                                  {actionLoading[product._id] === "status" ? (
+                                    <i className="fas fa-spinner fa-spin"></i>
+                                  ) : (
+                                    <>
+                                      <i className="fas fa-play mr-1"></i>
                                       Activate
-                                    </button>
-                                  </div>
+                                    </>
+                                  )}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() =>
+                                    handleStatusToggle(
+                                      product._id,
+                                      product.status,
+                                    )
+                                  }
+                                  disabled={
+                                    actionLoading[product._id] === "status"
+                                  }
+                                  className="flex-1 px-3 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-400 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex items-center justify-center"
+                                >
+                                  {actionLoading[product._id] === "status" ? (
+                                    <i className="fas fa-spinner fa-spin"></i>
+                                  ) : (
+                                    <>
+                                      <i className="fas fa-pause mr-1"></i>
+                                      Pause
+                                    </>
+                                  )}
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => handleDeleteProduct(product._id)}
+                                disabled={
+                                  actionLoading[product._id] === "delete"
+                                }
+                                className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex items-center justify-center"
+                                title="Delete Product"
+                              >
+                                {actionLoading[product._id] === "delete" ? (
+                                  <i className="fas fa-spinner fa-spin"></i>
+                                ) : (
+                                  <i className="fas fa-trash"></i>
                                 )}
+                              </button>
+                            </div>
+
+                            {/* Created Date */}
+                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                              <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                <i className="fas fa-calendar-alt mr-1"></i>
+                                Created{" "}
+                                {new Date(
+                                  product.createdAt || Date.now(),
+                                ).toLocaleDateString()}
                               </div>
                             </div>
                           </div>

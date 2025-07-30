@@ -63,11 +63,23 @@ export async function GET(request, { params }) {
     // Add default values for missing fields
     const product = {
       ...targetProduct,
-      images: targetProduct.images || [
-        `https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&h=600&fit=crop`,
-        `https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=600&h=600&fit=crop`,
-        `https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=600&h=600&fit=crop`,
-      ],
+      // Combine both image sources - single image field and images array
+      images: (() => {
+        const imageArray = [];
+
+        // Add single image if it exists
+        if (targetProduct.image) {
+          imageArray.push(targetProduct.image);
+        }
+
+        // Add images array if it exists
+        if (targetProduct.images && Array.isArray(targetProduct.images)) {
+          imageArray.push(...targetProduct.images);
+        }
+
+        // Remove duplicates and empty values
+        return [...new Set(imageArray.filter((img) => img && img.trim()))];
+      })(),
       farmer: targetProduct.farmer || {
         name: "Local Farmer",
         location: "Bangladesh",
@@ -87,6 +99,12 @@ export async function GET(request, { params }) {
     // Calculate real ratings and review counts from reviews data
     const enhancedProduct = enhanceProductWithRatings(product);
 
+    // Fetch real performance metrics from orders collection
+    const performanceMetrics = await calculateProductPerformance(db, id);
+
+    // Add performance metrics to the product
+    enhancedProduct.performanceMetrics = performanceMetrics;
+
     // Get related products (same category, exclude current product)
     let relatedProducts = allProducts
       .filter(
@@ -97,9 +115,23 @@ export async function GET(request, { params }) {
       .slice(0, 4)
       .map((p) => ({
         ...p,
-        images: p.images || [
-          `https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&h=300&fit=crop`,
-        ],
+        // Fix related products images too - combine both sources
+        images: (() => {
+          const imageArray = [];
+
+          // Add single image if it exists
+          if (p.image) {
+            imageArray.push(p.image);
+          }
+
+          // Add images array if it exists
+          if (p.images && Array.isArray(p.images)) {
+            imageArray.push(...p.images);
+          }
+
+          // Remove duplicates and empty values
+          return [...new Set(imageArray.filter((img) => img && img.trim()))];
+        })(),
         farmer: p.farmer || { name: "Local Farmer", location: "Bangladesh" },
         stock: p.stock || 50,
         isOrganic: p.isOrganic || false,
@@ -236,5 +268,133 @@ export async function DELETE(request, { params }) {
       { error: "Failed to delete product" },
       { status: 500 },
     );
+  }
+}
+
+// Helper function to calculate real product performance metrics from orders and reviews
+async function calculateProductPerformance(db, productId) {
+  try {
+    // Handle both string IDs and ObjectIds
+    let productIdQuery = productId;
+    if (ObjectId.isValid(productId)) {
+      productIdQuery = new ObjectId(productId);
+    }
+
+    // Calculate sales metrics from completed orders
+    const salesData = await db
+      .collection("orders")
+      .aggregate([
+        {
+          $match: {
+            status: "completed",
+          },
+        },
+        { $unwind: "$items" },
+        {
+          $match: {
+            $or: [
+              { "items.productId": productId },
+              { "items.productId": productIdQuery },
+            ],
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalSales: { $sum: "$items.quantity" },
+            totalRevenue: {
+              $sum: { $multiply: ["$items.quantity", "$items.price"] },
+            },
+            totalOrders: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    // Calculate review metrics
+    const reviewsData = await db
+      .collection("reviews")
+      .aggregate([
+        {
+          $match: {
+            $or: [{ productId: productId }, { productId: productIdQuery }],
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            averageRating: { $avg: "$rating" },
+            totalReviews: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    // Get recent orders count (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const recentOrdersData = await db
+      .collection("orders")
+      .aggregate([
+        {
+          $match: {
+            createdAt: { $gte: thirtyDaysAgo.toISOString() },
+            status: { $in: ["completed", "shipped", "delivered"] },
+          },
+        },
+        { $unwind: "$items" },
+        {
+          $match: {
+            $or: [
+              { "items.productId": productId },
+              { "items.productId": productIdQuery },
+            ],
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            recentSales: { $sum: "$items.quantity" },
+            recentRevenue: {
+              $sum: { $multiply: ["$items.quantity", "$items.price"] },
+            },
+          },
+        },
+      ])
+      .toArray();
+
+    const salesMetrics = salesData[0] || {};
+    const reviewsMetrics = reviewsData[0] || {};
+    const recentMetrics = recentOrdersData[0] || {};
+
+    return {
+      totalSales: salesMetrics.totalSales || 0,
+      totalRevenue: salesMetrics.totalRevenue || 0,
+      totalOrders: salesMetrics.totalOrders || 0,
+      averageRating: reviewsMetrics.averageRating || 0,
+      totalReviews: reviewsMetrics.totalReviews || 0,
+      recentSales: recentMetrics.recentSales || 0,
+      recentRevenue: recentMetrics.recentRevenue || 0,
+      // Add some calculated metrics
+      averageOrderValue:
+        salesMetrics.totalOrders > 0
+          ? salesMetrics.totalRevenue / salesMetrics.totalOrders
+          : 0,
+      salesTrend: recentMetrics.recentSales > 0 ? "up" : "stable",
+    };
+  } catch (error) {
+    console.error("Error calculating product performance:", error);
+    return {
+      totalSales: 0,
+      totalRevenue: 0,
+      totalOrders: 0,
+      averageRating: 0,
+      totalReviews: 0,
+      recentSales: 0,
+      recentRevenue: 0,
+      averageOrderValue: 0,
+      salesTrend: "stable",
+    };
   }
 }

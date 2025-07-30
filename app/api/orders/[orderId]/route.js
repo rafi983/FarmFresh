@@ -48,33 +48,85 @@ export async function PATCH(request, { params }) {
       );
     }
 
+    // Validate ObjectId format
+    if (!ObjectId.isValid(orderId)) {
+      console.error("Invalid ObjectId format:", orderId);
+      return NextResponse.json(
+        { error: "Invalid order ID format" },
+        { status: 400 },
+      );
+    }
+
     const client = await clientPromise;
     const db = client.db("farmfresh");
+
+    // Check if order exists first
+    const existingOrder = await db.collection("orders").findOne({
+      _id: new ObjectId(orderId),
+    });
+
+    if (!existingOrder) {
+      console.error("Order not found:", orderId);
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    console.log("Existing order found, proceeding with update...");
+
+    // Check the current statusHistory structure
+    const currentStatusHistory = existingOrder.statusHistory;
+    console.log("Current statusHistory type:", typeof currentStatusHistory);
+    console.log(
+      "Current statusHistory is array:",
+      Array.isArray(currentStatusHistory),
+    );
 
     // Prepare the update operation
     const updateOperation = {
       $set: {
         ...updateData,
-        updatedAt: new Date(),
+        updatedAt: new Date().toISOString(),
       },
     };
 
-    // If status history is provided, add it to the array
+    // Handle statusHistory properly based on current state
     if (updateData.statusHistory) {
-      updateOperation.$push = {
-        statusHistory: updateData.statusHistory,
-      };
-      // Remove statusHistory from $set since we're using $push for it
-      delete updateOperation.$set.statusHistory;
+      if (Array.isArray(currentStatusHistory)) {
+        // statusHistory is already an array, use $push
+        updateOperation.$push = {
+          statusHistory: updateData.statusHistory,
+        };
+      } else {
+        // statusHistory doesn't exist or is not an array, initialize/replace it
+        updateOperation.$set.statusHistory =
+          currentStatusHistory && Array.isArray(currentStatusHistory)
+            ? [...currentStatusHistory, updateData.statusHistory]
+            : [updateData.statusHistory];
+      }
+
+      // Remove statusHistory from $set if we're using $push
+      if (updateOperation.$push) {
+        delete updateOperation.$set.statusHistory;
+      }
     }
+
+    console.log("Update operation:", JSON.stringify(updateOperation, null, 2));
 
     // Perform the update
     const result = await db
       .collection("orders")
       .updateOne({ _id: new ObjectId(orderId) }, updateOperation);
 
+    console.log("Update result:", result);
+
     if (result.matchedCount === 0) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Order not found during update" },
+        { status: 404 },
+      );
+    }
+
+    if (result.modifiedCount === 0) {
+      console.warn("Order found but not modified - possibly same data");
     }
 
     // Fetch the updated order to return the complete data
@@ -90,6 +142,7 @@ export async function PATCH(request, { params }) {
     });
   } catch (error) {
     console.error("Update order error:", error);
+    console.error("Error stack:", error.stack);
     return NextResponse.json(
       { error: "Failed to update order", details: error.message },
       { status: 500 },

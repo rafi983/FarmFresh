@@ -11,7 +11,12 @@ import Footer from "@/components/Footer";
 export default function Payment() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { items: cartItems, getCartTotal, loading: cartLoading } = useCart();
+  const {
+    items: cartItems,
+    getCartTotal,
+    loading: cartLoading,
+    clearCart,
+  } = useCart();
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -225,8 +230,8 @@ export default function Payment() {
             typeof item.farmer === "object" && item.farmer?.name
               ? item.farmer.name
               : typeof item.farmer === "string"
-              ? item.farmer
-              : "Local Farmer",
+                ? item.farmer
+                : "Local Farmer",
           farmerId:
             typeof item.farmer === "object"
               ? item.farmer?.id || item.farmer?._id
@@ -255,10 +260,13 @@ export default function Payment() {
         const data = await response.json();
         console.log("Order created successfully:", data);
 
-        // Clear cart using the same user ID format
+        // Clear cart both in backend and frontend context
         await fetch(`/api/cart?userId=${encodeURIComponent(userId)}`, {
           method: "DELETE",
         });
+
+        // Clear cart in frontend context immediately
+        clearCart();
 
         // Redirect to success page
         router.push(`/success?orderId=${data.orderId}`);

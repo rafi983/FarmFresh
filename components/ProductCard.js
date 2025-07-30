@@ -53,7 +53,10 @@ export default function ProductCard({ product, showAddToCart = true }) {
         _id: product._id,
         name: product.name,
         price: product.price,
-        image: product.image,
+        image:
+          product.images?.[0] ||
+          product.image ||
+          "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&h=300&fit=crop", // Use first image from images array
         farmer: product.farmer,
         category: product.category,
         unit: product.unit || "kg",
