@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import Footer from "@/components/Footer";
 
 export default function CreateProduct() {
   const { data: session, status } = useSession();
@@ -13,8 +14,8 @@ export default function CreateProduct() {
   const [loading, setLoading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editProductId, setEditProductId] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [imageFile, setImageFile] = useState(null);
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [imageFiles, setImageFiles] = useState([]);
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -23,7 +24,9 @@ export default function CreateProduct() {
     stock: "",
     unit: "",
     features: [],
-    image: "",
+    images: [],
+    farmLocation: "",
+    harvestDate: "",
   });
 
   useEffect(() => {
@@ -68,12 +71,18 @@ export default function CreateProduct() {
           stock: product.stock?.toString() || "",
           unit: product.unit || "",
           features: product.features || [],
-          image: product.image || "",
+          images: product.images || (product.image ? [product.image] : []),
+          farmLocation: product.farmLocation || "",
+          harvestDate: product.harvestDate
+            ? product.harvestDate.split("T")[0]
+            : "",
         });
 
-        // Set image preview if product has an image
-        if (product.image) {
-          setImagePreview(product.image);
+        // Set image previews if product has images
+        if (product.images && product.images.length > 0) {
+          setImagePreviews(product.images);
+        } else if (product.image) {
+          setImagePreviews([product.image]);
         }
       } else {
         console.error("Failed to fetch product for editing");
@@ -113,34 +122,66 @@ export default function CreateProduct() {
   };
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
+    const files = Array.from(e.target.files);
+
+    // Validate number of files
+    if (files.length > 5) {
+      alert("You can upload a maximum of 5 images");
+      return;
+    }
+
+    // Validate each file
+    const validFiles = [];
+    const previews = [];
+    const base64Images = [];
+
+    files.forEach((file) => {
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert("Image size must be less than 5MB");
+        alert(`Image ${file.name} is too large. Maximum size is 5MB`);
         return;
       }
 
       // Validate file type
       if (!file.type.startsWith("image/")) {
-        alert("Please select a valid image file");
+        alert(`${file.name} is not a valid image file`);
         return;
       }
 
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
+      validFiles.push(file);
+      previews.push(URL.createObjectURL(file));
 
       // Convert image to base64 for storage
       const reader = new FileReader();
       reader.onload = (event) => {
-        const base64String = event.target.result;
-        setFormData((prev) => ({
-          ...prev,
-          image: base64String,
-        }));
+        base64Images.push(event.target.result);
+
+        // When all files are processed, update state
+        if (base64Images.length === validFiles.length) {
+          setFormData((prev) => ({
+            ...prev,
+            images: base64Images,
+          }));
+        }
       };
       reader.readAsDataURL(file);
-    }
+    });
+
+    setImageFiles(validFiles);
+    setImagePreviews(previews);
+  };
+
+  const removeImage = (index) => {
+    const newPreviews = imagePreviews.filter((_, i) => i !== index);
+    const newFiles = imageFiles.filter((_, i) => i !== index);
+    const newImages = formData.images.filter((_, i) => i !== index);
+
+    setImagePreviews(newPreviews);
+    setImageFiles(newFiles);
+    setFormData((prev) => ({
+      ...prev,
+      images: newImages,
+    }));
   };
 
   const validateForm = () => {
@@ -195,6 +236,8 @@ export default function CreateProduct() {
         },
         status: "active",
         updatedAt: new Date().toISOString(),
+        // Keep backward compatibility with single image
+        image: formData.images[0] || "",
       };
 
       // Only add createdAt for new products
@@ -245,10 +288,10 @@ export default function CreateProduct() {
             stock: "",
             unit: "",
             features: [],
-            image: "",
+            images: [],
           });
-          setImagePreview(null);
-          setImageFile(null);
+          setImagePreviews([]);
+          setImageFiles([]);
         }
 
         // Redirect to manage products page
@@ -293,135 +336,136 @@ export default function CreateProduct() {
 
   return (
     <>
-      {/* Navigation */}
-      <nav className="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <div className="flex items-center space-x-3">
-              <Link href="/" className="flex items-center space-x-3">
-                <div className="bg-green-500 p-2 rounded-lg">
-                  <i className="fas fa-seedling text-white text-xl"></i>
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                    FarmFresh
-                  </h1>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Local Farmer Booking
-                  </p>
-                </div>
-              </Link>
-            </div>
-
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-8">
-              <Link
-                href="/"
-                className="text-gray-700 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 transition"
-              >
+      {/* Breadcrumb */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <nav className="flex" aria-label="Breadcrumb">
+          <ol className="flex items-center space-x-2 text-sm">
+            <li>
+              <Link href="/" className="text-gray-500 hover:text-primary-600">
                 Home
               </Link>
+            </li>
+            <li>
+              <i className="fas fa-chevron-right text-gray-400 text-xs"></i>
+            </li>
+            <li>
               <Link
-                href="/products"
-                className="text-gray-700 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 transition"
+                href="/manage"
+                className="text-gray-500 hover:text-primary-600"
               >
-                Products
+                Manage Products
               </Link>
-              <Link
-                href="/farmers"
-                className="text-gray-700 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 transition"
-              >
-                Farmers
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+            </li>
+            <li>
+              <i className="fas fa-chevron-right text-gray-400 text-xs"></i>
+            </li>
+            <li className="text-gray-900 dark:text-white">
+              {isEditMode ? "Edit Product" : "Add Product"}
+            </li>
+          </ol>
+        </nav>
+      </div>
 
-      {/* Main Content */}
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
+      {/* Add Product Form */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
+          {/* Header */}
+          <div className="bg-primary-600 text-white px-8 py-6">
+            <h1 className="text-3xl font-bold">
               {isEditMode ? "Edit Product" : "Add New Product"}
             </h1>
+            <p className="text-primary-100 mt-2">
+              {isEditMode
+                ? "Update your product information"
+                : "Share your fresh produce with customers"}
+            </p>
+          </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Product Name */}
-              <div>
-                <label
-                  htmlFor="name"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Product Name *
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter product name"
-                />
-              </div>
-
-              {/* Category */}
-              <div>
-                <label
-                  htmlFor="category"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Category *
-                </label>
-                <select
-                  id="category"
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="">Select Category</option>
-                  <option value="Vegetables">Vegetables</option>
-                  <option value="Fruits">Fruits</option>
-                  <option value="Grains">Grains</option>
-                  <option value="Dairy">Dairy</option>
-                  <option value="Honey">Honey</option>
-                  <option value="Herbs">Herbs</option>
-                </select>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label
-                  htmlFor="description"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Description *
-                </label>
-                <textarea
-                  id="description"
-                  name="description"
-                  rows={4}
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  placeholder="Describe your product..."
-                />
-              </div>
-
-              {/* Price and Stock */}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-8 space-y-8">
+            {/* Basic Information */}
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                Basic Information
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label
+                    htmlFor="name"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Product Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    placeholder="e.g., Organic Tomatoes"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="category"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Category *
+                  </label>
+                  <select
+                    id="category"
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">Select Category</option>
+                    <option value="Vegetables">Vegetables</option>
+                    <option value="Fruits">Fruits</option>
+                    <option value="Grains">Grains</option>
+                    <option value="Dairy">Dairy</option>
+                    <option value="Herbs">Herbs</option>
+                    <option value="Honey">Honey</option>
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="description"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Description *
+                  </label>
+                  <textarea
+                    id="description"
+                    name="description"
+                    rows={4}
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    placeholder="Describe your product, growing methods, quality, etc."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Pricing & Inventory */}
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                Pricing & Inventory
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label
                     htmlFor="price"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                   >
-                    Price (৳) *
+                    Price per Unit (৳) *
                   </label>
                   <input
                     type="number"
@@ -432,9 +476,36 @@ export default function CreateProduct() {
                     value={formData.price}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    placeholder="0.00"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    placeholder="45.00"
                   />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="unit"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Unit *
+                  </label>
+                  <select
+                    id="unit"
+                    name="unit"
+                    value={formData.unit}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">Select Unit</option>
+                    <option value="kg">Kilogram (kg)</option>
+                    <option value="g">Gram (g)</option>
+                    <option value="piece">Piece</option>
+                    <option value="bunch">Bunch</option>
+                    <option value="liter">Liter</option>
+                    <option value="ml">Milliliter (ml)</option>
+                    <option value="dozen">Dozen</option>
+                    <option value="bundle">Bundle</option>
+                  </select>
                 </div>
 
                 <div>
@@ -442,7 +513,7 @@ export default function CreateProduct() {
                     htmlFor="stock"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                   >
-                    Stock Quantity *
+                    Available Stock *
                   </label>
                   <input
                     type="number"
@@ -452,135 +523,214 @@ export default function CreateProduct() {
                     value={formData.stock}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    placeholder="0"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    placeholder="100"
                   />
                 </div>
               </div>
+            </div>
 
-              {/* Unit */}
-              <div>
-                <label
-                  htmlFor="unit"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Unit *
-                </label>
-                <select
-                  id="unit"
-                  name="unit"
-                  value={formData.unit}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="">Select Unit</option>
-                  <option value="kg">Kilogram (kg)</option>
-                  <option value="g">Gram (g)</option>
-                  <option value="piece">Piece</option>
-                  <option value="bunch">Bunch</option>
-                  <option value="liter">Liter</option>
-                  <option value="ml">Milliliter (ml)</option>
-                </select>
-              </div>
-
-              {/* Image Upload */}
-              <div>
-                <label
-                  htmlFor="images"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Product Images
-                </label>
-                <input
-                  type="file"
-                  id="images"
-                  name="images"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                />
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Upload up to 5 images (JPG, PNG, WebP)
-                </p>
-
-                {/* Image Preview */}
-                {imagePreview && (
-                  <div className="mt-4">
-                    <Image
-                      src={imagePreview}
-                      alt="Image Preview"
-                      width={500}
-                      height={300}
-                      className="rounded-lg object-cover"
+            {/* Product Images */}
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                Product Images
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="images"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Upload Images (Max 5 images) *
+                  </label>
+                  <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-primary-500 transition">
+                    <input
+                      type="file"
+                      id="images"
+                      name="images"
+                      multiple
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
                     />
+                    <label htmlFor="images" className="cursor-pointer">
+                      <i className="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
+                      <p className="text-lg font-medium text-gray-900 dark:text-white">
+                        Click to upload images
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        PNG, JPG, WebP up to 5MB each
+                      </p>
+                    </label>
                   </div>
-                )}
-              </div>
 
-              {/* Features */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Features
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {["organic", "fresh", "local", "seasonal", "premium"].map(
-                    (feature) => (
-                      <label key={feature} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          name="features"
-                          value={feature}
-                          checked={formData.features.includes(feature)}
-                          onChange={handleFeatureChange}
-                          className="mr-2 text-green-600 focus:ring-green-500"
-                        />
-                        <span className="text-gray-700 dark:text-gray-300 capitalize">
-                          {feature}
-                        </span>
-                      </label>
-                    ),
+                  {/* Image Previews */}
+                  {imagePreviews.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                        Selected Images ({imagePreviews.length}/5)
+                      </p>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        {imagePreviews.map((preview, index) => (
+                          <div
+                            key={index}
+                            className="relative group rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700"
+                          >
+                            <Image
+                              src={preview}
+                              alt={`Product Image ${index + 1}`}
+                              width={200}
+                              height={150}
+                              className="w-full h-24 object-cover group-hover:scale-105 transition-transform duration-200"
+                            />
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity duration-200 flex items-center justify-center">
+                              <button
+                                type="button"
+                                onClick={() => removeImage(index)}
+                                className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center transition-all duration-200 shadow-lg"
+                                title="Remove image"
+                              >
+                                <i className="fas fa-times text-sm"></i>
+                              </button>
+                            </div>
+                            <div className="absolute bottom-1 left-1 bg-black bg-opacity-70 text-white text-xs px-1 py-0.5 rounded">
+                              {index + 1}
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Add more images placeholder */}
+                        {imagePreviews.length < 5 && (
+                          <div
+                            className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg h-24 flex items-center justify-center cursor-pointer hover:border-primary-500 transition-colors"
+                            onClick={() =>
+                              document.getElementById("images").click()
+                            }
+                          >
+                            <div className="text-center">
+                              <i className="fas fa-plus text-gray-400 text-xl mb-1"></i>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Add More
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
+            </div>
 
-              {/* Action Buttons */}
-              <div className="flex space-x-4 pt-6">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`flex-1 py-3 px-6 rounded-lg font-medium transition ${
-                    loading
-                      ? "bg-gray-400 cursor-not-allowed text-white"
-                      : "bg-green-600 hover:bg-green-700 text-white"
-                  }`}
-                >
-                  {loading ? (
-                    <>
-                      <i className="fas fa-spinner fa-spin mr-2"></i>
-                      {isEditMode ? "Updating Product..." : "Adding Product..."}
-                    </>
-                  ) : (
-                    <>
-                      <i className="fas fa-plus mr-2"></i>
-                      {isEditMode ? "Update Product" : "Add Product"}
-                    </>
-                  )}
-                </button>
+            {/* Farm Information */}
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                Farm Information
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label
+                    htmlFor="farmLocation"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Farm Location
+                  </label>
+                  <input
+                    type="text"
+                    id="farmLocation"
+                    name="farmLocation"
+                    value={formData.farmLocation}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                    placeholder="e.g., Sylhet, Bangladesh"
+                  />
+                </div>
 
-                <Link
-                  href="/manage"
-                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 px-6 rounded-lg font-medium text-center transition"
-                >
-                  <i className="fas fa-list mr-2"></i>
-                  Manage Products
-                </Link>
+                <div>
+                  <label
+                    htmlFor="harvestDate"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Harvest Date
+                  </label>
+                  <input
+                    type="date"
+                    id="harvestDate"
+                    name="harvestDate"
+                    value={formData.harvestDate}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
               </div>
-            </form>
-          </div>
+            </div>
+
+            {/* Product Features */}
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                Product Features
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  "organic",
+                  "pesticide-free",
+                  "fresh",
+                  "non-gmo",
+                  "local",
+                  "sustainable",
+                  "fair-trade",
+                  "gluten-free",
+                ].map((feature) => (
+                  <label
+                    key={feature}
+                    className="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    <input
+                      type="checkbox"
+                      name="features"
+                      value={feature}
+                      checked={formData.features.includes(feature)}
+                      onChange={handleFeatureChange}
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="ml-2 text-sm capitalize">
+                      {feature.replace("-", " ")}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div>
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full py-3 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition ${
+                  loading
+                    ? "bg-gray-400 cursor-not-allowed text-white"
+                    : "bg-primary-600 text-white hover:bg-primary-700"
+                }`}
+              >
+                {loading ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                    {isEditMode ? "Updating Product..." : "Adding Product..."}
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-plus mr-2"></i>
+                    {isEditMode ? "Update Product" : "Add Product"}
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer />
     </>
   );
 }

@@ -3,15 +3,17 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCart } from "@/contexts/CartContext";
 import ProductCard from "@/components/ProductCard";
 import StarRating from "@/components/StarRating";
 import Footer from "@/components/Footer";
+import RecentOrdersSection from "@/components/RecentOrdersSection";
 
 export default function ProductDetails() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const productId = searchParams.get("id");
   const viewMode = searchParams.get("view"); // Check for view parameter
   const { data: session } = useSession();
@@ -40,6 +42,8 @@ export default function ProductDetails() {
   const [stockUpdate, setStockUpdate] = useState("");
   const [priceUpdate, setPriceUpdate] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   useEffect(() => {
     if (productId) {
@@ -57,6 +61,13 @@ export default function ProductDetails() {
       }, 30000);
 
       return () => clearInterval(interval);
+    }
+  }, [productId, isOwner, viewMode]);
+
+  // Add a separate effect to fetch recent orders for farmers
+  useEffect(() => {
+    if (productId && isOwner && viewMode !== "customer") {
+      fetchRecentOrders();
     }
   }, [productId, isOwner, viewMode]);
 
@@ -110,6 +121,24 @@ export default function ProductDetails() {
       }
     } catch (error) {
       console.error("Error fetching reviews:", error);
+    }
+  };
+
+  const fetchRecentOrders = async () => {
+    try {
+      setLoadingOrders(true);
+      const response = await fetch(
+        `/api/orders?productId=${productId}&limit=5`,
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setRecentOrders(data.orders || []);
+      }
+    } catch (error) {
+      console.error("Error fetching recent orders:", error);
+    } finally {
+      setLoadingOrders(false);
     }
   };
 
@@ -466,6 +495,11 @@ export default function ProductDetails() {
     }
   };
 
+  const handleAddImages = () => {
+    // Redirect to edit page where they can add more images
+    router.push(`/create?edit=${productId}`);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -600,7 +634,10 @@ export default function ProductDetails() {
                       <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                         Product Images ({product.images?.length || 0})
                       </h3>
-                      <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                      <button
+                        onClick={handleAddImages}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
                         <i className="fas fa-plus mr-1"></i>
                         Add Images
                       </button>
@@ -608,59 +645,106 @@ export default function ProductDetails() {
 
                     {/* Current Images Display */}
                     {(() => {
-                      // Combine both image sources
-                      const allImages = [];
-                      if (product.image) {
-                        allImages.push(product.image);
-                      }
-                      if (product.images && product.images.length > 0) {
-                        allImages.push(...product.images);
-                      }
+                      // Get all images from the product
+                      const allImages =
+                        product.images && product.images.length > 0
+                          ? product.images
+                          : product.image
+                            ? [product.image]
+                            : [];
 
                       return allImages.length > 0 ? (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          {allImages.map((image, index) => (
-                            <div key={index} className="relative group">
-                              <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                                <Image
-                                  src={image}
-                                  alt={`${product.name} ${index + 1}`}
-                                  width={200}
-                                  height={200}
-                                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                  onError={(e) => {
-                                    e.target.src =
-                                      "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=200&h=200&fit=crop";
-                                  }}
-                                />
-                              </div>
-                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button className="bg-red-500 hover:bg-red-600 text-white p-1 rounded text-xs">
-                                  <i className="fas fa-trash"></i>
+                        <div className="space-y-4">
+                          {/* Main Image Display */}
+                          <div className="relative aspect-video bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden max-w-md mx-auto">
+                            <Image
+                              src={allImages[selectedImage] || allImages[0]}
+                              alt={`${product.name} - Image ${selectedImage + 1}`}
+                              width={400}
+                              height={250}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.src =
+                                  "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&h=250&fit=crop";
+                              }}
+                            />
+                            <div className="absolute top-2 left-2">
+                              <span className="bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs">
+                                {selectedImage + 1} of {allImages.length}
+                              </span>
+                            </div>
+                            {allImages.length > 1 && (
+                              <>
+                                <button
+                                  onClick={() =>
+                                    setSelectedImage(
+                                      selectedImage > 0
+                                        ? selectedImage - 1
+                                        : allImages.length - 1,
+                                    )
+                                  }
+                                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-1.5 rounded-full transition"
+                                >
+                                  <i className="fas fa-chevron-left text-sm"></i>
                                 </button>
-                              </div>
-                              {index === 0 && (
-                                <div className="absolute bottom-2 left-2">
-                                  <span className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
-                                    Primary
-                                  </span>
-                                </div>
-                              )}
-                              <div className="absolute bottom-2 right-2">
-                                <span className="bg-black bg-opacity-50 text-white px-1 py-0.5 rounded text-xs">
-                                  {index + 1}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-
-                          {/* Add Image Placeholder */}
-                          <div className="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition cursor-pointer">
-                            <div className="text-center">
-                              <i className="fas fa-plus text-2xl text-gray-400 mb-2"></i>
-                              <p className="text-sm text-gray-500">Add Image</p>
-                            </div>
+                                <button
+                                  onClick={() =>
+                                    setSelectedImage(
+                                      selectedImage < allImages.length - 1
+                                        ? selectedImage + 1
+                                        : 0,
+                                    )
+                                  }
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-1.5 rounded-full transition"
+                                >
+                                  <i className="fas fa-chevron-right text-sm"></i>
+                                </button>
+                              </>
+                            )}
                           </div>
+
+                          {/* Thumbnail Gallery */}
+                          {allImages.length > 1 && (
+                            <div className="grid grid-cols-6 gap-2 max-w-md mx-auto">
+                              {allImages.map((image, index) => (
+                                <button
+                                  key={index}
+                                  onClick={() => setSelectedImage(index)}
+                                  className={`relative aspect-square bg-gray-100 dark:bg-gray-700 rounded overflow-hidden border-2 transition ${
+                                    selectedImage === index
+                                      ? "border-blue-500"
+                                      : "border-transparent hover:border-gray-300"
+                                  }`}
+                                >
+                                  <Image
+                                    src={image}
+                                    alt={`${product.name} thumbnail ${index + 1}`}
+                                    width={60}
+                                    height={60}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.target.src =
+                                        "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=60&h=60&fit=crop";
+                                    }}
+                                  />
+                                  {selectedImage === index && (
+                                    <div className="absolute inset-0 bg-blue-500 bg-opacity-20 flex items-center justify-center">
+                                      <i className="fas fa-check text-blue-600 text-xs"></i>
+                                    </div>
+                                  )}
+                                </button>
+                              ))}
+
+                              {/* Add more images placeholder for farmers */}
+                              {allImages.length < 5 && (
+                                <button className="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-600 rounded flex items-center justify-center hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition">
+                                  <div className="text-center">
+                                    <i className="fas fa-plus text-gray-400 text-xs"></i>
+                                  </div>
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="text-center py-8">
@@ -672,12 +756,15 @@ export default function ProductDetails() {
                           </h4>
                           <p className="text-gray-600 dark:text-gray-400 mb-4">
                             Add product images to make your listing more
-                            attractive
+                            attractive to customers
                           </p>
-                          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-                            <i className="fas fa-upload mr-1"></i>
+                          <Link
+                            href={`/create?edit=${productId}`}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition inline-flex items-center"
+                          >
+                            <i className="fas fa-upload mr-2"></i>
                             Upload Images
-                          </button>
+                          </Link>
                         </div>
                       );
                     })()}
@@ -819,6 +906,13 @@ export default function ProductDetails() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Recent Orders - Enhanced */}
+                  <RecentOrdersSection
+                    recentOrders={recentOrders}
+                    loadingOrders={loadingOrders}
+                    product={product}
+                  />
                 </div>
 
                 {/* Sidebar - Analytics & Actions */}
@@ -1012,20 +1106,6 @@ export default function ProductDetails() {
                         )}
                         {isUpdating ? "Deleting..." : "Delete Product"}
                       </button>
-                    </div>
-                  </div>
-
-                  {/* Recent Orders */}
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                      Recent Orders
-                    </h3>
-
-                    <div className="space-y-3 text-sm">
-                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                        <i className="fas fa-shopping-bag text-2xl mb-2"></i>
-                        <p>No recent orders</p>
-                      </div>
                     </div>
                   </div>
                 </div>

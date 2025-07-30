@@ -9,17 +9,24 @@ export async function GET(request) {
     const orderId = searchParams.get("orderId");
     const farmerId = searchParams.get("farmerId");
     const farmerEmail = searchParams.get("farmerEmail");
+    const productId = searchParams.get("productId");
+    const limit = parseInt(searchParams.get("limit")) || null;
 
     console.log("Orders API - Params:", {
       userId,
       orderId,
       farmerId,
       farmerEmail,
+      productId,
+      limit,
     });
 
-    if (!userId && !orderId && !farmerId && !farmerEmail) {
+    if (!userId && !orderId && !farmerId && !farmerEmail && !productId) {
       return NextResponse.json(
-        { error: "User ID, Order ID, Farmer ID, or Farmer Email is required" },
+        {
+          error:
+            "User ID, Order ID, Farmer ID, Farmer Email, or Product ID is required",
+        },
         { status: 400 },
       );
     }
@@ -38,6 +45,91 @@ export async function GET(request) {
       }
 
       return NextResponse.json({ order });
+    } else if (productId) {
+      // Get orders containing a specific product
+      console.log("Fetching orders for productId:", productId);
+
+      const productSearchCriteria = [
+        { "products.productId": productId },
+        { "products._id": productId },
+        { "items.productId": productId },
+        { "items._id": productId },
+      ];
+
+      // Also try ObjectId if the productId is a valid ObjectId
+      if (ObjectId.isValid(productId)) {
+        productSearchCriteria.push(
+          { "products.productId": new ObjectId(productId) },
+          { "products._id": new ObjectId(productId) },
+          { "items.productId": new ObjectId(productId) },
+          { "items._id": new ObjectId(productId) },
+        );
+      }
+
+      let query = { $or: productSearchCriteria };
+      let orders = await db
+        .collection("orders")
+        .find(query)
+        .sort({ createdAt: -1 });
+
+      if (limit) {
+        orders = orders.limit(limit);
+      }
+
+      const ordersArray = await orders.toArray();
+
+      console.log(
+        `Found ${ordersArray.length} orders containing product ${productId}`,
+      );
+
+      // Filter and transform orders to show only items for this product
+      const filteredOrders = ordersArray
+        .map((order) => {
+          // Find items/products that match the productId
+          const matchingItems = [];
+
+          // Check both 'products' and 'items' arrays (different orders might use different structures)
+          if (order.products) {
+            const products = order.products.filter(
+              (item) =>
+                item.productId === productId ||
+                item._id === productId ||
+                (ObjectId.isValid(productId) &&
+                  (item.productId?.toString() === productId ||
+                    item._id?.toString() === productId)),
+            );
+            matchingItems.push(...products);
+          }
+
+          if (order.items) {
+            const items = order.items.filter(
+              (item) =>
+                item.productId === productId ||
+                item._id === productId ||
+                (ObjectId.isValid(productId) &&
+                  (item.productId?.toString() === productId ||
+                    item._id?.toString() === productId)),
+            );
+            matchingItems.push(...items);
+          }
+
+          return {
+            ...order,
+            products: matchingItems,
+            items: matchingItems, // Ensure both fields are available
+            matchingItemsCount: matchingItems.length,
+          };
+        })
+        .filter((order) => order.matchingItemsCount > 0); // Only include orders with matching items
+
+      console.log(
+        `Filtered to ${filteredOrders.length} orders with matching product items`,
+      );
+
+      return NextResponse.json({
+        orders: filteredOrders,
+        total: filteredOrders.length,
+      });
     } else if (farmerId || farmerEmail) {
       // Get orders for farmer - orders containing their products
       console.log(
