@@ -181,16 +181,113 @@ export default function Products() {
 
   const fetchAvailableFarmers = async () => {
     try {
-      const response = await fetch("/api/products");
-      if (response.ok) {
-        const data = await response.json();
-        const farmers = [
-          ...new Set(data.products.map((p) => p.farmer?.name).filter(Boolean)),
-        ];
-        setAvailableFarmers(farmers);
+      console.log("📋 Starting comprehensive farmer fetch...");
+      const farmers = [];
+
+      // 1. Fetch from dedicated farmers API
+      try {
+        const response = await fetch("/api/farmers?limit=1000");
+        if (response.ok) {
+          const data = await response.json();
+          console.log("📋 Fetched farmers from farmers API:", data);
+
+          if (data.farmers && Array.isArray(data.farmers)) {
+            data.farmers.forEach((farmer) => {
+              if (farmer.name && !farmers.includes(farmer.name)) {
+                farmers.push(farmer.name);
+              }
+            });
+          }
+        }
+      } catch (error) {
+        console.warn("⚠️ Farmers API failed:", error);
       }
+
+      // 2. Fetch newly registered farmers from users collection
+      try {
+        const usersResponse = await fetch(
+          "/api/auth/users?userType=farmer&limit=1000",
+        );
+        if (usersResponse.ok) {
+          const usersData = await usersResponse.json();
+          console.log("📋 Fetched farmers from users API:", usersData);
+
+          if (usersData.users && Array.isArray(usersData.users)) {
+            usersData.users.forEach((user) => {
+              // Prioritize farmer's personal name over farm name
+              const farmerName =
+                user.name ||
+                `${user.firstName} ${user.lastName}` ||
+                user.farmDetails?.farmName;
+              if (farmerName && !farmers.includes(farmerName)) {
+                farmers.push(farmerName);
+                console.log("📋 Added farmer from users:", farmerName);
+              }
+            });
+          }
+        } else {
+          console.warn(
+            "⚠️ Users API not available, trying alternative approach",
+          );
+        }
+      } catch (error) {
+        console.warn("⚠️ Users API failed:", error);
+      }
+
+      // 3. Backup: get farmers from products API
+      try {
+        const productsResponse = await fetch("/api/products?limit=1000");
+        if (productsResponse.ok) {
+          const productsData = await productsResponse.json();
+          console.log(
+            "📋 Fetched farmers from products API:",
+            productsData.products?.length || 0,
+            "products",
+          );
+
+          const productFarmers = [
+            ...new Set(
+              productsData.products.map((p) => p.farmer?.name).filter(Boolean),
+            ),
+          ];
+
+          // Merge farmers from products
+          productFarmers.forEach((farmerName) => {
+            if (!farmers.includes(farmerName)) {
+              farmers.push(farmerName);
+            }
+          });
+        }
+      } catch (error) {
+        console.warn("⚠️ Products API failed:", error);
+      }
+
+      // Sort farmers alphabetically and update state
+      farmers.sort();
+
+      console.log("📋 Final comprehensive farmers list:", farmers);
+      console.log("📋 Total farmers found:", farmers.length);
+      setAvailableFarmers(farmers);
     } catch (error) {
-      console.error("Error fetching farmers:", error);
+      console.error("❌ Error in comprehensive farmer fetch:", error);
+      // Ultimate fallback - at least try products API
+      try {
+        const response = await fetch("/api/products?limit=1000");
+        if (response.ok) {
+          const data = await response.json();
+          const farmers = [
+            ...new Set(
+              data.products.map((p) => p.farmer?.name).filter(Boolean),
+            ),
+          ];
+          farmers.sort();
+          setAvailableFarmers(farmers);
+          console.log("📋 Fallback farmers loaded:", farmers.length);
+        }
+      } catch (fallbackError) {
+        console.error("❌ Complete failure in farmer fetch:", fallbackError);
+        setAvailableFarmers([]);
+      }
     }
   };
 
