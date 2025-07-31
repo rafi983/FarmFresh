@@ -8,42 +8,119 @@ import {
 
 export async function GET(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
-    // First try to find product by string ID (most products use string IDs)
-    let targetProduct = await db.collection("products").findOne({ _id: id });
+    // First, let's check what products actually exist
+    const allProductsCheck = await db.collection("products").find({}).toArray();
 
-    // If not found, try with ObjectId (for MongoDB generated IDs)
+    let targetProduct = null;
+
+    // Try multiple approaches to find the product
+
+    // 1. Try exact string match
+    targetProduct = await db.collection("products").findOne({ _id: id });
+
+    // 2. If not found and ID looks like ObjectId, try ObjectId
     if (!targetProduct && ObjectId.isValid(id)) {
       targetProduct = await db
         .collection("products")
         .findOne({ _id: new ObjectId(id) });
     }
 
-    // If still not found, try searching in nested structures (legacy support)
+    // 3. Try farmerId field match (in case it's stored there)
+    if (!targetProduct) {
+      targetProduct = await db.collection("products").findOne({ farmerId: id });
+
+      // If we found a product by farmerId, this means we're looking for farmer details, not product details
+      if (targetProduct) {
+        // Since this is a farmer ID, let's find all products by this farmer and return farmer info
+        const farmerProducts = await db
+          .collection("products")
+          .find({ farmerId: id })
+          .toArray();
+
+        // Get farmer info from the first product or create default
+        const farmerInfo = targetProduct.farmer || {
+          name: "Local Farmer",
+          location: "Bangladesh",
+          bio: "Dedicated to providing fresh, high-quality produce using sustainable farming practices.",
+          experience: 5,
+          id: id,
+        };
+
+        // Return farmer details with their products
+        return NextResponse.json({
+          isFarmerDetails: true,
+          farmer: farmerInfo,
+          farmerProducts: farmerProducts.map((p) => ({
+            ...p,
+            images: (() => {
+              const imageArray = [];
+              if (p.image) imageArray.push(p.image);
+              if (p.images && Array.isArray(p.images))
+                imageArray.push(...p.images);
+              return [
+                ...new Set(imageArray.filter((img) => img && img.trim())),
+              ];
+            })(),
+          })),
+          totalProducts: farmerProducts.length,
+          farmerId: id,
+        });
+      }
+    }
+
+    // 4. Try searching in nested structures (legacy support)
     if (!targetProduct) {
       const productDocuments = await db
         .collection("products")
         .find({})
         .toArray();
 
-      productDocuments.forEach((doc) => {
+      for (const doc of productDocuments) {
         if (doc.products && Array.isArray(doc.products)) {
           const found = doc.products.find(
-            (product) => product._id === id || product._id.toString() === id,
+            (product) =>
+              product._id === id ||
+              product._id?.toString() === id ||
+              product.farmerId === id ||
+              (ObjectId.isValid(id) &&
+                product._id?.toString() === new ObjectId(id).toString()),
           );
           if (found) {
             targetProduct = found;
+            break;
           }
         }
+      }
+    }
+
+    // 5. Last resort: search by any field that might contain this ID
+    if (!targetProduct) {
+      const regexSearch = await db.collection("products").findOne({
+        $or: [
+          { _id: { $regex: id, $options: "i" } },
+          { farmerId: { $regex: id, $options: "i" } },
+          { "farmer.id": id },
+          { "farmer._id": id },
+        ],
       });
+      targetProduct = regexSearch;
     }
 
     if (!targetProduct) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "Product not found",
+          searchedId: id,
+          totalProductsInDb: allProductsCheck.length,
+          availableIds: allProductsCheck.slice(0, 10).map((p) => p._id),
+        },
+        { status: 404 },
+      );
     }
 
     // Get all products for finding related products
@@ -159,7 +236,7 @@ export async function PUT(request, { params }) {
   try {
     const client = await clientPromise;
     const db = client.db("farmfresh");
-    const { id } = params;
+    const { id } = await params;
     const updateData = await request.json();
 
     if (!ObjectId.isValid(id)) {
@@ -206,7 +283,7 @@ export async function DELETE(request, { params }) {
   try {
     const client = await clientPromise;
     const db = client.db("farmfresh");
-    const { id } = params;
+    const { id } = await params;
 
     if (!ObjectId.isValid(id)) {
       return NextResponse.json(
@@ -376,12 +453,6 @@ async function calculateProductPerformance(db, productId) {
     const salesMetrics = salesData[0] || {};
     const reviewsMetrics = reviewsData[0] || {};
     const recentMetrics = recentOrdersData[0] || {};
-
-    console.log(`📊 Performance metrics for product ${productId}:`, {
-      salesMetrics,
-      reviewsMetrics,
-      recentMetrics,
-    });
 
     return {
       totalSales: salesMetrics.totalSales || 0,
