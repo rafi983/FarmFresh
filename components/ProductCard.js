@@ -60,6 +60,10 @@ export default function ProductCard({ product, showAddToCart = true }) {
         farmer: product.farmer,
         category: product.category,
         unit: product.unit || "kg",
+        stock: product.stock || 0, // Add missing stock field
+        farmerId: product.farmerId, // Add farmerId for consistency
+        farmerName:
+          product.farmer?.name || product.farmer?.farmName || "Unknown Farmer", // Add farmerName
       };
 
       const success = await addToCart(productForCart, 1);

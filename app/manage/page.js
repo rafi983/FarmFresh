@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import Link from "next/link";
 import Footer from "@/components/Footer";
 
 // Component imports
@@ -85,11 +83,11 @@ export default function FarmerDashboard() {
         const data = await response.json();
         const farmerProducts = data.products.filter((product) => {
           return (
-              product.farmerId === userId ||
-              product.farmerId === String(userId) ||
-              product.farmerEmail === userEmail ||
-              product.farmer?.email === userEmail ||
-              product.farmer?.id === userId
+            product.farmerId === userId ||
+            product.farmerId === String(userId) ||
+            product.farmerEmail === userEmail ||
+            product.farmer?.email === userEmail ||
+            product.farmer?.id === userId
           );
         });
 
@@ -132,20 +130,20 @@ export default function FarmerDashboard() {
   const calculatedAnalytics = useMemo(() => {
     const totalProducts = products.length;
     const activeProducts = products.filter(
-        (p) => p.stock > 0 && p.status !== "inactive",
+      (p) => p.stock > 0 && p.status !== "inactive",
     ).length;
     const totalOrders = orders.length;
     const pendingOrders = orders.filter((o) => o.status === "pending").length;
     const totalRevenue = orders.reduce(
-        (sum, order) => sum + (order.farmerSubtotal || order.total || 0),
-        0,
+      (sum, order) => sum + (order.farmerSubtotal || order.total || 0),
+      0,
     );
     const thisMonthOrders = orders.filter((order) => {
       const orderDate = new Date(order.createdAt);
       const now = new Date();
       return (
-          orderDate.getMonth() === now.getMonth() &&
-          orderDate.getFullYear() === now.getFullYear()
+        orderDate.getMonth() === now.getMonth() &&
+        orderDate.getFullYear() === now.getFullYear()
       );
     }).length;
 
@@ -173,17 +171,17 @@ export default function FarmerDashboard() {
     if (searchTerm) {
       const searchRegex = new RegExp(searchTerm, "i");
       filtered = filtered.filter(
-          (product) =>
-              searchRegex.test(product.name) ||
-              searchRegex.test(product.description) ||
-              searchRegex.test(product.category),
+        (product) =>
+          searchRegex.test(product.name) ||
+          searchRegex.test(product.description) ||
+          searchRegex.test(product.category),
       );
     }
 
     if (selectedCategory) {
       filtered = filtered.filter(
-          (product) =>
-              product.category.toLowerCase() === selectedCategory.toLowerCase(),
+        (product) =>
+          product.category.toLowerCase() === selectedCategory.toLowerCase(),
       );
     }
 
@@ -191,12 +189,12 @@ export default function FarmerDashboard() {
       switch (selectedStatus) {
         case "active":
           filtered = filtered.filter(
-              (product) => product.stock > 0 && product.status !== "inactive",
+            (product) => product.stock > 0 && product.status !== "inactive",
           );
           break;
         case "inactive":
           filtered = filtered.filter(
-              (product) => product.status === "inactive",
+            (product) => product.status === "inactive",
           );
           break;
         case "out-of-stock":
@@ -204,7 +202,7 @@ export default function FarmerDashboard() {
           break;
         case "low-stock":
           filtered = filtered.filter(
-              (product) => product.stock > 0 && product.stock <= 5,
+            (product) => product.stock > 0 && product.stock <= 5,
           );
           break;
       }
@@ -219,16 +217,16 @@ export default function FarmerDashboard() {
         }
         if (key === "name") {
           return order === "asc"
-              ? a.name.localeCompare(b.name)
-              : b.name.localeCompare(a.name);
+            ? a.name.localeCompare(b.name)
+            : b.name.localeCompare(a.name);
         }
         if (key === "stock") {
           return order === "asc" ? a.stock - b.stock : b.stock - a.stock;
         }
         if (key === "date") {
           return order === "asc"
-              ? new Date(a.createdAt) - new Date(b.createdAt)
-              : new Date(b.createdAt) - new Date(a.createdAt);
+            ? new Date(a.createdAt) - new Date(b.createdAt)
+            : new Date(b.createdAt) - new Date(a.createdAt);
         }
         return 0;
       });
@@ -262,18 +260,18 @@ export default function FarmerDashboard() {
 
       if (response.ok) {
         setProducts((prev) =>
-            prev.map((product) =>
-                product._id === productId
-                    ? { ...product, status: newStatus }
-                    : product,
-            ),
+          prev.map((product) =>
+            product._id === productId
+              ? { ...product, status: newStatus }
+              : product,
+          ),
         );
 
         // Show success message
         const successMsg =
-            newStatus === "active"
-                ? "Product activated successfully!"
-                : "Product deactivated successfully!";
+          newStatus === "active"
+            ? "Product activated successfully!"
+            : "Product deactivated successfully!";
         alert(successMsg);
 
         // Refresh analytics
@@ -291,9 +289,9 @@ export default function FarmerDashboard() {
 
   const handleDeleteProduct = async (productId) => {
     if (
-        !confirm(
-            "⚠️ Are you sure you want to delete this product?\n\nThis action cannot be undone and will remove:\n• The product listing\n• All associated data\n• Product from any pending orders",
-        )
+      !confirm(
+        "⚠️ Are you sure you want to delete this product?\n\nThis action cannot be undone and will remove:\n• The product listing\n• All associated data\n• Product from any pending orders",
+      )
     ) {
       return;
     }
@@ -307,7 +305,7 @@ export default function FarmerDashboard() {
 
       if (response.ok) {
         setProducts((prev) =>
-            prev.filter((product) => product._id !== productId),
+          prev.filter((product) => product._id !== productId),
         );
         alert("Product deleted successfully!");
 
@@ -320,7 +318,7 @@ export default function FarmerDashboard() {
         if (response.status === 409) {
           // Product has pending orders
           alert(
-              "❌ Cannot Delete Product\n\n" +
+            "❌ Cannot Delete Product\n\n" +
               "This product has pending orders and cannot be deleted.\n" +
               "Please wait for all orders to be completed or cancelled before deleting this product.\n\n" +
               "You can temporarily deactivate the product instead by clicking the pause button.",
@@ -329,7 +327,7 @@ export default function FarmerDashboard() {
           alert("❌ Product not found. It may have already been deleted.");
         } else {
           alert(
-              `❌ Failed to delete product: ${errorData.error || "Unknown error"}`,
+            `❌ Failed to delete product: ${errorData.error || "Unknown error"}`,
           );
         }
       }
@@ -346,20 +344,20 @@ export default function FarmerDashboard() {
       // Calculate analytics from existing data
       const totalProducts = products.length;
       const activeProducts = products.filter(
-          (p) => p.stock > 0 && p.status !== "inactive",
+        (p) => p.stock > 0 && p.status !== "inactive",
       ).length;
       const totalOrders = orders.length;
       const pendingOrders = orders.filter((o) => o.status === "pending").length;
       const totalRevenue = orders.reduce(
-          (sum, order) => sum + (order.farmerSubtotal || order.total || 0),
-          0,
+        (sum, order) => sum + (order.farmerSubtotal || order.total || 0),
+        0,
       );
       const thisMonthOrders = orders.filter((order) => {
         const orderDate = new Date(order.createdAt);
         const now = new Date();
         return (
-            orderDate.getMonth() === now.getMonth() &&
-            orderDate.getFullYear() === now.getFullYear()
+          orderDate.getMonth() === now.getMonth() &&
+          orderDate.getFullYear() === now.getFullYear()
         );
       }).length;
 
@@ -402,7 +400,7 @@ export default function FarmerDashboard() {
   const getProductStatusBadge = (product) => {
     if (product.status === "inactive") {
       return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
           <i className="fas fa-pause mr-1"></i>
           Inactive
         </span>
@@ -410,14 +408,14 @@ export default function FarmerDashboard() {
     }
     if (product.stock === 0) {
       return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
           <i className="fas fa-exclamation-triangle mr-1"></i>
           Out of Stock
         </span>
       );
     }
     return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
         <i className="fas fa-check-circle mr-1"></i>
         Active
       </span>
@@ -426,11 +424,11 @@ export default function FarmerDashboard() {
 
   // Pagination logic
   const totalPages = Math.ceil(
-      filteredAndSortedProducts.length / productsPerPage,
+    filteredAndSortedProducts.length / productsPerPage,
   );
   const paginatedProducts = filteredAndSortedProducts.slice(
-      (currentPage - 1) * productsPerPage,
-      currentPage * productsPerPage,
+    (currentPage - 1) * productsPerPage,
+    currentPage * productsPerPage,
   );
 
   // Collect all functions and data to pass to components
@@ -495,58 +493,46 @@ export default function FarmerDashboard() {
 
   if (status === "loading" || loading) {
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center">
-            <i className="fas fa-spinner fa-spin text-4xl text-green-600 mb-4"></i>
-            <p className="text-gray-600 dark:text-gray-400">
-              Loading dashboard...
-            </p>
-          </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <i className="fas fa-spinner fa-spin text-4xl text-green-600 mb-4"></i>
+          <p className="text-gray-600 dark:text-gray-400">
+            Loading dashboard...
+          </p>
         </div>
+      </div>
     );
   }
 
   return (
-      <>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-          <DashboardHeader
-              session={session}
-              handleRefresh={handleRefresh}
-              refreshing={refreshing}
-          />
+    <>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <DashboardHeader
+          session={session}
+          handleRefresh={handleRefresh}
+          refreshing={refreshing}
+        />
 
-          <NavigationTabs
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              productsCount={products.length}
-              ordersCount={orders.length}
-          />
+        <NavigationTabs
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          productsCount={products.length}
+          ordersCount={orders.length}
+        />
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {activeTab === "dashboard" && (
-                <DashboardTab {...dashboardProps} />
-            )}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {activeTab === "dashboard" && <DashboardTab {...dashboardProps} />}
 
-            {activeTab === "products" && (
-                <ProductsTab {...productProps} />
-            )}
+          {activeTab === "products" && <ProductsTab {...productProps} />}
 
-            {activeTab === "orders" && (
-                <OrdersTab {...orderProps} />
-            )}
+          {activeTab === "orders" && <OrdersTab {...orderProps} />}
 
-            {activeTab === "analytics" && (
-                <AnalyticsTab {...analyticsProps} />
-            )}
+          {activeTab === "analytics" && <AnalyticsTab {...analyticsProps} />}
 
-            {activeTab === "settings" && (
-                <SettingsTab {...settingsProps} />
-            )}
-          </div>
+          {activeTab === "settings" && <SettingsTab {...settingsProps} />}
         </div>
-        <Footer />
-      </>
+      </div>
+      <Footer />
+    </>
   );
 }
-
-// Ensure all components are imported correct

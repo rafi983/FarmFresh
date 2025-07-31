@@ -12,15 +12,6 @@ export async function GET(request) {
     const productId = searchParams.get("productId");
     const limit = parseInt(searchParams.get("limit")) || null;
 
-    console.log("Orders API - Params:", {
-      userId,
-      orderId,
-      farmerId,
-      farmerEmail,
-      productId,
-      limit,
-    });
-
     if (!userId && !orderId && !farmerId && !farmerEmail && !productId) {
       return NextResponse.json(
         {
@@ -348,17 +339,53 @@ export async function POST(request) {
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
-    // Add timestamps
+    // Check and update stock for each item (without transactions)
+    for (const item of orderData.items) {
+      const productId = item.productId;
+      const orderQuantity = item.quantity;
+
+      // Get current product
+      const product = await db
+        .collection("products")
+        .findOne({ _id: new ObjectId(productId) });
+
+      if (!product) {
+        throw new Error(`Product ${item.name} not found`);
+      }
+
+      // Check if sufficient stock is available
+      if (product.stock < orderQuantity) {
+        throw new Error(
+          `Insufficient stock for ${item.name}. Available: ${product.stock}, Requested: ${orderQuantity}`,
+        );
+      }
+
+      // Update product stock
+      const newStock = product.stock - orderQuantity;
+      await db.collection("products").updateOne(
+        { _id: new ObjectId(productId) },
+        {
+          $set: {
+            stock: newStock,
+            updatedAt: new Date(),
+          },
+        },
+      );
+    }
+
+    // Add timestamps to order
     const newOrder = {
       ...orderData,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
+    // Create the order
     const result = await db.collection("orders").insertOne(newOrder);
 
     console.log("Order created with ID:", result.insertedId);
 
+    // Return success response
     return NextResponse.json({
       message: "Order created successfully",
       orderId: result.insertedId,
@@ -387,6 +414,56 @@ export async function PATCH(request) {
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
+    // Get the current order to check status changes (without transactions)
+    const currentOrder = await db
+      .collection("orders")
+      .findOne({ _id: new ObjectId(orderId) });
+
+    if (!currentOrder) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    // Check if order status is being changed to cancelled/returned
+    const isBeingCancelled =
+      updateData.status &&
+      (updateData.status === "cancelled" || updateData.status === "returned") &&
+      currentOrder.status !== "cancelled" &&
+      currentOrder.status !== "returned";
+
+    // If order is being cancelled, restore stock
+    if (isBeingCancelled && currentOrder.items) {
+      console.log(
+        `Order ${orderId} is being cancelled/returned, restoring stock...`,
+      );
+
+      for (const item of currentOrder.items) {
+        const productId = item.productId;
+        const orderQuantity = item.quantity;
+
+        // Get current product
+        const product = await db
+          .collection("products")
+          .findOne({ _id: new ObjectId(productId) });
+
+        if (product) {
+          // Restore product stock
+          const newStock = product.stock + orderQuantity;
+          await db.collection("products").updateOne(
+            { _id: new ObjectId(productId) },
+            {
+              $set: {
+                stock: newStock,
+                updatedAt: new Date(),
+              },
+            },
+          );
+        } else {
+          console.warn(`Product ${productId} not found when restoring stock`);
+        }
+      }
+    }
+
+    // Update the order
     const result = await db.collection("orders").updateOne(
       { _id: new ObjectId(orderId) },
       {
@@ -397,16 +474,4 @@ export async function PATCH(request) {
       },
     );
 
-    if (result.matchedCount === 0) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ message: "Order updated successfully" });
-  } catch (error) {
-    console.error("Update order error:", error);
-    return NextResponse.json(
-      { error: "Failed to update order", details: error.message },
-      { status: 500 },
-    );
-  }
-}
+    if

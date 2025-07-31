@@ -20,6 +20,7 @@ export default function Payment() {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [redirectingToSuccess, setRedirectingToSuccess] = useState(false);
 
   // Form states
   const [deliveryAddress, setDeliveryAddress] = useState({
@@ -82,12 +83,33 @@ export default function Payment() {
     }
   }, [session, status, router, cartItems]);
 
-  // Redirect if cart is empty
+  // Redirect if cart is empty - but only after cart has finished loading
   useEffect(() => {
-    if (!cartLoading && cartItems.length === 0 && status === "authenticated") {
-      router.push("/cart");
+    if (
+      !cartLoading &&
+      cartItems.length === 0 &&
+      status === "authenticated" &&
+      !processing &&
+      !redirectingToSuccess
+    ) {
+      // Add a small delay to ensure any pending cart updates are processed
+      // Only redirect if not currently processing payment or redirecting to success
+      const timer = setTimeout(() => {
+        if (cartItems.length === 0 && !processing && !redirectingToSuccess) {
+          router.push("/cart");
+        }
+      }, 500);
+
+      return () => clearTimeout(timer);
     }
-  }, [cartItems, cartLoading, status, router]);
+  }, [
+    cartItems,
+    cartLoading,
+    status,
+    router,
+    processing,
+    redirectingToSuccess,
+  ]);
 
   const formatPrice = (price) => {
     const numericPrice =
@@ -260,27 +282,50 @@ export default function Payment() {
         const data = await response.json();
         console.log("Order created successfully:", data);
 
-        // Clear cart both in backend and frontend context
-        await fetch(`/api/cart?userId=${encodeURIComponent(userId)}`, {
-          method: "DELETE",
-        });
+        // Get orderId before clearing cart
+        const orderId = data.orderId || data.order?._id;
 
-        // Clear cart in frontend context immediately
-        clearCart();
+        if (orderId) {
+          console.log("Redirecting to success page with orderId:", orderId);
 
-        // Redirect to success page
-        router.push(`/success?orderId=${data.orderId}`);
+          // Clear cart in backend first
+          try {
+            await fetch(`/api/cart?userId=${encodeURIComponent(userId)}`, {
+              method: "DELETE",
+            });
+          } catch (cartError) {
+            console.error("Error clearing cart:", cartError);
+            // Don't fail the order if cart clearing fails
+          }
+
+          setRedirectingToSuccess(true);
+
+          // Use router.push with replace to prevent going back to payment
+          // This prevents the cart redirect useEffect from interfering
+          router.replace(`/success?orderId=${orderId}`);
+
+          // Clear cart in frontend context after redirect is initiated
+          setTimeout(() => {
+            clearCart();
+          }, 100);
+        } else {
+          console.error("No orderId received from API response:", data);
+          alert("Order created successfully! Redirecting to home page.");
+          router.replace("/");
+        }
       } else {
-        const errorText = await response.text();
-        console.error("Order creation failed:", response.status, errorText);
-        throw new Error("Failed to create order");
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Unknown error" }));
+        console.error("Order creation failed:", response.status, errorData);
+        throw new Error(errorData.error || "Failed to create order");
       }
     } catch (error) {
       console.error("Error processing payment:", error);
       alert("Payment failed. Please try again.");
-    } finally {
       setProcessing(false);
     }
+    // Don't set processing to false here on success, let the redirect handle it
   };
 
   if (status === "loading" || loading) {

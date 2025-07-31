@@ -5,16 +5,19 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useCart } from "@/contexts/CartContext";
+import { useFavorites } from "@/contexts/FavoritesContext";
 import ProductCard from "@/components/ProductCard";
 import StarRating from "@/components/StarRating";
 import Footer from "@/components/Footer";
 import RecentOrdersSection from "@/components/RecentOrdersSection";
+import FarmerProfileView from "@/components/FarmerProfileView";
 import useProductData from "@/hooks/useProductData";
 import useOwnership from "@/hooks/useOwnership";
 import useReviews from "@/hooks/useReviews";
 
-import LoadingComponent from "@/components/LoadingComponent";
-import NotFoundComponent from "@/components/NotFoundComponent";
+import Loading from "@/components/Loading";
+import NotFound from "@/components/NotFound";
 
 export default function ProductDetails() {
   const searchParams = useSearchParams();
@@ -22,6 +25,9 @@ export default function ProductDetails() {
   const productId = searchParams.get("id");
   const viewMode = searchParams.get("view");
   const { data: session } = useSession();
+  const { addToCart } = useCart();
+  const { addToFavorites, removeFromFavorites, isProductFavorited } =
+    useFavorites();
 
   // Custom hooks
   const {
@@ -81,6 +87,13 @@ export default function ProductDetails() {
     }
   }, [productId, isOwner, viewMode]);
 
+  // Check if product is favorited when productId changes
+  useEffect(() => {
+    if (productId) {
+      setIsFavorite(isProductFavorited(productId));
+    }
+  }, [productId, isProductFavorited]);
+
   // API calls
   const fetchRecentOrders = async () => {
     try {
@@ -109,31 +122,36 @@ export default function ProductDetails() {
 
     setIsAddingToCart(true);
     try {
-      const userId =
-        session.user.userId ||
-        session.user.id ||
-        session.user._id ||
-        session.user.email;
+      const item = {
+        productId: productId,
+        id: productId, // Add id field for cart context
+        name: product.name,
+        price: product.price,
+        quantity: quantity,
+        stock: product.stock, // Include stock information
+        image:
+          product.image ||
+          (product.images && product.images[0]) ||
+          "/placeholder-image.jpg",
+        unit: product.unit || "kg",
+        farmerId: product.farmerId,
+        farmerName:
+          product.farmer?.name || product.farmer?.farmName || "Unknown Farmer",
+      };
 
-      const response = await fetch("/api/cart", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: productId,
-          quantity: quantity,
-          userId: userId,
-        }),
-      });
-
-      if (response.ok) {
-        alert("Product added to cart successfully!");
-      } else {
-        const errorData = await response.json();
-        alert(errorData.error || "Failed to add to cart");
-      }
+      await addToCart(item, quantity);
+      alert("Product added to cart successfully!");
     } catch (error) {
       console.error("Error adding to cart:", error);
-      alert("Failed to add product to cart. Please try again.");
+      // Show user-friendly error message for stock issues
+      if (
+        error.message.includes("Only") &&
+        error.message.includes("available in stock")
+      ) {
+        alert(error.message);
+      } else {
+        alert("Failed to add product to cart. Please try again.");
+      }
     } finally {
       setIsAddingToCart(false);
     }
@@ -147,39 +165,75 @@ export default function ProductDetails() {
 
     setIsAddingToCart(true);
     try {
-      const userId =
-        session.user.userId ||
-        session.user.id ||
-        session.user._id ||
-        session.user.email;
+      // Create a product object that matches the CartContext expectations
+      const productForCart = {
+        id: productId,
+        name: product.name,
+        price: product.price,
+        image:
+          product.image ||
+          (product.images && product.images[0]) ||
+          "/placeholder-image.jpg",
+        unit: product.unit || "kg",
+        farmerId: product.farmerId,
+        farmer: {
+          id: product.farmerId,
+          _id: product.farmerId,
+          email: product.farmer?.email,
+          name:
+            product.farmer?.name ||
+            product.farmer?.farmName ||
+            "Unknown Farmer",
+        },
+        farmerName:
+          product.farmer?.name || product.farmer?.farmName || "Unknown Farmer",
+        stock: product.stock || 0,
+      };
 
-      const response = await fetch("/api/cart", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: productId,
-          quantity: quantity,
-          userId: userId,
-        }),
-      });
+      // Use CartContext's addToCart function
+      await addToCart(productForCart, quantity);
 
-      if (response.ok) {
-        window.location.href = "/payment";
-      } else {
-        const errorData = await response.json();
-        alert(errorData.error || "Failed to add to cart");
-      }
+      // Immediately redirect to payment - let the payment page handle the cart state
+      // The payment page should wait for cart loading to complete before checking if empty
+      router.push("/payment");
     } catch (error) {
       console.error("Error processing buy now:", error);
-      alert("Failed to process order. Please try again.");
+      alert(error.message || "Failed to process order. Please try again.");
     } finally {
       setIsAddingToCart(false);
     }
   };
 
   const handleFavoriteToggle = async () => {
-    setIsFavorite(!isFavorite);
-    // TODO: Implement favorite API call
+    if (!session?.user) {
+      window.location.href = "/login";
+      return;
+    }
+
+    try {
+      if (isFavorite) {
+        // Remove from favorites
+        const success = await removeFromFavorites(productId);
+        if (success) {
+          setIsFavorite(false);
+          alert("Product removed from favorites!");
+        } else {
+          alert("Failed to remove from favorites. Please try again.");
+        }
+      } else {
+        // Add to favorites
+        const success = await addToFavorites(productId);
+        if (success) {
+          setIsFavorite(true);
+          alert("Product added to favorites!");
+        } else {
+          alert("Failed to add to favorites. Please try again.");
+        }
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      alert("Failed to update favorites. Please try again.");
+    }
   };
 
   const handleSubmitReview = async (e) => {
@@ -362,7 +416,7 @@ export default function ProductDetails() {
 
   // Render components based on state
   if (loading) {
-    return <LoadingComponent />;
+    return <Loading />;
   }
 
   if (responseType === "farmer" && farmer) {
@@ -372,7 +426,7 @@ export default function ProductDetails() {
   }
 
   if (!product && !farmer) {
-    return <NotFoundComponent responseType={responseType} />;
+    return <NotFound responseType={responseType} />;
   }
 
   // Main product details render
@@ -477,17 +531,17 @@ export default function ProductDetails() {
 
                       return allImages.length > 0 ? (
                         <div className="space-y-4">
-                          <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+                          <div className="aspect-video max-w-md bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
                             <Image
                               src={allImages[selectedImage]}
                               alt={product.name}
                               width={400}
-                              height={400}
+                              height={225}
                               className="w-full h-full object-cover"
                             />
                           </div>
                           {allImages.length > 1 && (
-                            <div className="grid grid-cols-5 gap-2">
+                            <div className="grid grid-cols-5 gap-2 max-w-md">
                               {allImages.map((image, index) => (
                                 <button
                                   key={index}

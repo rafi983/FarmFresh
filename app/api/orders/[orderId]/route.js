@@ -72,6 +72,50 @@ export async function PATCH(request, { params }) {
 
     console.log("Existing order found, proceeding with update...");
 
+    // Check if order status is being changed to cancelled/returned
+    const isBeingCancelled =
+      updateData.status &&
+      (updateData.status === "cancelled" || updateData.status === "returned") &&
+      existingOrder.status !== "cancelled" &&
+      existingOrder.status !== "returned";
+
+    // If order is being cancelled, restore stock
+    if (isBeingCancelled && existingOrder.items) {
+      console.log(
+        `Order ${orderId} is being cancelled/returned, restoring stock...`,
+      );
+
+      for (const item of existingOrder.items) {
+        const productId = item.productId;
+        const orderQuantity = item.quantity;
+
+        // Get current product
+        const product = await db
+          .collection("products")
+          .findOne({ _id: new ObjectId(productId) });
+
+        if (product) {
+          // Restore product stock
+          const newStock = product.stock + orderQuantity;
+          await db.collection("products").updateOne(
+            { _id: new ObjectId(productId) },
+            {
+              $set: {
+                stock: newStock,
+                updatedAt: new Date(),
+              },
+            },
+          );
+
+          console.log(
+            `Restored stock for ${item.name}: ${product.stock} -> ${newStock}`,
+          );
+        } else {
+          console.warn(`Product ${productId} not found when restoring stock`);
+        }
+      }
+    }
+
     // Check the current statusHistory structure
     const currentStatusHistory = existingOrder.statusHistory;
     console.log("Current statusHistory type:", typeof currentStatusHistory);
@@ -139,6 +183,9 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({
       message: "Order updated successfully",
       order: updatedOrder,
+      stockRestored: isBeingCancelled
+        ? "Stock has been restored for cancelled order"
+        : "No stock changes needed",
     });
   } catch (error) {
     console.error("Update order error:", error);
