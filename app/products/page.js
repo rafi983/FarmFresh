@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import Footer from "@/components/Footer";
+import { debounce } from "@/utils/debounce";
 
 export default function Products() {
   const searchParams = useSearchParams();
@@ -25,7 +26,7 @@ export default function Products() {
   const [selectedRatings, setSelectedRatings] = useState([]);
   const [selectedFarmers, setSelectedFarmers] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
-  const [priceRangeSlider, setPriceRangeSlider] = useState([0, 10000]); // Increased default max to 10000
+  const [priceRangeSlider, setPriceRangeSlider] = useState([0, 10000]);
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -58,210 +59,118 @@ export default function Products() {
     "Limited Stock",
   ];
 
-  useEffect(() => {
-    fetchProducts();
-    // Remove fetchAvailableFarmers from here to prevent unnecessary calls
-  }, [
-    searchTerm,
-    selectedCategory,
-    selectedPriceRanges,
-    selectedRatings,
-    selectedFarmers,
-    selectedTags,
-    priceRangeSlider,
-    sortBy,
-    currentPage,
-  ]);
+  const applyFilters = useCallback((products) => {
+    let filtered = [...products];
 
-  // Separate useEffect for fetching farmers (only once)
-  useEffect(() => {
-    fetchAvailableFarmers();
-  }, []); // Empty dependency array - only run once
+    // Apply price range checkboxes
+    if (selectedPriceRanges.length > 0) {
+      filtered = filtered.filter((product) => {
+        return selectedPriceRanges.some((range) => {
+          const option = priceRangeOptions.find((opt) => opt.label === range);
+          const price = parseFloat(product.price) || 0;
+          return price >= option.min && price <= option.max;
+        });
+      });
+    }
 
-  // Update URL when category changes
-  useEffect(() => {
-    updateURLWithFilters({
-      selectedCategory: selectedCategory,
+    // Apply price range slider (always apply)
+    filtered = filtered.filter((product) => {
+      const price = parseFloat(product.price) || 0;
+      return price >= priceRangeSlider[0] && price <= priceRangeSlider[1];
     });
-  }, [selectedCategory]);
 
-  useEffect(() => {
-    // Update states from URL params
-    const newSearchTerm = searchParams.get("search") || "";
-    const newCategory = searchParams.get("category") || "All Categories";
-
-    setSearchTerm(newSearchTerm);
-    setSelectedCategory(newCategory);
-
-    // Restore price ranges from URL
-    const priceRanges = searchParams.get("priceRanges");
-    if (priceRanges) {
-      const newPriceRanges = priceRanges.split(",");
-      setSelectedPriceRanges(newPriceRanges);
-    } else {
-      setSelectedPriceRanges([]);
+    // Apply rating filters
+    if (selectedRatings.length > 0) {
+      filtered = filtered.filter((product) => {
+        const productRating = parseFloat(product.averageRating) || 0;
+        return selectedRatings.some((rating) => productRating >= rating);
+      });
     }
 
-    // Restore ratings from URL
-    const ratings = searchParams.get("ratings");
-    if (ratings) {
-      const newRatings = ratings.split(",").map(Number);
-      setSelectedRatings(newRatings);
-    } else {
-      setSelectedRatings([]);
+    // Apply farmer filters
+    if (selectedFarmers.length > 0) {
+      filtered = filtered.filter((product) => {
+        const farmerName = product.farmer?.name || product.farmerName || "";
+        return selectedFarmers.includes(farmerName);
+      });
     }
 
-    // Restore farmers from URL
-    const farmers = searchParams.get("farmers");
-    if (farmers) {
-      const newFarmers = farmers.split(",");
-      setSelectedFarmers(newFarmers);
-    } else {
-      setSelectedFarmers([]);
-    }
-
-    // Restore tags from URL
-    const tags = searchParams.get("tags");
-    if (tags) {
-      const newTags = tags.split(",");
-      setSelectedTags(newTags);
-    } else {
-      setSelectedTags([]);
-    }
-
-    // Restore price range slider from URL
-    const minPrice = searchParams.get("minPrice");
-    const maxPrice = searchParams.get("maxPrice");
-    if (minPrice && maxPrice) {
-      const newPriceSlider = [Number(minPrice), Number(maxPrice)];
-      setPriceRangeSlider(newPriceSlider);
-    } else {
-      setPriceRangeSlider([0, 10000]);
-    }
-
-    // Restore sort option from URL
-    const newSort = searchParams.get("sort") || "newest";
-    setSortBy(newSort);
-
-    // Restore page from URL
-    const newPage = Number(searchParams.get("page")) || 1;
-    setCurrentPage(newPage);
-  }, [searchParams]);
-
-  const fetchAvailableFarmers = async () => {
-    try {
-      const farmers = [];
-
-      // 1. Fetch from dedicated farmers API
-      try {
-        const response = await fetch("/api/farmers?limit=1000");
-        if (response.ok) {
-          const data = await response.json();
-
-          if (data.farmers && Array.isArray(data.farmers)) {
-            data.farmers.forEach((farmer) => {
-              if (farmer.name && !farmers.includes(farmer.name)) {
-                farmers.push(farmer.name);
-              }
-            });
+    // Apply tag filters
+    if (selectedTags.length > 0) {
+      filtered = filtered.filter((product) => {
+        return selectedTags.some((tag) => {
+          switch (tag) {
+            case "Organic":
+              return product.isOrganic === true ||
+                     (product.tags && product.tags.includes("organic"));
+            case "Fresh":
+              return product.isFresh === true ||
+                     (product.tags && product.tags.includes("fresh"));
+            case "Local":
+              return true; // Assuming all products are local
+            case "Premium":
+              return parseFloat(product.price) > 200;
+            case "Seasonal":
+              return parseInt(product.stock) < 100;
+            case "Limited Stock":
+              return parseInt(product.stock) < 50;
+            default:
+              return product.tags && product.tags.includes(tag.toLowerCase());
           }
-        }
-      } catch (error) {
-        // Silent handling
-      }
+        });
+      });
+    }
 
-      // 2. Fetch newly registered farmers from users collection
-      try {
-        const usersResponse = await fetch(
-          "/api/auth/users?userType=farmer&limit=1000",
+    // Apply sorting
+    switch (sortBy) {
+      case "price-low":
+        filtered.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+        break;
+      case "price-high":
+        filtered.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+        break;
+      case "rating":
+        filtered.sort((a, b) =>
+          (parseFloat(b.averageRating) || 0) - (parseFloat(a.averageRating) || 0)
         );
-        if (usersResponse.ok) {
-          const usersData = await usersResponse.json();
-
-          if (usersData.users && Array.isArray(usersData.users)) {
-            usersData.users.forEach((user) => {
-              // Prioritize farmer's personal name over farm name
-              const farmerName =
-                user.name ||
-                `${user.firstName} ${user.lastName}` ||
-                user.farmDetails?.farmName;
-              if (farmerName && !farmers.includes(farmerName)) {
-                farmers.push(farmerName);
-              }
-            });
-          }
-        }
-      } catch (error) {
-        // Silent handling
-      }
-
-      // 3. Backup: get farmers from products API
-      try {
-        const productsResponse = await fetch("/api/products?limit=1000");
-        if (productsResponse.ok) {
-          const productsData = await productsResponse.json();
-
-          const productFarmers = [
-            ...new Set(
-              productsData.products.map((p) => p.farmer?.name).filter(Boolean),
-            ),
-          ];
-
-          // Merge farmers from products
-          productFarmers.forEach((farmerName) => {
-            if (!farmers.includes(farmerName)) {
-              farmers.push(farmerName);
-            }
-          });
-        }
-      } catch (error) {
-        // Silent handling
-      }
-
-      // Sort farmers alphabetically and update state
-      farmers.sort();
-      setAvailableFarmers(farmers);
-    } catch (error) {
-      // Ultimate fallback - at least try products API
-      try {
-        const response = await fetch("/api/products?limit=1000");
-        if (response.ok) {
-          const data = await response.json();
-          const farmers = [
-            ...new Set(
-              data.products.map((p) => p.farmer?.name).filter(Boolean),
-            ),
-          ];
-          farmers.sort();
-          setAvailableFarmers(farmers);
-        }
-      } catch (fallbackError) {
-        setAvailableFarmers([]);
-      }
+        break;
+      case "popular":
+        filtered.sort((a, b) =>
+          (parseInt(b.purchaseCount) || 0) - (parseInt(a.purchaseCount) || 0)
+        );
+        break;
+      case "newest":
+        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        break;
+      case "oldest":
+        filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        break;
+      default:
+        break;
     }
-  };
 
-  const fetchProducts = async () => {
+    return filtered;
+  }, [selectedPriceRanges, priceRangeSlider, selectedRatings, selectedFarmers, selectedTags, sortBy]);
+
+  const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (searchTerm) params.append("search", searchTerm);
       if (selectedCategory !== "All Categories")
         params.append("category", selectedCategory);
-      // Add high limit to fetch all products for client-side pagination
       params.append("limit", "1000");
       params.append("sortBy", sortBy);
 
-      const apiUrl = `/api/products?${params}`;
-      const response = await fetch(apiUrl);
+      const response = await fetch(`/api/products?${params}`);
       if (response.ok) {
-        let data = await response.json();
-        let allProducts = data.products;
+        const data = await response.json();
+        let allProducts = data.products || [];
 
-        // Apply client-side filters to all products
+        // Apply client-side filters
         let filteredProducts = applyFilters(allProducts);
 
-        // Always apply pagination regardless of filters
+        // Apply pagination
         const itemsPerPage = 12;
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
@@ -272,8 +181,7 @@ export default function Products() {
           currentPage: currentPage,
           totalPages: Math.ceil(filteredProducts.length / itemsPerPage),
           totalProducts: filteredProducts.length,
-          hasNextPage:
-            currentPage < Math.ceil(filteredProducts.length / itemsPerPage),
+          hasNextPage: currentPage < Math.ceil(filteredProducts.length / itemsPerPage),
           hasPrevPage: currentPage > 1,
         });
       }
@@ -282,94 +190,110 @@ export default function Products() {
     } finally {
       setLoading(false);
     }
+  }, [searchTerm, selectedCategory, sortBy, currentPage, applyFilters]);
+
+  const fetchAvailableFarmers = async () => {
+    try {
+      const farmers = [];
+
+      // Fetch from products API to get farmers
+      try {
+        const response = await fetch("/api/products?limit=1000");
+        if (response.ok) {
+          const data = await response.json();
+          const uniqueFarmers = [...new Set(
+            data.products
+              .map(p => p.farmer?.name || p.farmerName)
+              .filter(Boolean)
+          )];
+          farmers.push(...uniqueFarmers);
+        }
+      } catch (error) {
+        console.error("Error fetching farmers:", error);
+      }
+
+      // Sort and set farmers
+      farmers.sort();
+      setAvailableFarmers(farmers);
+    } catch (error) {
+      console.error("Error in fetchAvailableFarmers:", error);
+      setAvailableFarmers([]);
+    }
   };
 
-  const applyFilters = (products) => {
-    let filtered = [...products];
+  // Create debounced fetch function after fetchProducts is defined
+  const debouncedFetchProducts = useCallback(
+    debounce(() => {
+      fetchProducts();
+    }, 300),
+    [fetchProducts]
+  );
 
-    // Price range filters
-    if (selectedPriceRanges.length > 0) {
-      filtered = filtered.filter((product) => {
-        return selectedPriceRanges.some((range) => {
-          const option = priceRangeOptions.find((opt) => opt.label === range);
-          return product.price >= option.min && product.price <= option.max;
-        });
-      });
+  // Main effect for triggering product fetch
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  // Separate useEffect for fetching farmers (only once)
+  useEffect(() => {
+    fetchAvailableFarmers();
+  }, []);
+
+  // Update states from URL params
+  useEffect(() => {
+    const newSearchTerm = searchParams.get("search") || "";
+    const newCategory = searchParams.get("category") || "All Categories";
+
+    setSearchTerm(newSearchTerm);
+    setSelectedCategory(newCategory);
+
+    // Restore price ranges from URL
+    const priceRanges = searchParams.get("priceRanges");
+    if (priceRanges) {
+      setSelectedPriceRanges(priceRanges.split(","));
+    } else {
+      setSelectedPriceRanges([]);
     }
 
-    // Custom price range slider
-    filtered = filtered.filter((product) => {
-      const withinRange =
-        product.price >= priceRangeSlider[0] &&
-        product.price <= priceRangeSlider[1];
-      return withinRange;
-    });
-
-    // Rating filters
-    if (selectedRatings.length > 0) {
-      filtered = filtered.filter((product) => {
-        const productRating = product.averageRating || 0;
-        return selectedRatings.some((rating) => productRating >= rating);
-      });
+    // Restore ratings from URL
+    const ratings = searchParams.get("ratings");
+    if (ratings) {
+      setSelectedRatings(ratings.split(",").map(Number));
+    } else {
+      setSelectedRatings([]);
     }
 
-    // Farmer filters
-    if (selectedFarmers.length > 0) {
-      filtered = filtered.filter((product) =>
-        selectedFarmers.includes(product.farmer?.name),
-      );
+    // Restore farmers from URL
+    const farmers = searchParams.get("farmers");
+    if (farmers) {
+      setSelectedFarmers(farmers.split(","));
+    } else {
+      setSelectedFarmers([]);
     }
 
-    // Tag filters
-    if (selectedTags.length > 0) {
-      filtered = filtered.filter((product) => {
-        return selectedTags.every((tag) => {
-          switch (tag) {
-            case "Organic":
-              return product.isOrganic;
-            case "Fresh":
-              return product.isFresh;
-            case "Local":
-              return true; // Assuming all products are local
-            case "Premium":
-              return product.price > 200;
-            case "Seasonal":
-              return product.stock < 100;
-            case "Limited Stock":
-              return product.stock < 50;
-            default:
-              return false;
-          }
-        });
-      });
+    // Restore tags from URL
+    const tags = searchParams.get("tags");
+    if (tags) {
+      setSelectedTags(tags.split(","));
+    } else {
+      setSelectedTags([]);
     }
 
-    // Apply sorting
-    switch (sortBy) {
-      case "price-low":
-        filtered.sort((a, b) => a.price - b.price);
-        break;
-      case "price-high":
-        filtered.sort((a, b) => b.price - a.price);
-        break;
-      case "rating":
-        filtered.sort(
-          (a, b) => (b.averageRating || 0) - (a.averageRating || 0),
-        );
-        filtered.sort(
-          (a, b) => (b.purchaseCount || 0) - (a.purchaseCount || 0),
-        );
-        break;
-      case "newest":
-        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        break;
-      case "oldest":
-        filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-        break;
+    // Restore price range slider from URL
+    const minPrice = searchParams.get("minPrice");
+    const maxPrice = searchParams.get("maxPrice");
+    if (minPrice && maxPrice) {
+      setPriceRangeSlider([Number(minPrice), Number(maxPrice)]);
+    } else {
+      setPriceRangeSlider([0, 10000]);
     }
 
-    return filtered;
-  };
+    // Restore sort option from URL
+    setSortBy(searchParams.get("sort") || "newest");
+
+    // Restore page from URL
+    setCurrentPage(Number(searchParams.get("page")) || 1);
+  }, [searchParams]);
 
   // Handle search functionality
   const handleSearch = () => {
@@ -391,7 +315,11 @@ export default function Products() {
   const handleCategoryChange = (category) => {
     setSelectedCategory(category);
     setCurrentPage(1);
-    // Don't call updateURL here - let the useEffect handle it
+
+    // Immediate URL update like other filters
+    updateURLWithFilters({
+      selectedCategory: category,
+    });
   };
 
   const handlePriceRangeChange = (range) => {
