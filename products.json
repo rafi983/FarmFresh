@@ -522,22 +522,19 @@
     },
     "reviews": [
       {
-        "reviewId": "rev001",
-        "userName": "Jahanara",
+        "reviewer": "Jahanara",
         "rating": 5,
         "comment": "Sweet and fresh! Perfect for grilling and salads. Definitely a pantry staple now.",
         "date": "2025-07-20T10:15:00Z"
       },
       {
-        "reviewId": "rev002",
-        "userName": "Rahim",
+        "reviewer": "Rahim",
         "rating": 4,
         "comment": "Good quality corn, very juicy kernels but slightly smaller than expected.",
         "date": "2025-07-22T14:42:00Z"
       },
       {
-        "reviewId": "rev003",
-        "userName": "Nadia",
+        "reviewer": "Nadia",
         "rating": 4.5,
         "comment": "Loved the natural sweetness and freshness. Cooked it as boiled corn and it was delicious!",
         "date": "2025-07-24T09:05:00Z"
@@ -599,29 +596,25 @@
     },
     "reviews": [
       {
-        "reviewId": "rev101",
-        "userName": "Farida",
+        "reviewer": "Farida",
         "rating": 4,
         "comment": "Good quality rice with a nice nutty flavor. Takes a bit longer to cook but worth the health benefits.",
         "date": "2025-07-15T08:30:00Z"
       },
       {
-        "reviewId": "rev102",
-        "userName": "Rafiq",
+        "reviewer": "Rafiq",
         "rating": 3.5,
         "comment": "Healthy option but the texture is a bit chewy for my liking. Great for biryani though!",
         "date": "2025-07-18T12:45:00Z"
       },
       {
-        "reviewId": "rev103",
-        "userName": "Sumaiya",
+        "reviewer": "Sumaiya",
         "rating": 3.8,
         "comment": "Organic and fresh, but I wish it was a little softer after cooking. Overall, a good choice.",
         "date": "2025-07-21T10:20:00Z"
       },
       {
-        "reviewId": "rev104",
-        "userName": "Habib",
+        "reviewer": "Habib",
         "rating": 4.2,
         "comment": "Perfect for healthy meals and has a nice natural flavor. I use it regularly for my family.",
         "date": "2025-07-24T15:05:00Z"
@@ -676,22 +669,19 @@
     },
     "reviews": [
       {
-        "reviewId": "rev201",
-        "userName": "Ayesha",
+        "reviewer": "Ayesha",
         "rating": 4.5,
         "comment": "Very fresh and crisp! Tasted amazing in my chicken wrap. Will definitely buy again.",
         "date": "2025-07-20T09:12:00Z"
       },
       {
-        "reviewId": "rev202",
-        "userName": "Mehedi Hasan",
+        "reviewer": "Mehedi Hasan",
         "rating": 4.2,
         "comment": "Good quality organic lettuce. Stayed fresh for 3 days in the fridge. Great for salads.",
         "date": "2025-07-22T14:50:00Z"
       },
       {
-        "reviewId": "rev203",
-        "userName": "Nasrin Akter",
+        "reviewer": "Nasrin Akter",
         "rating": 4.6,
         "comment": "Very clean and no signs of chemicals. My kids love it in their sandwiches!",
         "date": "2025-07-25T17:30:00Z"
@@ -747,22 +737,19 @@
     },
     "reviews": [
       {
-        "reviewId": "rev301",
-        "userName": "Shafiq Ahmed",
+        "reviewer": "Shafiq Ahmed",
         "rating": 4.0,
         "comment": "These potatoes are great for mashed dishes and fries. Very fresh and clean.",
         "date": "2025-07-21T10:45:00Z"
       },
       {
-        "reviewId": "rev302",
-        "userName": "Tanjina Yasmin",
+        "reviewer": "Tanjina Yasmin",
         "rating": 4.3,
         "comment": "Good value for money. The size was consistent and they cooked well.",
         "date": "2025-07-23T16:20:00Z"
       },
       {
-        "reviewId": "rev303",
-        "userName": "Habibur Rahman",
+        "reviewer": "Habibur Rahman",
         "rating": 4.4,
         "comment": "Stayed fresh for weeks. Loved using them in curries and bharta.",
         "date": "2025-07-26T08:55:00Z"
@@ -818,22 +805,19 @@
     },
     "reviews": [
       {
-        "reviewId": "rev401",
-        "userName": "Sumaiya Hossain",
+        "reviewer": "Sumaiya Hossain",
         "rating": 4.9,
         "comment": "One of the juiciest pineapples I’ve ever had. So sweet and fresh — it reminded me of my childhood summers!",
         "date": "2025-07-25T09:12:00Z"
       },
       {
-        "reviewId": "rev402",
-        "userName": "Raihan Chowdhury",
+        "reviewer": "Raihan Chowdhury",
         "rating": 4.7,
         "comment": "Excellent flavor and very fragrant. Great for smoothies. I just wish the pieces were a little bigger.",
         "date": "2025-07-26T18:45:00Z"
       },
       {
-        "reviewId": "rev403",
-        "userName": "Nafisa Binte Karim",
+        "reviewer": "Nafisa Binte Karim",
         "rating": 4.8,
         "comment": "Perfect balance of sweet and tangy. Loved it in my fruit salad. Will definitely reorder!",
         "date": "2025-07-27T13:35:00Z"
@@ -887,22 +871,19 @@
     },
     "reviews": [
       {
-        "reviewId": "rev501",
-        "userName": "Hasibul Alam",
+        "reviewer": "Hasibul Alam",
         "rating": 4.4,
         "comment": "Crisp and sweet! The guavas arrived fresh and smelled amazing. My whole family enjoyed them.",
         "date": "2025-07-26T11:05:00Z"
       },
       {
-        "reviewId": "rev502",
-        "userName": "Tania Nahar",
+        "reviewer": "Tania Nahar",
         "rating": 4.2,
         "comment": "Really fresh and flavorful. Great for making guava juice. I just wish the size was a bit more uniform.",
         "date": "2025-07-27T16:32:00Z"
       },
       {
-        "reviewId": "rev503",
-        "userName": "Rafid Mahmud",
+        "reviewer": "Rafid Mahmud",
         "rating": 4.3,
         "comment": "Excellent quality. Loved the crunch and natural sweetness. Will definitely buy again from Farm 46.",
         "date": "2025-07-28T09:20:00Z"
@@ -956,22 +937,19 @@
     },
     "reviews": [
       {
-        "reviewId": "rev601",
-        "userName": "Farzana Hossain",
+        "reviewer": "Farzana Hossain",
         "rating": 4.7,
         "comment": "The mint was incredibly fresh and fragrant! I used it in my tea and chutney — made everything taste amazing.",
         "date": "2025-07-26T08:10:00Z"
       },
       {
-        "reviewId": "rev602",
-        "userName": "Md. Nahid Hasan",
+        "reviewer": "Md. Nahid Hasan",
         "rating": 4.5,
         "comment": "Very clean and vibrant leaves. The aroma filled my kitchen the moment I opened the packet. Highly recommended!",
         "date": "2025-07-27T12:44:00Z"
       },
       {
-        "reviewId": "rev603",
-        "userName": "Shirin Akter",
+        "reviewer": "Shirin Akter",
         "rating": 4.6,
         "comment": "Perfect for garnish and flavoring dishes. Stays fresh longer than other brands I’ve tried. Will reorder soon!",
         "date": "2025-07-28T09:30:00Z"
@@ -1025,22 +1003,19 @@
     },
     "reviews": [
       {
-        "reviewId": "rev701",
-        "userName": "Shamim Alam",
+        "reviewer": "Shamim Alam",
         "rating": 4.5,
         "comment": "Perfectly ripe and sweet. These bananas are great for smoothies and taste even better than store-bought ones.",
         "date": "2025-07-26T09:20:00Z"
       },
       {
-        "reviewId": "rev702",
-        "userName": "Nazma Sultana",
+        "reviewer": "Nazma Sultana",
         "rating": 4.6,
         "comment": "Arrived fresh and in great condition. The kids love them as snacks. Will be ordering again!",
         "date": "2025-07-27T11:42:00Z"
       },
       {
-        "reviewId": "rev703",
-        "userName": "Ashiqur Rahman",
+        "reviewer": "Ashiqur Rahman",
         "rating": 4.4,
         "comment": "Good value and fresh. A couple of bananas were slightly overripe but still delicious.",
         "date": "2025-07-28T10:15:00Z"
@@ -1092,22 +1067,19 @@
     },
     "reviews": [
       {
-        "reviewId": "rev801",
-        "userName": "Taslima Akter",
+        "reviewer": "Taslima Akter",
         "rating": 4.3,
         "comment": "Absolutely pure and fragrant! I use it in my morning tea, and it enhances the flavor wonderfully.",
         "date": "2025-07-26T08:12:00Z"
       },
       {
-        "reviewId": "rev802",
-        "userName": "Hasibul Hasan",
+        "reviewer": "Hasibul Hasan",
         "rating": 4.1,
         "comment": "You can really tell this honey is natural. Great quality and value for the price.",
         "date": "2025-07-27T15:00:00Z"
       },
       {
-        "reviewId": "rev803",
-        "userName": "Mahmuda Chowdhury",
+        "reviewer": "Mahmuda Chowdhury",
         "rating": 4.2,
         "comment": "Tastes amazing and works great in home remedies. Will definitely reorder!",
         "date": "2025-07-28T10:34:00Z"
@@ -1229,22 +1201,19 @@
     },
     "reviews": [
       {
-        "reviewId": "rev1101",
-        "userName": "Jannatul Ferdous",
+        "reviewer": "Jannatul Ferdous",
         "rating": 4.5,
         "comment": "The aroma is incredible! I use it in my herbal tea and even for skincare. So pure and fresh!",
         "date": "2025-07-24T09:30:00Z"
       },
       {
-        "reviewId": "rev1102",
-        "userName": "Tanvir Ahmed",
+        "reviewer": "Tanvir Ahmed",
         "rating": 3.8,
         "comment": "Good quality and packaging, but a bit sweeter than expected. Still love that it's natural and local.",
         "date": "2025-07-25T14:55:00Z"
       },
       {
-        "reviewId": "rev1103",
-        "userName": "Razia Sultana",
+        "reviewer": "Razia Sultana",
         "rating": 4.2,
         "comment": "One of the best forest honeys I've tasted. Smooth, aromatic, and perfect for toast or warm water!",
         "date": "2025-07-26T08:10:00Z"
@@ -1298,22 +1267,19 @@
     },
     "reviews": [
       {
-        "reviewId": "rev1201",
-        "userName": "Nazia Rahman",
+        "reviewer": "Nazia Rahman",
         "rating": 4.0,
         "comment": "Very creamy and delicious! Great in sandwiches and melts well when heated. Will buy again!",
         "date": "2025-07-23T11:10:00Z"
       },
       {
-        "reviewId": "rev1202",
-        "userName": "Mahmudul Hasan",
+        "reviewer": "Mahmudul Hasan",
         "rating": 3.5,
         "comment": "Good texture but a bit too mild in flavor for my taste. Works best with spicy dishes.",
         "date": "2025-07-24T18:45:00Z"
       },
       {
-        "reviewId": "rev1203",
-        "userName": "Afsana Jahan",
+        "reviewer": "Afsana Jahan",
         "rating": 3.8,
         "comment": "Fresh and organic as promised. My kids love it on toast. Packaging could be better though.",
         "date": "2025-07-26T09:22:00Z"
@@ -1437,19 +1403,19 @@
     },
     "reviews": [
       {
-        "username": "Farhana S.",
+        "reviewer": "Farhana S.",
         "rating": 5,
         "date": "2025-07-15",
         "comment": "Absolutely loved this basmati rice! The aroma and fluffiness made my biryani stand out. Highly recommend for any rice lover."
       },
       {
-        "username": "Jahid M.",
+        "reviewer": "Jahid M.",
         "rating": 4,
         "date": "2025-07-18",
         "comment": "Good quality rice with a nice fragrance. Cooked perfectly and tastes great, though a bit pricey."
       },
       {
-        "username": "Rina K.",
+        "reviewer": "Rina K.",
         "rating": 5,
         "date": "2025-07-20",
         "comment": "This rice is the best I've had from local farms. Perfect for special dishes and everyday meals alike."
@@ -1503,19 +1469,19 @@
     },
     "reviews": [
       {
-        "username": "Hasan R.",
+        "reviewer": "Hasan R.",
         "rating": 5,
         "date": "2025-07-19",
         "comment": "These tomatoes are incredibly fresh and juicy. Perfect for making rich curries!"
       },
       {
-        "username": "Nusrat J.",
+        "reviewer": "Nusrat J.",
         "rating": 4,
         "date": "2025-07-22",
         "comment": "Bright color and good taste. They add a nice tang to my salads."
       },
       {
-        "username": "Sajid A.",
+        "reviewer": "Sajid A.",
         "rating": 4,
         "date": "2025-07-25",
         "comment": "Good quality tomatoes, though a bit soft when delivered. Still excellent for sauces."
@@ -1568,19 +1534,19 @@
     },
     "reviews": [
       {
-        "username": "Mona K.",
+        "reviewer": "Mona K.",
         "rating": 5,
         "date": "2025-07-20",
         "comment": "Absolutely delicious mangoes! Sweet, juicy, and fragrant. Highly recommend."
       },
       {
-        "username": "Arif S.",
+        "reviewer": "Arif S.",
         "rating": 5,
         "date": "2025-07-23",
         "comment": "The texture is so smooth and the flavor is amazing. Best Himsagar I've had in years."
       },
       {
-        "username": "Rina B.",
+        "reviewer": "Rina B.",
         "rating": 4,
         "date": "2025-07-26",
         "comment": "Very tasty and fresh. A little pricey but worth every penny for the quality."
@@ -1632,19 +1598,19 @@
     },
     "reviews": [
       {
-        "username": "Tania R.",
+        "reviewer": "Tania R.",
         "rating": 5,
         "date": "2025-07-22",
         "comment": "The freshest milk I've had in a long time! Perfect for my family."
       },
       {
-        "username": "Sabbir H.",
+        "reviewer": "Sabbir H.",
         "rating": 4,
         "date": "2025-07-25",
         "comment": "Good quality milk with rich taste. Slightly pricey but worth it."
       },
       {
-        "username": "Joya M.",
+        "reviewer": "Joya M.",
         "rating": 5,
         "date": "2025-07-27",
         "comment": "Love the creamy texture and freshness. Highly recommend!"
@@ -1693,19 +1659,19 @@
     },
     "reviews": [
       {
-        "username": "Rima S.",
+        "reviewer": "Rima S.",
         "rating": 5,
         "date": "2025-07-22",
         "comment": "Very fresh and aromatic coriander. Adds great flavor to my dishes."
       },
       {
-        "username": "Jamal K.",
+        "reviewer": "Jamal K.",
         "rating": 4,
         "date": "2025-07-24",
         "comment": "Good quality leaves, stayed fresh longer than expected."
       },
       {
-        "username": "Anika F.",
+        "reviewer": "Anika F.",
         "rating": 5,
         "date": "2025-07-26",
         "comment": "Love the organic quality and freshness. Perfect for garnishing."
@@ -1755,19 +1721,19 @@
     },
     "reviews": [
       {
-        "username": "Hasan M.",
+        "reviewer": "Hasan M.",
         "rating": 5,
         "date": "2025-07-20",
         "comment": "Excellent quality lentils, cooks well and tastes great."
       },
       {
-        "username": "Nazia R.",
+        "reviewer": "Nazia R.",
         "rating": 4,
         "date": "2025-07-22",
         "comment": "Good lentils with a fresh taste, perfect for dal."
       },
       {
-        "username": "Rahim U.",
+        "reviewer": "Rahim U.",
         "rating": 4,
         "date": "2025-07-25",
         "comment": "Decent lentils, consistent quality and affordable price."
@@ -1817,19 +1783,19 @@
     },
     "reviews": [
       {
-        "username": "Amina H.",
+        "reviewer": "Amina H.",
         "rating": 5,
         "date": "2025-07-21",
         "comment": "Very fresh and crisp green beans. Perfect for my salads!"
       },
       {
-        "username": "Jahid S.",
+        "reviewer": "Jahid S.",
         "rating": 4,
         "date": "2025-07-24",
         "comment": "Good quality beans with nice texture, though a bit pricey."
       },
       {
-        "username": "Lina K.",
+        "reviewer": "Lina K.",
         "rating": 4,
         "date": "2025-07-26",
         "comment": "Loved the freshness and flavor, great for stir-fries."
@@ -1878,19 +1844,19 @@
     },
     "reviews": [
       {
-        "username": "Rana M.",
+        "reviewer": "Rana M.",
         "rating": 5,
         "date": "2025-07-20",
         "comment": "Delicious and sweet jackfruits! Very fresh and juicy."
       },
       {
-        "username": "Shumi B.",
+        "reviewer": "Shumi B.",
         "rating": 4,
         "date": "2025-07-23",
         "comment": "Good quality jackfruit, but a few pieces were a bit overripe."
       },
       {
-        "username": "Hasan K.",
+        "reviewer": "Hasan K.",
         "rating": 4,
         "date": "2025-07-25",
         "comment": "Great taste and aroma. Perfect for desserts and snacks."
@@ -1941,19 +1907,19 @@
     },
     "reviews": [
       {
-        "username": "Anika R.",
+        "reviewer": "Anika R.",
         "rating": 5,
         "date": "2025-07-21",
         "comment": "Absolutely pure and delicious honey. Love the natural sweetness and aroma!"
       },
       {
-        "username": "Jamal H.",
+        "reviewer": "Jamal H.",
         "rating": 4,
         "date": "2025-07-24",
         "comment": "Great quality honey with a unique flavor from the mangroves. Perfect for my tea."
       },
       {
-        "username": "Rina S.",
+        "reviewer": "Rina S.",
         "rating": 5,
         "date": "2025-07-26",
         "comment": "Very fresh and natural. The texture and taste are amazing, highly recommend."
@@ -2013,17 +1979,17 @@
     },
     "reviews": [
       {
-        "user": "Anika Rahman",
+        "reviewer": "Anika Rahman",
         "rating": 5,
         "comment": "Excellent creamy texture and fresh taste. Perfect for breakfast smoothies! I feel it really helps my digestion because of the probiotics."
       },
       {
-        "user": "Jahid Hasan",
+        "reviewer": "Jahid Hasan",
         "rating": 4,
         "comment": "Good quality yogurt, very fresh and natural. I prefer it a bit tangier but it’s perfect for making desserts and raitas."
       },
       {
-        "user": "Moushumi Sultana",
+        "reviewer": "Moushumi Sultana",
         "rating": 5,
         "comment": "Love the local flavor and the freshness. No preservatives, so it tastes pure and natural. My kids enjoy it every day."
       }
@@ -2084,17 +2050,17 @@
     },
     "reviews": [
       {
-        "user": "Farhana Akhter",
+        "reviewer": "Farhana Akhter",
         "rating": 5,
         "comment": "Absolutely fresh and fragrant basil leaves! They elevate the taste of my dishes and last long when stored properly."
       },
       {
-        "user": "Tariq Mahmud",
+        "reviewer": "Tariq Mahmud",
         "rating": 4,
         "comment": "Good quality basil, very aromatic and clean. Would love if the bunch was a bit bigger but overall very satisfied."
       },
       {
-        "user": "Lina Chowdhury",
+        "reviewer": "Lina Chowdhury",
         "rating": 5,
         "comment": "Perfect for my homemade pesto and salads. Organic and pesticide-free, I trust these leaves for healthy cooking."
       }
@@ -2155,17 +2121,17 @@
     },
     "reviews": [
       {
-        "user": "Jamal Uddin",
+        "reviewer": "Jamal Uddin",
         "rating": 5,
         "comment": "Excellent quality barley! Perfect for my homemade soups and porridge. Clean and fresh every time."
       },
       {
-        "user": "Nusrat Jahan",
+        "reviewer": "Nusrat Jahan",
         "rating": 4,
         "comment": "Good barley grain, cooks well and tastes great in my brewing experiments. Would prefer organic though."
       },
       {
-        "user": "Farid Ahmed",
+        "reviewer": "Farid Ahmed",
         "rating": 4,
         "comment": "Fresh and locally sourced, this barley has good texture and flavor. Packaging could be improved."
       }
@@ -2224,17 +2190,17 @@
     },
     "reviews": [
       {
-        "user": "Sadia Rahman",
+        "reviewer": "Sadia Rahman",
         "rating": 5,
         "comment": "These eggplants were fresh and perfect for my traditional curry recipes. The quality is consistent every time."
       },
       {
-        "user": "Rafiq Hasan",
+        "reviewer": "Rafiq Hasan",
         "rating": 4,
         "comment": "Good quality and firm eggplants, cooked well and tasted fresh. Would love to see a bit larger size next time."
       },
       {
-        "user": "Anika Sultana",
+        "reviewer": "Anika Sultana",
         "rating": 4,
         "comment": "Organic and fresh product. The texture was great, and it added excellent flavor to my grilled dishes."
       }
@@ -2293,17 +2259,17 @@
     },
     "reviews": [
       {
-        "user": "Taslima Akter",
+        "reviewer": "Taslima Akter",
         "rating": 5,
         "comment": "The pomegranates were very fresh and juicy. Loved the natural sweetness and the freshness was unmatched."
       },
       {
-        "user": "Jahidul Islam",
+        "reviewer": "Jahidul Islam",
         "rating": 4,
         "comment": "Great quality fruits, perfect for making fresh juice. A bit pricey but worth it for the taste."
       },
       {
-        "user": "Roksana Parvin",
+        "reviewer": "Roksana Parvin",
         "rating": 4,
         "comment": "Bright red and delicious. The seeds were juicy and had a perfect balance of sweet and tart flavors."
       }
@@ -2358,17 +2324,17 @@
     },
     "reviews": [
       {
-        "user": "Fatema Begum",
+        "reviewer": "Fatema Begum",
         "rating": 5,
         "comment": "The mustard honey has a wonderful floral taste and a lovely aroma. Perfectly natural and pure. Highly recommended!"
       },
       {
-        "user": "Javed Khan",
+        "reviewer": "Javed Khan",
         "rating": 4.5,
         "comment": "Great quality honey, rich and smooth texture. It works great in tea and as a natural sweetener."
       },
       {
-        "user": "Sadia Rahman",
+        "reviewer": "Sadia Rahman",
         "rating": 4.8,
         "comment": "Very pure and fresh honey. I love its health benefits and the natural sweetness it adds to my dishes."
       }
@@ -2423,17 +2389,17 @@
     },
     "reviews": [
       {
-        "user": "Rashed Alam",
+        "reviewer": "Rashed Alam",
         "rating": 5,
         "comment": "The butter has an amazing creamy texture and pure fresh taste. Perfect for my baking needs!"
       },
       {
-        "user": "Nusrat Jahan",
+        "reviewer": "Nusrat Jahan",
         "rating": 4.3,
         "comment": "Good quality organic butter. Great flavor and texture, makes cooking richer."
       },
       {
-        "user": "Tariq Hossain",
+        "reviewer": "Tariq Hossain",
         "rating": 4.6,
         "comment": "Very fresh and natural butter from local farmers. I appreciate the organic sourcing."
       }
@@ -2485,17 +2451,17 @@
     },
     "reviews": [
       {
-        "user": "Shahriar Rahman",
+        "reviewer": "Shahriar Rahman",
         "rating": 5,
         "comment": "Extremely fresh parsley with a strong aroma. Perfect for my salads and garnishes."
       },
       {
-        "user": "Anika Sultana",
+        "reviewer": "Anika Sultana",
         "rating": 4.5,
         "comment": "Good quality and very aromatic. Adds great flavor to my cooking."
       },
       {
-        "user": "Fahim Chowdhury",
+        "reviewer": "Fahim Chowdhury",
         "rating": 4.3,
         "comment": "Fresh and organic parsley. Definitely supports local farmers."
       }
@@ -2547,17 +2513,17 @@
     },
     "reviews": [
       {
-        "user": "Sadia Islam",
+        "reviewer": "Sadia Islam",
         "rating": 4.5,
         "comment": "Great quality millet, cooks nicely and tastes good in my porridge."
       },
       {
-        "user": "Rashid Khan",
+        "reviewer": "Rashid Khan",
         "rating": 4.0,
         "comment": "Good value for money, fresh and clean grains. Perfect for gluten-free recipes."
       },
       {
-        "user": "Nusrat Jahan",
+        "reviewer": "Nusrat Jahan",
         "rating": 4.2,
         "comment": "Love the taste and texture, very versatile and healthy option."
       }
@@ -2611,17 +2577,17 @@
     },
     "reviews": [
       {
-        "user": "Fahmida Rahman",
+        "reviewer": "Fahmida Rahman",
         "rating": 4.5,
         "comment": "Fresh and tender okra, cooks well in my curries. Great quality!"
       },
       {
-        "user": "Imran Hossain",
+        "reviewer": "Imran Hossain",
         "rating": 4.2,
         "comment": "Nice texture and flavor. The okra stays fresh for days when refrigerated properly."
       },
       {
-        "user": "Laila Ahmed",
+        "reviewer": "Laila Ahmed",
         "rating": 4.6,
         "comment": "Love the organic quality and freshness. Perfect for stir-fries and soups."
       }
@@ -2676,17 +2642,17 @@
     },
     "reviews": [
       {
-        "user": "Anika Sultana",
+        "reviewer": "Anika Sultana",
         "rating": 4.7,
         "comment": "The watermelons were incredibly sweet and fresh! Perfect for hot days."
       },
       {
-        "user": "Rafiq Hasan",
+        "reviewer": "Rafiq Hasan",
         "rating": 4.3,
         "comment": "Good quality and very juicy. Delivered fresh and well-packaged."
       },
       {
-        "user": "Maya Chowdhury",
+        "reviewer": "Maya Chowdhury",
         "rating": 4.5,
         "comment": "Loved the local taste and texture. Great for juices and salads."
       }
@@ -2813,3 +2779,4 @@
     ]
   }
 ]
+
