@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -16,7 +16,18 @@ export default function FarmerOrders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
-  const ordersPerPage = 10;
+
+  // Enhanced state for new features
+  const [selectedOrders, setSelectedOrders] = useState([]);
+  const [viewMode, setViewMode] = useState("detailed"); // 'detailed', 'compact'
+  const [sortBy, setSortBy] = useState("newest");
+  const [dateRange, setDateRange] = useState({ start: "", end: "" });
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const intervalRef = useRef(null);
+
+  const ordersPerPage = viewMode === "compact" ? 20 : 10;
 
   // Memoize the filterOrders function to prevent infinite re-renders
   const filterOrders = useCallback(() => {
@@ -46,14 +57,66 @@ export default function FarmerOrders() {
       });
     }
 
+    // Apply date range filter
+    if (dateRange.start) {
+      filtered = filtered.filter(
+        (order) => new Date(order.createdAt) >= new Date(dateRange.start),
+      );
+    }
+    if (dateRange.end) {
+      filtered = filtered.filter(
+        (order) => new Date(order.createdAt) <= new Date(dateRange.end),
+      );
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "newest":
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        case "oldest":
+          return new Date(a.createdAt) - new Date(b.createdAt);
+        case "highest-value":
+          return (
+            (b.farmerSubtotal || b.total || 0) -
+            (a.farmerSubtotal || a.total || 0)
+          );
+        case "lowest-value":
+          return (
+            (a.farmerSubtotal || a.total || 0) -
+            (b.farmerSubtotal || b.total || 0)
+          );
+        case "customer-name":
+          return (a.customerName || "").localeCompare(b.customerName || "");
+        default:
+          return 0;
+      }
+    });
+
     setFilteredOrders(filtered);
     setCurrentPage(1);
-  }, [orders, statusFilter, searchTerm]);
+  }, [orders, statusFilter, searchTerm, dateRange, sortBy]);
 
   // Apply filters whenever dependencies change
   useEffect(() => {
     filterOrders();
   }, [filterOrders]);
+
+  // Auto-refresh functionality
+  useEffect(() => {
+    if (autoRefresh) {
+      intervalRef.current = setInterval(fetchOrders, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh]);
 
   const fetchOrders = useCallback(async () => {
     if (!session?.user) return;
@@ -62,16 +125,9 @@ export default function FarmerOrders() {
       const userId = session.user.userId || session.user.id || session.user._id;
       const userEmail = session.user.email;
 
-      // Fetch orders for this farmer using farmerId and farmerEmail parameters
       const params = new URLSearchParams();
       if (userId) params.append("farmerId", userId);
       if (userEmail) params.append("farmerEmail", userEmail);
-
-      console.log("Farmer orders page - fetching with params:", {
-        farmerId: userId,
-        farmerEmail: userEmail,
-        url: `/api/orders?${params.toString()}`,
-      });
 
       const response = await fetch(`/api/orders?${params.toString()}`, {
         cache: "no-store",
@@ -83,22 +139,14 @@ export default function FarmerOrders() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Farmer orders API response:", data);
-        console.log("Farmer orders fetched:", data.orders?.length || 0);
-        console.log("Sample orders:", data.orders?.slice(0, 2));
 
-        // Log the structure of orders to see what data we have
-        if (data.orders && data.orders.length > 0) {
-          console.log("First order structure:", {
-            _id: data.orders[0]._id,
-            customerName: data.orders[0].customerName,
-            customerEmail: data.orders[0].customerEmail,
-            status: data.orders[0].status,
-            items: data.orders[0].items?.length || 0,
-            farmerIds: data.orders[0].farmerIds,
-            farmerEmails: data.orders[0].farmerEmails,
-            createdAt: data.orders[0].createdAt,
-          });
+        // Check for new orders for notifications
+        if (orders.length > 0 && data.orders.length > orders.length) {
+          const newOrdersCount = data.orders.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
         }
 
         setOrders(data.orders || []);
@@ -112,11 +160,134 @@ export default function FarmerOrders() {
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, [session, orders.length]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  // Notification system
+  const addNotification = (message, type = "info") => {
+    const id = Date.now();
+    setNotifications((prev) => [
+      ...prev,
+      { id, message, type, timestamp: new Date() },
+    ]);
+    setTimeout(() => {
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    }, 5000);
+  };
+
+  // Bulk operations
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      alert("Please select orders to update");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const updatePromises = selectedOrders.map((orderId) =>
+        fetch(`/api/orders/${orderId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: newStatus,
+            statusHistory: {
+              status: newStatus,
+              timestamp: new Date().toISOString(),
+              updatedBy: session.user.email || session.user.name,
+            },
+          }),
+        }),
+      );
+
+      const results = await Promise.all(updatePromises);
+      const successCount = results.filter((r) => r.ok).length;
+
+      if (successCount === selectedOrders.length) {
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount}/${selectedOrders.length} orders updated`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    }
+  };
+
+  // Export functionality
+  const exportOrders = (format) => {
+    const dataToExport =
+      selectedOrders.length > 0
+        ? filteredOrders.filter((order) => selectedOrders.includes(order._id))
+        : filteredOrders;
+
+    if (format === "csv") {
+      const csv = convertToCSV(dataToExport);
+      downloadFile(csv, "orders.csv", "text/csv");
+    } else if (format === "json") {
+      const json = JSON.stringify(dataToExport, null, 2);
+      downloadFile(json, "orders.json", "application/json");
+    }
+    setShowExportModal(false);
+  };
+
+  const convertToCSV = (data) => {
+    const headers = [
+      "Order ID",
+      "Customer Name",
+      "Customer Email",
+      "Status",
+      "Total",
+      "Date",
+      "Items Count",
+    ];
+    const csvData = data.map((order) => [
+      order._id?.slice(-8)?.toUpperCase() || "N/A",
+      order.customerName || "",
+      order.customerEmail || "",
+      order.status || "",
+      order.farmerSubtotal || order.total || 0,
+      new Date(order.createdAt).toLocaleDateString(),
+      order.items?.length || 0,
+    ]);
+
+    return [headers, ...csvData].map((row) => row.join(",")).join("\n");
+  };
+
+  const downloadFile = (content, filename, mimeType) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const handleStatusChange = (e) => {
     setStatusFilter(e.target.value);
@@ -200,9 +371,10 @@ export default function FarmerOrders() {
           cancelled: "Order cancelled. Customer has been notified.",
         };
 
-        alert(
+        addNotification(
           successMessages[newStatus] ||
             `Order status updated to ${newStatus} successfully!`,
+          "success",
         );
       } else {
         const errorData = await response.json();
@@ -210,7 +382,10 @@ export default function FarmerOrders() {
       }
     } catch (error) {
       console.error("Error updating order status:", error);
-      alert(`Failed to update order status: ${error.message}`);
+      addNotification(
+        `Failed to update order status: ${error.message}`,
+        "error",
+      );
     }
   };
 
@@ -218,6 +393,7 @@ export default function FarmerOrders() {
     setRefreshing(true);
     await fetchOrders();
     setRefreshing(false);
+    addNotification("Orders refreshed successfully!", "success");
   };
 
   const formatPrice = (price) => {
@@ -354,9 +530,9 @@ export default function FarmerOrders() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <i className="fas fa-spinner fa-spin text-4xl text-green-600 mb-4"></i>
-          <p className="text-gray-600 dark:text-gray-400">
-            Loading your orders...
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">
+            Loading your enhanced orders dashboard...
           </p>
         </div>
       </div>
@@ -367,59 +543,185 @@ export default function FarmerOrders() {
 
   return (
     <>
+      {/* Notification System */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {notifications.map((notification) => (
+          <div
+            key={notification.id}
+            className={`px-6 py-4 rounded-lg shadow-lg text-white transform transition-all duration-500 ${
+              notification.type === "success"
+                ? "bg-green-600"
+                : notification.type === "error"
+                  ? "bg-red-600"
+                  : notification.type === "warning"
+                    ? "bg-yellow-600"
+                    : "bg-blue-600"
+            }`}
+          >
+            <div className="flex items-center">
+              <i
+                className={`fas ${
+                  notification.type === "success"
+                    ? "fa-check-circle"
+                    : notification.type === "error"
+                      ? "fa-exclamation-circle"
+                      : notification.type === "warning"
+                        ? "fa-exclamation-triangle"
+                        : "fa-info-circle"
+                } mr-2`}
+              ></i>
+              {notification.message}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-md w-full mx-4">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              Export Orders
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              {selectedOrders.length > 0
+                ? `Export ${selectedOrders.length} selected orders`
+                : `Export all ${filteredOrders.length} filtered orders`}
+            </p>
+            <div className="flex space-x-4">
+              <button
+                onClick={() => exportOrders("csv")}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition"
+              >
+                <i className="fas fa-file-csv mr-2"></i>
+                Export as CSV
+              </button>
+              <button
+                onClick={() => exportOrders("json")}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition"
+              >
+                <i className="fas fa-file-code mr-2"></i>
+                Export as JSON
+              </button>
+            </div>
+            <button
+              onClick={() => setShowExportModal(false)}
+              className="w-full mt-4 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg font-medium transition"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-        {/* Breadcrumb */}
+        {/* Enhanced Breadcrumb with Real-time Indicators */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <nav className="flex" aria-label="Breadcrumb">
-            <ol className="flex items-center space-x-2 text-sm">
-              <li>
-                <Link href="/" className="text-gray-500 hover:text-green-600">
-                  Home
-                </Link>
-              </li>
-              <li>
-                <i className="fas fa-chevron-right text-gray-400 text-xs"></i>
-              </li>
-              <li>
-                <Link
-                  href="/manage"
-                  className="text-gray-500 hover:text-green-600"
-                >
-                  Manage
-                </Link>
-              </li>
-              <li>
-                <i className="fas fa-chevron-right text-gray-400 text-xs"></i>
-              </li>
-              <li className="text-gray-900 dark:text-white">
-                Order Management
-              </li>
-            </ol>
-          </nav>
+          <div className="flex justify-between items-center">
+            <nav className="flex" aria-label="Breadcrumb">
+              <ol className="flex items-center space-x-2 text-sm">
+                <li>
+                  <Link
+                    href="/"
+                    className="text-gray-500 hover:text-green-600 transition"
+                  >
+                    <i className="fas fa-home mr-1"></i>Home
+                  </Link>
+                </li>
+                <li>
+                  <i className="fas fa-chevron-right text-gray-400 text-xs"></i>
+                </li>
+                <li>
+                  <Link
+                    href="/manage"
+                    className="text-gray-500 hover:text-green-600 transition"
+                  >
+                    <i className="fas fa-cog mr-1"></i>Manage
+                  </Link>
+                </li>
+                <li>
+                  <i className="fas fa-chevron-right text-gray-400 text-xs"></i>
+                </li>
+                <li className="text-gray-900 dark:text-white font-medium">
+                  <i className="fas fa-chart-line mr-1"></i>Advanced Order
+                  Management
+                </li>
+              </ol>
+            </nav>
+
+            {/* Real-time Status Indicator */}
+            <div className="flex items-center space-x-2">
+              <div
+                className={`w-3 h-3 rounded-full ${autoRefresh ? "bg-green-500 animate-pulse" : "bg-gray-400"}`}
+              ></div>
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {autoRefresh ? "Live" : "Static"}
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Page Header */}
+        {/* Enhanced Page Header with Quick Actions */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Order Management
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                Manage and track all orders for your products
-              </p>
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8">
+            <div className="flex items-center space-x-4">
+              <div className="bg-gradient-to-r from-green-600 to-blue-600 p-4 rounded-2xl">
+                <i className="fas fa-chart-line text-white text-2xl"></i>
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  Advanced Order Management
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-2">
+                  Comprehensive order tracking and analytics dashboard
+                </p>
+                <div className="flex items-center space-x-4 mt-2">
+                  <span className="text-sm text-gray-500">
+                    Last updated: {new Date().toLocaleTimeString()}
+                  </span>
+                  {autoRefresh && (
+                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                      Auto-refresh enabled
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="mt-4 sm:mt-0 flex space-x-3">
+
+            <div className="mt-6 lg:mt-0 flex flex-wrap gap-3">
+              <button
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                className={`inline-flex items-center px-4 py-3 rounded-lg font-medium transition ${
+                  autoRefresh
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : "bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                }`}
+              >
+                <i
+                  className={`fas ${autoRefresh ? "fa-pause" : "fa-play"} mr-2`}
+                ></i>
+                {autoRefresh ? "Pause" : "Auto"} Refresh
+              </button>
+
+              <button
+                onClick={() => setShowExportModal(true)}
+                className="inline-flex items-center px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition"
+              >
+                <i className="fas fa-download mr-2"></i>
+                Export
+              </button>
+
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
                 className="inline-flex items-center px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition"
               >
                 <i
-                  className={`fas fa-sync-alt mr-2 ${refreshing ? "fa-spin" : ""}`}
+                  className={`fas fa-sync-alt mr-2 ${refreshing ? "animate-spin" : ""}`}
                 ></i>
                 Refresh
               </button>
+
               <Link
                 href="/manage"
                 className="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition"
@@ -430,115 +732,124 @@ export default function FarmerOrders() {
             </div>
           </div>
 
-          {/* Order Summary Cards */}
+          {/* Enhanced Order Summary Cards with Animations */}
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                  <i className="fas fa-shopping-cart text-gray-600 dark:text-gray-300"></i>
+            {Object.entries(orderSummary).map(([key, value], index) => {
+              const config = {
+                total: {
+                  icon: "fa-shopping-cart",
+                  color: "gray",
+                  label: "Total",
+                },
+                pending: {
+                  icon: "fa-clock",
+                  color: "yellow",
+                  label: "Pending",
+                },
+                confirmed: {
+                  icon: "fa-check",
+                  color: "blue",
+                  label: "Confirmed",
+                },
+                shipped: {
+                  icon: "fa-truck",
+                  color: "purple",
+                  label: "Shipped",
+                },
+                delivered: {
+                  icon: "fa-check-circle",
+                  color: "green",
+                  label: "Delivered",
+                },
+                cancelled: {
+                  icon: "fa-times-circle",
+                  color: "red",
+                  label: "Cancelled",
+                },
+              }[key];
+
+              return (
+                <div
+                  key={key}
+                  className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 transform hover:scale-105 transition-transform duration-200 cursor-pointer"
+                  onClick={() =>
+                    setStatusFilter(
+                      key === "total"
+                        ? "All Orders"
+                        : config.label.toLowerCase(),
+                    )
+                  }
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div className="flex items-center">
+                    <div
+                      className={`p-2 bg-${config.color}-100 dark:bg-${config.color}-900 rounded-lg`}
+                    >
+                      <i
+                        className={`fas ${config.icon} text-${config.color}-600 dark:text-${config.color}-300`}
+                      ></i>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        {config.label}
+                      </p>
+                      <p
+                        className={`text-2xl font-bold text-${config.color}-600 dark:text-${config.color}-400`}
+                      >
+                        {value}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Total
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {orderSummary.total}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-                  <i className="fas fa-clock text-yellow-600 dark:text-yellow-300"></i>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Pending
-                  </p>
-                  <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                    {orderSummary.pending}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                  <i className="fas fa-check text-blue-600 dark:text-blue-300"></i>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Confirmed
-                  </p>
-                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {orderSummary.confirmed}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                  <i className="fas fa-truck text-purple-600 dark:text-purple-300"></i>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Shipped
-                  </p>
-                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                    {orderSummary.shipped}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                  <i className="fas fa-check-circle text-green-600 dark:text-green-300"></i>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Delivered
-                  </p>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {orderSummary.delivered}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
-              <div className="flex items-center">
-                <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
-                  <i className="fas fa-times-circle text-red-600 dark:text-red-300"></i>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Cancelled
-                  </p>
-                  <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                    {orderSummary.cancelled}
-                  </p>
-                </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
 
-          {/* Filters and Search */}
+          {/* Enhanced Filters and Controls */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 lg:mb-0">
+                <i className="fas fa-filter mr-2"></i>
+                Advanced Filters & Controls
+              </h3>
+
+              {/* View Mode Toggle */}
+              <div className="flex space-x-2 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                {["detailed", "compact"].map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setViewMode(mode)}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                      viewMode === mode
+                        ? "bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                    }`}
+                  >
+                    <i
+                      className={`fas ${
+                        mode === "detailed"
+                          ? "fa-list"
+                          : mode === "compact"
+                            ? "fa-th-list"
+                            : ""
+                      } mr-1`}
+                    ></i>
+                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              {/* Search */}
               <div>
-                <label
-                  htmlFor="search"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Search Orders
                 </label>
                 <div className="relative">
                   <input
                     type="text"
-                    id="search"
-                    placeholder="Search by customer name, email, or order ID..."
+                    placeholder="Search by customer, email, or ID..."
                     value={searchTerm}
                     onChange={handleSearchChange}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
@@ -546,15 +857,13 @@ export default function FarmerOrders() {
                   <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                 </div>
               </div>
+
+              {/* Status Filter */}
               <div>
-                <label
-                  htmlFor="status-filter"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Filter by Status
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Status Filter
                 </label>
                 <select
-                  id="status-filter"
                   value={statusFilter}
                   onChange={handleStatusChange}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
@@ -567,46 +876,196 @@ export default function FarmerOrders() {
                   <option value="cancelled">Cancelled</option>
                 </select>
               </div>
+
+              {/* Sort By */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Sort By
+                </label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="highest-value">Highest Value</option>
+                  <option value="lowest-value">Lowest Value</option>
+                  <option value="customer-name">Customer Name</option>
+                </select>
+              </div>
+
+              {/* Date Range */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Date From
+                </label>
+                <input
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) =>
+                    setDateRange((prev) => ({ ...prev, start: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Date To
+                </label>
+                <input
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) =>
+                    setDateRange((prev) => ({ ...prev, end: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+
+              {/* Clear Filters */}
               <div className="flex items-end">
                 <button
                   onClick={() => {
                     setSearchTerm("");
                     setStatusFilter("All Orders");
+                    setSortBy("newest");
+                    setDateRange({ start: "", end: "" });
+                    setSelectedOrders([]);
                   }}
                   className="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg font-medium transition"
                 >
-                  Clear Filters
+                  <i className="fas fa-times mr-1"></i>
+                  Clear All
                 </button>
               </div>
             </div>
+
+            {/* Bulk Operations */}
+            {selectedOrders.length > 0 && (
+              <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                  <div className="mb-3 sm:mb-0">
+                    <p className="font-medium text-blue-900 dark:text-blue-100">
+                      {selectedOrders.length} order(s) selected
+                    </p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      Choose a bulk action to apply to selected orders
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => handleBulkStatusUpdate("confirmed")}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                    >
+                      <i className="fas fa-check mr-1"></i>
+                      Confirm All
+                    </button>
+                    <button
+                      onClick={() => handleBulkStatusUpdate("shipped")}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                    >
+                      <i className="fas fa-truck mr-1"></i>
+                      Ship All
+                    </button>
+                    <button
+                      onClick={() => setSelectedOrders([])}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                    >
+                      <i className="fas fa-times mr-1"></i>
+                      Clear Selection
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Orders List */}
+          {/* Orders List - Enhanced with different view modes */}
           {currentOrders.length === 0 ? (
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-12 text-center">
-              <i className="fas fa-shopping-bag text-6xl text-gray-400 mb-4"></i>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                No orders found
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                {statusFilter === "All Orders"
-                  ? "You haven't received any orders yet."
-                  : `No ${statusFilter.toLowerCase()} orders found.`}
-              </p>
+              <div className="max-w-md mx-auto">
+                <i className="fas fa-search text-6xl text-gray-400 mb-4"></i>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                  No orders found
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  {statusFilter === "All Orders"
+                    ? "You haven't received any orders yet, or no orders match your current filters."
+                    : `No ${statusFilter.toLowerCase()} orders found matching your criteria.`}
+                </p>
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setStatusFilter("All Orders");
+                    setSortBy("newest");
+                    setDateRange({ start: "", end: "" });
+                    setSelectedOrders([]);
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-lg font-medium transition"
+                >
+                  Clear All Filters
+                </button>
+              </div>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className={`space-y-${viewMode === "compact" ? "3" : "6"}`}>
+              {/* Select All Checkbox */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedOrders.length === currentOrders.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedOrders(
+                          currentOrders.map((order) => order._id),
+                        );
+                      } else {
+                        setSelectedOrders([]);
+                      }
+                    }}
+                    className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  />
+                  <span className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Select all visible orders ({currentOrders.length})
+                  </span>
+                </label>
+              </div>
+
+              {/* Orders */}
               {currentOrders.map((order) => (
                 <div
                   key={order._id}
-                  className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden"
+                  className={`bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden transform hover:scale-[1.01] transition-all duration-200 ${
+                    selectedOrders.includes(order._id)
+                      ? "ring-2 ring-green-500"
+                      : ""
+                  }`}
                 >
-                  <div className="p-6">
-                    {/* Order Header */}
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6">
-                      <div className="flex items-center space-x-4 mb-4 lg:mb-0">
+                  <div className={`p-${viewMode === "compact" ? "4" : "6"}`}>
+                    {/* Order Header with Checkbox */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedOrders.includes(order._id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedOrders((prev) => [...prev, order._id]);
+                            } else {
+                              setSelectedOrders((prev) =>
+                                prev.filter((id) => id !== order._id),
+                              );
+                            }
+                          }}
+                          className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                        />
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          <h3
+                            className={`${viewMode === "compact" ? "text-base" : "text-lg"} font-semibold text-gray-900 dark:text-white`}
+                          >
                             Order #
                             {order._id?.slice(-8)?.toUpperCase() || "N/A"}
                           </h3>

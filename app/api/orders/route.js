@@ -474,4 +474,24 @@ export async function PATCH(request) {
       },
     );
 
-    if
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    // Get the updated order
+    const updatedOrder = await db
+      .collection("orders")
+      .findOne({ _id: new ObjectId(orderId) });
+
+    return NextResponse.json({
+      message: "Order updated successfully",
+      order: updatedOrder,
+    });
+  } catch (error) {
+    console.error("Update order error:", error);
+    return NextResponse.json(
+      { error: "Failed to update order", details: error.message },
+      { status: 500 },
+    );
+  }
+}

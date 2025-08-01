@@ -128,33 +128,44 @@ export default function FarmerDashboard() {
 
   // Calculate analytics whenever products or orders change
   const calculatedAnalytics = useMemo(() => {
+    // Filter out cancelled/returned orders for revenue calculations
+    const validOrders = orders.filter(
+      (order) => order.status !== "cancelled" && order.status !== "returned",
+    );
+
     const totalProducts = products.length;
     const activeProducts = products.filter(
       (p) => p.stock > 0 && p.status !== "inactive",
     ).length;
-    const totalOrders = orders.length;
+    const totalOrders = orders.length; // Keep total orders count including cancelled for order metrics
     const pendingOrders = orders.filter((o) => o.status === "pending").length;
-    const totalRevenue = orders.reduce(
+
+    // Calculate revenue only from valid orders (excluding cancelled/returned)
+    const totalRevenue = validOrders.reduce(
       (sum, order) => sum + (order.farmerSubtotal || order.total || 0),
       0,
     );
-    const thisMonthOrders = orders.filter((order) => {
+
+    // This month's orders - also filter out cancelled/returned for meaningful metrics
+    const thisMonthValidOrders = validOrders.filter((order) => {
       const orderDate = new Date(order.createdAt);
       const now = new Date();
       return (
         orderDate.getMonth() === now.getMonth() &&
         orderDate.getFullYear() === now.getFullYear()
       );
-    }).length;
+    });
+    const thisMonthOrders = thisMonthValidOrders.length;
 
     return {
       totalProducts,
       activeProducts,
       totalOrders,
       pendingOrders,
-      totalRevenue,
-      thisMonthOrders,
-      averageOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+      totalRevenue, // Now excludes cancelled/returned orders
+      thisMonthOrders, // Now excludes cancelled/returned orders
+      averageOrderValue:
+        validOrders.length > 0 ? totalRevenue / validOrders.length : 0, // Based on valid orders only
     };
   }, [products, orders]);
 

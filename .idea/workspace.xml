@@ -5,28 +5,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.env.local" beforeDir="false" afterPath="$PROJECT_DIR$/.env.local" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/FarmFresh.iml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/prettier.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/orders/[orderId]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/[orderId]/route.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/api/orders/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/details/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/details/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/farmer-orders/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmer-orders/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/globals.css" beforeDir="false" afterPath="$PROJECT_DIR$/app/globals.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/manage/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/manage/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/payment/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/payment/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/FarmerProfileView.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/FarmerProfileView.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/LoadingComponent.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/NotFoundComponent.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/ProductCard.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/ProductCard.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/contexts/CartContext.js" beforeDir="false" afterPath="$PROJECT_DIR$/contexts/CartContext.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hooks/useProducts.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useProducts.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/dashboard/tabs/AnalyticsTab.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/dashboard/tabs/AnalyticsTab.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/dashboard/tabs/DashboardTab.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/dashboard/tabs/DashboardTab.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/dashboard/tabs/OrdersTab.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/dashboard/tabs/OrdersTab.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -36,10 +25,10 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "customColor": "",
-  "associatedIndex": 8
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 8
+}</component>
   <component name="ProjectId" id="30djXnlqUv6NSu57oO2CVzKMi7C" />
   <component name="ProjectLevelVcsManager">
     <ConfirmationsSetting value="1" id="Add" />
@@ -61,7 +50,7 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "settings.javascript.prettier",
+    "settings.editor.selected.configurable": "preferences.lookFeel",
     "ts.external.directory.path": "C:\\Program Files\\JetBrains\\IntelliJ IDEA 2025.1.1.1\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external",
     "vue.rearranger.settings.migration": "true"
   }
@@ -96,7 +85,9 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1753964388286</updated>
-      <workItem from="1753964388289" duration="9704000" />
+      <workItem from="1753964388289" duration="9954000" />
+      <workItem from="1754035634804" duration="1106000" />
+      <workItem from="1754038106633" duration="6707000" />
     </task>
     <servers />
   </component>
