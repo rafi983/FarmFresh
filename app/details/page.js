@@ -7,7 +7,6 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
-import ProductCard from "@/components/ProductCard";
 import StarRating from "@/components/StarRating";
 import Footer from "@/components/Footer";
 import RecentOrdersSection from "@/components/RecentOrdersSection";
@@ -43,6 +42,7 @@ export default function ProductDetails() {
   const { reviews, hasMoreReviews, fetchReviews, reviewsPage } = useReviews(
     productId,
     responseType,
+    session?.user?.id, // Pass userId to prioritize user's review
   );
   const isOwner = useOwnership(product, session, viewMode);
 
@@ -57,6 +57,15 @@ export default function ProductDetails() {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  // Review edit/delete state
+  const [editingReview, setEditingReview] = useState(null);
+  const [isUpdatingReview, setIsUpdatingReview] = useState(false);
+  const [isDeletingReview, setIsDeletingReview] = useState(false);
+
+  // Purchase verification state
+  const [hasPurchasedProduct, setHasPurchasedProduct] = useState(false);
+  const [checkingPurchase, setCheckingPurchase] = useState(false);
 
   // Farmer-specific states
   const [stockUpdate, setStockUpdate] = useState("");
@@ -93,6 +102,39 @@ export default function ProductDetails() {
       setIsFavorite(isProductFavorited(productId));
     }
   }, [productId, isProductFavorited]);
+
+  // Check if user has purchased this product
+  useEffect(() => {
+    if (session?.user?.id && productId) {
+      checkUserPurchase();
+    }
+  }, [session?.user?.id, productId]);
+
+  const checkUserPurchase = async () => {
+    if (!session?.user?.id) return;
+
+    setCheckingPurchase(true);
+    try {
+      const response = await fetch(
+        `/api/orders?userId=${session.user.id}&productId=${productId}`,
+      );
+      if (response.ok) {
+        const data = await response.json();
+        // Check if user has any order with this product that's confirmed/delivered/pending
+        const hasPurchased = data.orders?.some(
+          (order) =>
+            order.items?.some((item) => item.productId === productId) &&
+            ["delivered", "confirmed", "pending"].includes(order.status),
+        );
+        setHasPurchasedProduct(hasPurchased);
+      }
+    } catch (error) {
+      console.error("Error checking purchase history:", error);
+      setHasPurchasedProduct(false);
+    } finally {
+      setCheckingPurchase(false);
+    }
+  };
 
   // API calls
   const fetchRecentOrders = async () => {
@@ -276,6 +318,79 @@ export default function ProductDetails() {
       alert("Failed to submit review");
     } finally {
       setIsSubmittingReview(false);
+    }
+  };
+
+  const handleUpdateReview = async () => {
+    if (!editingReview) return;
+
+    setIsUpdatingReview(true);
+    try {
+      const response = await fetch(`/api/reviews/${editingReview._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rating: reviewForm.rating,
+          comment: reviewForm.comment,
+          userId:
+            session.user.userId ||
+            session.user.id ||
+            session.user._id ||
+            session.user.email,
+        }),
+      });
+
+      if (response.ok) {
+        setEditingReview(null);
+        setReviewForm({ rating: 5, comment: "" });
+        setShowReviewForm(false);
+        fetchReviews();
+        fetchProductDetails();
+        alert("Review updated successfully!");
+      } else {
+        const error = await response.json();
+        alert(error.error || "Failed to update review");
+      }
+    } catch (error) {
+      console.error("Error updating review:", error);
+      alert("Failed to update review");
+    } finally {
+      setIsUpdatingReview(false);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!confirm("Are you sure you want to delete this review?")) {
+      return;
+    }
+
+    setIsDeletingReview(true);
+    try {
+      const userId =
+        session.user.userId ||
+        session.user.id ||
+        session.user._id ||
+        session.user.email;
+      const response = await fetch(
+        `/api/reviews/${reviewId}?userId=${encodeURIComponent(userId)}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (response.ok) {
+        fetchReviews();
+        fetchProductDetails();
+        alert("Review deleted successfully!");
+      } else {
+        const error = await response.json();
+        alert(error.error || "Failed to delete review");
+      }
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      alert("Failed to delete review");
+    } finally {
+      setIsDeletingReview(false);
     }
   };
 
@@ -1027,14 +1142,32 @@ export default function ProductDetails() {
 
                   {/* Rating and Reviews */}
                   <div className="flex items-center space-x-4">
-                    <StarRating
-                      rating={product.averageRating || 0}
-                      showValue={true}
-                    />
-                    <span className="text-gray-500 dark:text-gray-400">
-                      ({product.reviewCount || product.totalReviews || 0}{" "}
-                      reviews)
-                    </span>
+                    {(() => {
+                      // Calculate actual average rating and count from reviews if available
+                      const actualReviewCount = reviews?.length || 0;
+                      let displayRating = product.averageRating || 0;
+
+                      // If we have reviews but no product rating, calculate from reviews
+                      if (
+                        actualReviewCount > 0 &&
+                        (!product.averageRating || product.averageRating === 0)
+                      ) {
+                        const totalRating = reviews.reduce(
+                          (sum, review) => sum + (review.rating || 0),
+                          0,
+                        );
+                        displayRating = totalRating / actualReviewCount;
+                      }
+
+                      return (
+                        <>
+                          <StarRating rating={displayRating} showValue={true} />
+                          <span className="text-gray-500 dark:text-gray-400">
+                            ({actualReviewCount} reviews)
+                          </span>
+                        </>
+                      );
+                    })()}
                     <button
                       onClick={() => setActiveTab("reviews")}
                       className="text-primary-600 dark:text-primary-400 hover:underline"
@@ -1304,63 +1437,147 @@ export default function ProductDetails() {
                           Customer Reviews (
                           {product.reviewCount || product.totalReviews || 0})
                         </h2>
-                        <button
-                          onClick={() => setShowReviewForm(true)}
-                          className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition"
-                        >
-                          <i className="fas fa-plus mr-2"></i>
-                          Write Review
-                        </button>
+                        {session && hasPurchasedProduct && (
+                          <button
+                            onClick={() => setShowReviewForm(true)}
+                            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition"
+                          >
+                            <i className="fas fa-plus mr-2"></i>
+                            Write Review
+                          </button>
+                        )}
+                        {session &&
+                          !hasPurchasedProduct &&
+                          !checkingPurchase && (
+                            <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+                              You need to purchase this product to write a
+                              review
+                            </div>
+                          )}
+                        {checkingPurchase && (
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            <i className="fas fa-spinner fa-spin mr-2"></i>
+                            Checking purchase history...
+                          </div>
+                        )}
                       </div>
 
                       {/* Review Summary */}
-                      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 mb-8">
+                      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 mb-8 shadow-lg border border-gray-100 dark:border-gray-700">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          {/* Overall Rating Section */}
                           <div className="text-center">
-                            <div className="text-4xl font-bold text-primary-600 dark:text-primary-400 mb-2">
-                              {(product.averageRating || 0).toFixed(1)}
+                            <div className="mb-4">
+                              {(() => {
+                                // Calculate actual average rating from reviews if available
+                                const actualReviewCount = reviews?.length || 0;
+                                let displayRating = product.averageRating || 0;
+
+                                // If we have reviews but no product rating, calculate from reviews
+                                if (
+                                  actualReviewCount > 0 &&
+                                  (!product.averageRating ||
+                                    product.averageRating === 0)
+                                ) {
+                                  const totalRating = reviews.reduce(
+                                    (sum, review) => sum + (review.rating || 0),
+                                    0,
+                                  );
+                                  displayRating =
+                                    totalRating / actualReviewCount;
+                                }
+
+                                return (
+                                  <>
+                                    <div className="text-5xl font-bold text-primary-600 dark:text-primary-400 mb-2">
+                                      {displayRating.toFixed(1)}
+                                    </div>
+                                    <StarRating
+                                      rating={displayRating}
+                                      size="lg"
+                                    />
+                                    <p className="text-gray-600 dark:text-gray-400 mt-3 text-lg font-medium">
+                                      Based on{" "}
+                                      <span className="text-primary-600 dark:text-primary-400 font-bold">
+                                        {actualReviewCount}
+                                      </span>{" "}
+                                      {actualReviewCount === 1
+                                        ? "review"
+                                        : "reviews"}
+                                    </p>
+                                  </>
+                                );
+                              })()}
                             </div>
-                            <StarRating
-                              rating={product.averageRating || 0}
-                              size="lg"
-                            />
-                            <p className="text-gray-600 dark:text-gray-400 mt-2">
-                              Based on{" "}
-                              {product.reviewCount || product.totalReviews || 0}{" "}
-                              reviews
-                            </p>
+
+                            {/* Review Quality Indicator */}
+                            <div className="mt-4 p-3 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg">
+                              <div className="flex items-center justify-center space-x-2 text-sm">
+                                <i className="fas fa-shield-alt text-green-600"></i>
+                                <span className="font-medium text-gray-700 dark:text-gray-300">
+                                  {(reviews?.length || 0) > 0
+                                    ? `${reviews.length} verified review${reviews.length === 1 ? "" : "s"}`
+                                    : "No reviews yet"}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="space-y-2">
+
+                          {/* Rating Distribution */}
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-gray-900 dark:text-white mb-4">
+                              Rating Breakdown
+                            </h4>
                             {(() => {
                               const ratingDistribution =
                                 calculateRatingDistribution();
+                              const totalReviews = reviews?.length || 0;
+
                               return [5, 4, 3, 2, 1].map((rating) => {
                                 const count = ratingDistribution[rating];
-                                const percentage = getRatingPercentage(
-                                  rating,
-                                  ratingDistribution,
-                                );
+                                const percentage =
+                                  totalReviews > 0
+                                    ? (count / totalReviews) * 100
+                                    : 0;
+
                                 return (
                                   <div
                                     key={rating}
-                                    className="flex items-center space-x-2"
+                                    className="flex items-center space-x-3"
                                   >
-                                    <span className="text-sm text-gray-600 dark:text-gray-400 w-8">
-                                      {rating}★
+                                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400 w-12">
+                                      {rating} star{rating === 1 ? "" : "s"}
                                     </span>
-                                    <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                    <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
                                       <div
-                                        className="bg-yellow-400 h-2 rounded-full transition-all duration-300"
+                                        className="bg-gradient-to-r from-yellow-400 to-yellow-500 h-3 rounded-full transition-all duration-500 ease-out"
                                         style={{ width: `${percentage}%` }}
                                       ></div>
                                     </div>
-                                    <span className="text-sm text-gray-600 dark:text-gray-400 w-8">
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 w-8 text-right">
                                       {count}
+                                    </span>
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 w-12 text-right">
+                                      {percentage.toFixed(0)}%
                                     </span>
                                   </div>
                                 );
                               });
                             })()}
+
+                            {/* Total Reviews Summary */}
+                            <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
+                              <div className="text-center text-sm text-gray-600 dark:text-gray-400">
+                                <span className="font-medium">
+                                  {(reviews?.length || 0) === 0 &&
+                                    "Be the first to review this product!"}
+                                  {(reviews?.length || 0) === 1 &&
+                                    "1 customer has reviewed this product"}
+                                  {(reviews?.length || 0) > 1 &&
+                                    `${reviews.length} customers have reviewed this product`}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1382,7 +1599,14 @@ export default function ProductDetails() {
                             </div>
 
                             <form
-                              onSubmit={handleSubmitReview}
+                              onSubmit={
+                                editingReview
+                                  ? (e) => {
+                                      e.preventDefault();
+                                      handleUpdateReview();
+                                    }
+                                  : handleSubmitReview
+                              }
                               className="space-y-4"
                             >
                               <div>
@@ -1434,19 +1658,31 @@ export default function ProductDetails() {
                               <div className="flex space-x-3">
                                 <button
                                   type="button"
-                                  onClick={() => setShowReviewForm(false)}
+                                  onClick={() => {
+                                    setShowReviewForm(false);
+                                    setEditingReview(null);
+                                    setReviewForm({ rating: 5, comment: "" });
+                                  }}
                                   className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                                 >
                                   Cancel
                                 </button>
                                 <button
                                   type="submit"
-                                  disabled={isSubmittingReview}
+                                  disabled={
+                                    editingReview
+                                      ? isUpdatingReview
+                                      : isSubmittingReview
+                                  }
                                   className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
                                 >
-                                  {isSubmittingReview
-                                    ? "Submitting..."
-                                    : "Submit Review"}
+                                  {editingReview
+                                    ? isUpdatingReview
+                                      ? "Updating..."
+                                      : "Update Review"
+                                    : isSubmittingReview
+                                      ? "Submitting..."
+                                      : "Submit Review"}
                                 </button>
                               </div>
                             </form>
@@ -1518,12 +1754,53 @@ export default function ProductDetails() {
                                   </div>
                                 </div>
                                 <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                                    <i className="fas fa-thumbs-up text-gray-400 hover:text-primary-500"></i>
-                                  </button>
-                                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                                    <i className="fas fa-share text-gray-400 hover:text-primary-500"></i>
-                                  </button>
+                                  {/* Debug information */}
+                                  {console.log("DEBUG Review comparison:", {
+                                    sessionUserId: session?.user?.userId,
+                                    reviewUserId: review.userId,
+                                    areEqual:
+                                      session?.user?.userId === review.userId,
+                                    sessionUser: session?.user,
+                                  })}
+
+                                  {/* Show edit/delete buttons only for user's own review */}
+                                  {session?.user?.userId === review.userId ? (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          setEditingReview(review);
+                                          setReviewForm({
+                                            rating: review.rating,
+                                            comment: review.comment,
+                                          });
+                                          setShowReviewForm(true);
+                                        }}
+                                        className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                        title="Edit Review"
+                                      >
+                                        <i className="fas fa-edit text-blue-500 hover:text-blue-600"></i>
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          handleDeleteReview(review._id)
+                                        }
+                                        disabled={isDeletingReview}
+                                        className="p-2 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                        title="Delete Review"
+                                      >
+                                        <i className="fas fa-trash text-red-500 hover:text-red-600"></i>
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                                        <i className="fas fa-thumbs-up text-gray-400 hover:text-primary-500"></i>
+                                      </button>
+                                      <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                                        <i className="fas fa-share text-gray-400 hover:text-primary-500"></i>
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </div>
 
@@ -1667,19 +1944,162 @@ export default function ProductDetails() {
                     </div>
                   )}
 
-                  {/* Related Products outside tabs */}
+                  {/* Related Products Section - Enhanced */}
                   {relatedProducts.length > 0 && (
-                    <div className="mt-16">
-                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
-                        Related Products
-                      </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {relatedProducts.map((relatedProduct) => (
-                          <ProductCard
+                    <div className="mt-16 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700">
+                      {/* Section Header */}
+                      <div className="text-center mb-10">
+                        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full mb-4 shadow-lg">
+                          <i className="fas fa-box-open text-2xl text-white"></i>
+                        </div>
+                        <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                          Related Products
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                          Discover similar high-quality products from our
+                          trusted farmers. Each item is carefully selected to
+                          meet our quality standards.
+                        </p>
+                        <div className="mt-4 flex items-center justify-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                          <i className="fas fa-leaf text-green-500"></i>
+                          <span>{relatedProducts.length} products found</span>
+                          <span>•</span>
+                          <i className="fas fa-truck text-blue-500"></i>
+                          <span>Fast delivery available</span>
+                        </div>
+                      </div>
+
+                      {/* Enhanced Product Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                        {relatedProducts.map((relatedProduct, index) => (
+                          <div
                             key={relatedProduct._id}
-                            product={relatedProduct}
-                          />
+                            className="group transform transition-all duration-300 hover:-translate-y-2"
+                            style={{ animationDelay: `${index * 100}ms` }}
+                          >
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 dark:border-gray-700 hover:border-primary-200 dark:hover:border-primary-600 overflow-hidden">
+                              {/* Product Image */}
+                              <div className="relative aspect-square overflow-hidden">
+                                <Image
+                                  src={
+                                    relatedProduct.image ||
+                                    relatedProduct.images?.[0] ||
+                                    "/placeholder-image.jpg"
+                                  }
+                                  alt={relatedProduct.name}
+                                  width={300}
+                                  height={300}
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                />
+
+                                {/* Product Badges */}
+                                <div className="absolute top-3 left-3 flex flex-col space-y-2">
+                                  {relatedProduct.isOrganic && (
+                                    <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                      Organic
+                                    </span>
+                                  )}
+                                  {relatedProduct.isFresh && (
+                                    <span className="bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                      Fresh
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Quick Actions Overlay */}
+                                <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                  <Link
+                                    href={`/details?id=${relatedProduct._id}`}
+                                    className="bg-white text-gray-900 px-6 py-2 rounded-full font-medium hover:bg-gray-100 transition-colors transform hover:scale-105"
+                                  >
+                                    View Details
+                                  </Link>
+                                </div>
+                              </div>
+
+                              {/* Product Info */}
+                              <div className="p-6">
+                                <div className="mb-3">
+                                  <h4 className="font-bold text-lg text-gray-900 dark:text-white line-clamp-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                    {relatedProduct.name}
+                                  </h4>
+                                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
+                                    by{" "}
+                                    {relatedProduct.farmer?.name ||
+                                      relatedProduct.farmer?.farmName ||
+                                      "Unknown Farmer"}
+                                  </p>
+                                </div>
+
+                                {/* Rating */}
+                                <div className="flex items-center space-x-1 mb-3">
+                                  <StarRating
+                                    rating={relatedProduct.averageRating || 0}
+                                    size="sm"
+                                  />
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    (
+                                    {relatedProduct.reviewCount ||
+                                      relatedProduct.totalReviews ||
+                                      0}
+                                    )
+                                  </span>
+                                </div>
+
+                                {/* Price and Stock */}
+                                <div className="flex items-center justify-between mb-4">
+                                  <div>
+                                    <span className="text-xl font-bold text-primary-600 dark:text-primary-400">
+                                      ${(relatedProduct.price || 0).toFixed(2)}
+                                    </span>
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                                      /{relatedProduct.unit || "kg"}
+                                    </span>
+                                  </div>
+                                  <div className="text-right">
+                                    <div
+                                      className={`text-xs font-medium ${
+                                        (relatedProduct.stock || 0) > 0
+                                          ? "text-green-600 dark:text-green-400"
+                                          : "text-red-600 dark:text-red-400"
+                                      }`}
+                                    >
+                                      {(relatedProduct.stock || 0) > 0
+                                        ? `${relatedProduct.stock} ${relatedProduct.unit || "kg"} left`
+                                        : "Out of stock"}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Action Button */}
+                                <Link
+                                  href={`/details?id=${relatedProduct._id}`}
+                                  className="w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white py-2.5 px-4 rounded-lg font-medium transition-all duration-200 text-center block group-hover:shadow-lg transform group-hover:scale-[1.02]"
+                                >
+                                  <i className="fas fa-eye mr-2"></i>
+                                  View Product
+                                </Link>
+                              </div>
+                            </div>
+                          </div>
                         ))}
+                      </div>
+
+                      {/* Browse More Section */}
+                      <div className="mt-12 text-center">
+                        <div className="border-t border-gray-200 dark:border-gray-700 pt-8">
+                          <p className="text-gray-600 dark:text-gray-400 mb-4">
+                            Looking for more products?
+                          </p>
+                          <Link
+                            href="/products"
+                            className="inline-flex items-center bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
+                          >
+                            <i className="fas fa-shopping-bag mr-2"></i>
+                            Browse All Products
+                            <i className="fas fa-arrow-right ml-2"></i>
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   )}

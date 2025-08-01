@@ -216,7 +216,7 @@ export async function GET(request, { params }) {
       }));
 
     // Calculate real ratings for related products too
-    relatedProducts = enhanceProductsWithRatings(relatedProducts);
+    relatedProducts = await enhanceProductsWithRatings(relatedProducts, db);
 
     return NextResponse.json({
       product: enhancedProduct,

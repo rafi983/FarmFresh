@@ -1132,25 +1132,19 @@
     },
     "reviews": [
       {
-        "reviewId": "rev901",
-        "userName": "Rumana Haque",
+        "reviewer": "Rumana Haque",
         "rating": 4.2,
-        "comment": "Very sweet and fresh lychees! They were perfectly ripe and flavorful. Highly recommend during summer!",
-        "date": "2025-07-25T12:45:00Z"
+        "comment": "Very sweet and fresh lychees! They were perfectly ripe and flavorful. Highly recommend during summer!"
       },
       {
-        "reviewId": "rev902",
-        "userName": "Aminul Islam",
+        "reviewer": "Aminul Islam",
         "rating": 3.7,
-        "comment": "Nice taste but a few were slightly overripe. Still good overall and great for the price.",
-        "date": "2025-07-26T16:20:00Z"
+        "comment": "Nice taste but a few were slightly overripe. Still good overall and great for the price."
       },
       {
-        "reviewId": "rev903",
-        "userName": "Sadia Karim",
+        "reviewer": "Sadia Karim",
         "rating": 4.0,
-        "comment": "Love the freshness and aroma! Used them in a fruit salad and everyone loved it.",
-        "date": "2025-07-27T09:10:00Z"
+        "comment": "Love the freshness and aroma! Used them in a fruit salad and everyone loved it."
       }
     ],
     "createdAt": "2025-07-21T01:04:23.274Z",

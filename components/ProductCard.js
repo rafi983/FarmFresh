@@ -191,7 +191,7 @@ export default function ProductCard({ product, showAddToCart = true }) {
             showCount={false}
           />
           <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">
-            ({product.totalRatings || 0} reviews)
+            ({product.reviewCount || product.totalRatings || 0} reviews)
           </span>
         </div>
 

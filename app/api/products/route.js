@@ -20,19 +20,6 @@ export async function GET(request) {
     // Try to get products directly from the collection first
     let allProducts = await db.collection("products").find({}).toArray();
 
-    console.log(
-      `API: Found ${allProducts.length} products directly from collection`,
-    );
-    console.log(
-      "API: Recent products (last 3):",
-      allProducts.slice(-3).map((p) => ({
-        name: p.name,
-        _id: p._id,
-        farmerId: p.farmerId,
-        createdAt: p.createdAt,
-      })),
-    );
-
     // If no direct products found, try the nested structure
     if (allProducts.length === 0) {
       const productDocuments = await db
@@ -44,12 +31,7 @@ export async function GET(request) {
           allProducts = allProducts.concat(doc.products);
         }
       });
-      console.log(
-        `API: After checking nested structure, found ${allProducts.length} products`,
-      );
     }
-
-    console.log(`Found ${allProducts.length} products in database`);
 
     // Apply search filter
     if (search) {

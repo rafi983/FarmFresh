@@ -21,11 +21,6 @@ export async function GET(request, { params }) {
         { projection: { reviews: 1, ratings: 1, comments: 1 } },
       );
 
-    console.log(
-      "DEBUG - Product with reviews:",
-      JSON.stringify(product, null, 2),
-    );
-
     let reviews = [];
     let totalReviews = 0;
 
@@ -56,10 +51,6 @@ export async function GET(request, { params }) {
           if (foundReviews.length > 0) {
             reviews = foundReviews;
             totalReviews = foundReviews.length;
-            console.log(
-              "DEBUG - Found reviews with query:",
-              JSON.stringify(query),
-            );
             break;
           }
         } catch (error) {
@@ -71,7 +62,6 @@ export async function GET(request, { params }) {
     // If still no reviews found, check all documents in reviews collection
     if (reviews.length === 0) {
       const allReviews = await db.collection("reviews").find({}).toArray();
-      console.log("DEBUG - All reviews in collection:", allReviews.length);
       if (allReviews.length > 0) {
         console.log(
           "DEBUG - Sample review structure:",
@@ -86,12 +76,6 @@ export async function GET(request, { params }) {
         // Only use reviewer field since that's the standard now
         let userName = review.reviewer || "Anonymous";
 
-        console.log("DEBUG - Review normalization:", {
-          originalReview: review,
-          extractedName: userName,
-          foundUserData: !!userName && userName !== "Anonymous",
-        });
-
         return {
           _id: review._id || review.reviewId || new ObjectId(),
           rating: review.rating || 5,
@@ -99,13 +83,25 @@ export async function GET(request, { params }) {
           createdAt:
             review.createdAt || review.date || review.timestamp || new Date(),
           reviewer: userName, // Only keep reviewer field
+          userId: review.userId, // Include userId for sorting
         };
       }),
     );
 
+    // Sort reviews to show logged-in user's review first
+    const sortedReviews = normalizedReviews.sort((a, b) => {
+      // If userId is provided, prioritize that user's review
+      if (userId) {
+        if (a.userId === userId && b.userId !== userId) return -1;
+        if (b.userId === userId && a.userId !== userId) return 1;
+      }
+      // Then sort by creation date (newest first)
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
     // Apply pagination
     const startIndex = (page - 1) * limit;
-    const paginatedReviews = normalizedReviews.slice(
+    const paginatedReviews = sortedReviews.slice(
       startIndex,
       startIndex + limit,
     );
@@ -151,17 +147,14 @@ export async function POST(request, { params }) {
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
-    // Check if user has purchased this product (optional for demo purposes)
+    // Check if user has purchased this product
     const hasPurchased = await db.collection("orders").findOne({
       userId,
       "items.productId": id,
       status: { $in: ["delivered", "confirmed", "pending"] }, // Allow reviews for any order status
     });
 
-    // For demo purposes, allow reviews even without purchase (remove this in production)
-    const allowReviewWithoutPurchase = true;
-
-    if (!hasPurchased && !allowReviewWithoutPurchase) {
+    if (!hasPurchased) {
       return NextResponse.json(
         { error: "You can only review products you have purchased" },
         { status: 403 },
@@ -181,10 +174,19 @@ export async function POST(request, { params }) {
       );
     }
 
+    // Get user information to include reviewer name
+    const user = await db.collection("users").findOne({
+      $or: [{ _id: new ObjectId(userId) }, { email: userId }],
+    });
+
+    const reviewerName =
+      user?.name || user?.email?.split("@")[0] || "Anonymous";
+
     // Create review
     const review = {
       productId: id,
       userId,
+      reviewer: reviewerName, // Add the reviewer name
       rating: parseInt(rating),
       comment,
       createdAt: new Date(),
