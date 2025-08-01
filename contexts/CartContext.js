@@ -9,6 +9,8 @@ export function CartProvider({ children }) {
   const [cartItems, setCartItems] = useState([]);
   const [cartCount, setCartCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [recentlyOrderedItems, setRecentlyOrderedItems] = useState([]);
 
   // Fetch cart when session changes
   useEffect(() => {
@@ -166,6 +168,21 @@ export function CartProvider({ children }) {
     }
   };
 
+  const clearCartAfterPayment = async () => {
+    // Store current cart items for display purposes
+    setRecentlyOrderedItems([...cartItems]);
+    setPaymentProcessing(true);
+
+    // Clear the cart
+    await clearCart();
+
+    // After a delay, reset the payment processing state
+    setTimeout(() => {
+      setPaymentProcessing(false);
+      setRecentlyOrderedItems([]);
+    }, 5000); // 5 seconds delay
+  };
+
   const getCartTotal = () => {
     return cartItems.reduce(
       (total, item) => total + item.price * item.quantity,
@@ -181,10 +198,13 @@ export function CartProvider({ children }) {
     items: cartItems,
     cartCount,
     loading,
+    paymentProcessing,
+    recentlyOrderedItems,
     addToCart,
     updateQuantity,
     removeFromCart,
     clearCart,
+    clearCartAfterPayment,
     getCartTotal,
     getCartItemsCount,
     fetchCart,

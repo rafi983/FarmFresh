@@ -7,7 +7,10 @@
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/bookings/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/bookings/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/cart/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/cart/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/payment/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/payment/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/contexts/CartContext.js" beforeDir="false" afterPath="$PROJECT_DIR$/contexts/CartContext.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -79,7 +82,7 @@
       <updated>1753964388286</updated>
       <workItem from="1753964388289" duration="9954000" />
       <workItem from="1754035634804" duration="1106000" />
-      <workItem from="1754038106633" duration="8093000" />
+      <workItem from="1754038106633" duration="10515000" />
     </task>
     <servers />
   </component>

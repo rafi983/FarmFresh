@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -14,7 +14,33 @@ export default function Bookings() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("All Orders");
   const [currentPage, setCurrentPage] = useState(1);
-  const ordersPerPage = 5;
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("newest");
+  const [viewMode, setViewMode] = useState("cards"); // cards or list
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const ordersPerPage = viewMode === "list" ? 10 : 6;
+
+  // Enhanced order statistics
+  const orderStats = useMemo(() => {
+    const stats = {
+      total: orders.length,
+      pending: orders.filter((o) => o.status === "pending").length,
+      confirmed: orders.filter((o) => o.status === "confirmed").length,
+      shipped: orders.filter((o) => o.status === "shipped").length,
+      delivered: orders.filter((o) => o.status === "delivered").length,
+      cancelled: orders.filter((o) => o.status === "cancelled").length,
+      totalSpent: orders.reduce((sum, order) => sum + (order.total || 0), 0),
+      averageOrderValue:
+        orders.length > 0
+          ? orders.reduce((sum, order) => sum + (order.total || 0), 0) /
+            orders.length
+          : 0,
+    };
+    return stats;
+  }, [orders]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -28,8 +54,10 @@ export default function Bookings() {
   }, [session, status, router]);
 
   useEffect(() => {
-    filterOrders();
-  }, [orders, statusFilter]);
+    if (!loading) {
+      filterOrders();
+    }
+  }, [orders, statusFilter, searchTerm, dateFilter, sortOrder, loading]);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -40,52 +68,33 @@ export default function Bookings() {
         session.user._id ||
         session.user.email;
 
-      // Check for userType or role in session to determine farmer vs customer
       const userRole = session.user.userType || session.user.role || "customer";
-
-      console.log("Debug - User session:", session.user);
-      console.log("Debug - User role/userType:", userRole);
-      console.log("Debug - User ID:", userId);
-
       let apiUrl;
 
       if (userRole === "farmer") {
-        // For farmers, fetch orders placed by customers to this farmer
         const farmerId =
           session.user.userId || session.user.id || session.user._id;
         const farmerEmail = session.user.email;
-
-        console.log("Debug - Farmer ID:", farmerId);
-        console.log("Debug - Farmer Email:", farmerEmail);
 
         if (farmerId) {
           apiUrl = `/api/orders?farmerId=${encodeURIComponent(farmerId)}`;
         } else if (farmerEmail) {
           apiUrl = `/api/orders?farmerEmail=${encodeURIComponent(farmerEmail)}`;
         } else {
-          console.error("No farmer ID or email found");
           setOrders([]);
           setLoading(false);
           return;
         }
       } else {
-        // For customers, fetch their own orders
         apiUrl = `/api/orders?userId=${encodeURIComponent(userId)}`;
       }
 
-      console.log("Debug - API URL:", apiUrl);
-
       const response = await fetch(apiUrl);
-
-      console.log("Debug - Response status:", response.status);
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Debug - Orders data:", data);
         setOrders(data.orders || []);
       } else {
-        const errorText = await response.text();
-        console.error("Failed to fetch orders:", response.status, errorText);
         setOrders([]);
       }
     } catch (error) {
@@ -96,17 +105,76 @@ export default function Bookings() {
     }
   };
 
+  const refreshOrders = async () => {
+    setRefreshing(true);
+    await fetchOrders();
+    setRefreshing(false);
+  };
+
   const filterOrders = () => {
-    if (statusFilter === "All Orders") {
-      setFilteredOrders(orders);
-    } else {
-      setFilteredOrders(
-        orders.filter(
-          (order) => order.status.toLowerCase() === statusFilter.toLowerCase(),
-        ),
+    let filtered = [...orders];
+
+    // Status filter
+    if (statusFilter !== "All Orders") {
+      filtered = filtered.filter(
+        (order) => order.status.toLowerCase() === statusFilter.toLowerCase(),
       );
     }
-    setCurrentPage(1); // Reset to first page when filtering
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter((order) => {
+        const searchText = searchTerm.toLowerCase();
+        return (
+          order._id?.toLowerCase().includes(searchText) ||
+          order.customerName?.toLowerCase().includes(searchText) ||
+          order.items?.some(
+            (item) =>
+              item.productName?.toLowerCase().includes(searchText) ||
+              item.farmerName?.toLowerCase().includes(searchText),
+          )
+        );
+      });
+    }
+
+    // Date filter
+    if (dateFilter !== "all") {
+      const now = new Date();
+      filtered = filtered.filter((order) => {
+        const orderDate = new Date(order.createdAt);
+        switch (dateFilter) {
+          case "today":
+            return orderDate.toDateString() === now.toDateString();
+          case "week":
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            return orderDate >= weekAgo;
+          case "month":
+            const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            return orderDate >= monthAgo;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Sort orders
+    filtered.sort((a, b) => {
+      switch (sortOrder) {
+        case "newest":
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        case "oldest":
+          return new Date(a.createdAt) - new Date(b.createdAt);
+        case "highest":
+          return (b.total || 0) - (a.total || 0);
+        case "lowest":
+          return (a.total || 0) - (b.total || 0);
+        default:
+          return 0;
+      }
+    });
+
+    setFilteredOrders(filtered);
+    setCurrentPage(1);
   };
 
   const handleStatusChange = (e) => {
@@ -125,7 +193,7 @@ export default function Bookings() {
 
       if (response.ok) {
         alert("Order cancelled successfully");
-        fetchOrders(); // Refresh orders
+        fetchOrders();
       } else {
         alert("Failed to cancel order");
       }
@@ -136,7 +204,6 @@ export default function Bookings() {
   };
 
   const handleReorder = (order) => {
-    // Redirect to products page with order items for reordering
     router.push("/products");
   };
 
@@ -151,30 +218,37 @@ export default function Bookings() {
       year: "numeric",
       month: "short",
       day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const getStatusBadge = (status) => {
     const statusConfig = {
       confirmed: {
-        bg: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+        bg: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border-blue-200",
         icon: "fas fa-check",
+        pulse: false,
       },
       pending: {
-        bg: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+        bg: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border-yellow-200",
         icon: "fas fa-clock",
+        pulse: true,
       },
       delivered: {
-        bg: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+        bg: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200",
         icon: "fas fa-check-circle",
+        pulse: false,
       },
       cancelled: {
-        bg: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+        bg: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200",
         icon: "fas fa-times-circle",
+        pulse: false,
       },
       shipped: {
-        bg: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+        bg: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-purple-200",
         icon: "fas fa-truck",
+        pulse: true,
       },
     };
 
@@ -182,52 +256,28 @@ export default function Bookings() {
 
     return (
       <span
-        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${config.bg}`}
+        className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border ${config.bg} ${
+          config.pulse ? "animate-pulse" : ""
+        }`}
       >
-        <i className={`${config.icon} mr-1`}></i>
+        <i className={`${config.icon} mr-1.5 text-xs`}></i>
         {status?.charAt(0).toUpperCase() + status?.slice(1) || "Pending"}
       </span>
     );
   };
 
-  const getStatusTimeline = (status, createdAt) => {
-    const statuses = ["confirmed", "shipped", "delivered"];
+  const getStatusProgress = (status) => {
+    const statuses = ["pending", "confirmed", "shipped", "delivered"];
     const currentIndex = statuses.indexOf(status?.toLowerCase());
+    const progress =
+      currentIndex >= 0 ? ((currentIndex + 1) / statuses.length) * 100 : 0;
 
     return (
-      <div className="flex items-center space-x-4 text-sm">
-        {statuses.map((statusItem, index) => {
-          const isCompleted = index <= currentIndex;
-          const isActive = index === currentIndex;
-
-          return (
-            <div key={statusItem} className="flex items-center">
-              <div
-                className={`flex items-center ${
-                  isCompleted
-                    ? "text-green-600 dark:text-green-400"
-                    : "text-gray-400"
-                }`}
-              >
-                <i
-                  className={`${
-                    isCompleted ? "fas fa-check-circle" : "fas fa-circle"
-                  } mr-1`}
-                ></i>
-                <span className="capitalize">{statusItem}</span>
-              </div>
-              {index < statuses.length - 1 && (
-                <div
-                  className={`w-8 h-0.5 ml-4 ${
-                    isCompleted
-                      ? "bg-green-500"
-                      : "bg-gray-300 dark:bg-gray-600"
-                  }`}
-                ></div>
-              )}
-            </div>
-          );
-        })}
+      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
+        <div
+          className="bg-gradient-to-r from-green-500 to-blue-500 h-2 rounded-full transition-all duration-500 ease-out"
+          style={{ width: `${progress}%` }}
+        ></div>
       </div>
     );
   };
@@ -243,12 +293,26 @@ export default function Bookings() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <i className="fas fa-spinner fa-spin text-4xl text-primary-600 mb-4"></i>
-          <p className="text-gray-600 dark:text-gray-400">
-            Loading your orders...
-          </p>
+          <div className="relative">
+            <div className="animate-spin rounded-full h-32 w-32 border-4 border-transparent border-t-blue-600 border-r-purple-600 mx-auto mb-4"></div>
+            <div
+              className="absolute inset-0 rounded-full h-32 w-32 border-4 border-transparent border-b-pink-600 border-l-green-600 animate-spin"
+              style={{
+                animationDirection: "reverse",
+                animationDuration: "1.5s",
+              }}
+            ></div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              Loading Your Orders
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              Please wait while we fetch your order history...
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -256,242 +320,809 @@ export default function Bookings() {
 
   return (
     <>
-      {/* Bookings Content */}
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-        {/* Breadcrumb */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <nav className="flex" aria-label="Breadcrumb">
-            <ol className="flex items-center space-x-2 text-sm">
-              <li>
-                <Link href="/" className="text-gray-500 hover:text-primary-600">
-                  Home
-                </Link>
-              </li>
-              <li>
-                <i className="fas fa-chevron-right text-gray-400 text-xs"></i>
-              </li>
-              <li className="text-gray-900 dark:text-white">My Orders</li>
-            </ol>
-          </nav>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        {/* Enhanced Header Section */}
+        <div className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10 dark:from-blue-400/10 dark:to-purple-400/10"></div>
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            {/* Breadcrumb */}
+            <nav className="flex mb-8" aria-label="Breadcrumb">
+              <ol className="flex items-center space-x-2 text-sm">
+                <li>
+                  <Link
+                    href="/"
+                    className="text-gray-500 hover:text-blue-600 transition-colors duration-200 flex items-center"
+                  >
+                    <i className="fas fa-home mr-1"></i>
+                    Home
+                  </Link>
+                </li>
+                <li>
+                  <i className="fas fa-chevron-right text-gray-400 text-xs"></i>
+                </li>
+                <li className="text-gray-900 dark:text-white font-medium">
+                  My Orders
+                </li>
+              </ol>
+            </nav>
 
-        {/* Page Header */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                My Orders
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                Track and manage your orders ({filteredOrders.length} orders)
-              </p>
-            </div>
-            <div className="mt-4 sm:mt-0 flex space-x-3">
-              <select
-                value={statusFilter}
-                onChange={handleStatusChange}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              >
-                <option>All Orders</option>
-                <option>Pending</option>
-                <option>Confirmed</option>
-                <option>Shipped</option>
-                <option>Delivered</option>
-                <option>Cancelled</option>
-              </select>
-            </div>
-          </div>
+            {/* Page Header with Stats */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8">
+              <div className="mb-6 lg:mb-0">
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-3">
+                  My Orders
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 text-lg">
+                  Track and manage your orders • {orderStats.total} total orders
+                </p>
+              </div>
 
-          {/* Orders List */}
-          {currentOrders.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-12 text-center">
-              <i className="fas fa-shopping-bag text-6xl text-gray-400 mb-4"></i>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                No orders found
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                {statusFilter === "All Orders"
-                  ? "You haven't placed any orders yet. Start shopping to see your orders here!"
-                  : `No ${statusFilter.toLowerCase()} orders found.`}
-              </p>
-              <Link
-                href="/products"
-                className="inline-flex items-center px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition"
-              >
-                <i className="fas fa-shopping-cart mr-2"></i>
-                Start Shopping
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {currentOrders.map((order) => (
-                <div
-                  key={order._id}
-                  className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden"
-                >
-                  <div className="p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
-                      <div className="flex items-center space-x-4 mb-4 lg:mb-0">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            Order #
-                            {order._id?.slice(-8)?.toUpperCase() || "N/A"}
-                          </h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Placed on {formatDate(order.createdAt)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        {getStatusBadge(order.status)}
-                        <span className="text-lg font-bold text-gray-900 dark:text-white">
-                          {formatPrice(order.total)}
-                        </span>
-                      </div>
+              {/* Quick Stats Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full lg:w-auto">
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      {orderStats.total}
                     </div>
-
-                    {/* Order Items */}
-                    <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
-                      {order.items?.slice(0, 3).map((item, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center space-x-4 mb-4"
-                        >
-                          <img
-                            src={
-                              item.image ||
-                              "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=80&h=80&fit=crop"
-                            }
-                            alt={item.productName}
-                            className="w-16 h-16 rounded-lg object-cover"
-                          />
-                          <div className="flex-1">
-                            <h4 className="font-medium text-gray-900 dark:text-white">
-                              {item.productName}
-                            </h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              By {item.farmerName || "Local Farmer"}
-                            </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Quantity: {item.quantity} •{" "}
-                              {formatPrice(item.price)}/unit
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium text-gray-900 dark:text-white">
-                              {formatPrice(item.price * item.quantity)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                      {order.items?.length > 3 && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          +{order.items.length - 3} more items
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Order Status Timeline */}
-                    <div className="border-t border-gray-200 dark:border-gray-600 pt-4">
-                      <h4 className="font-medium text-gray-900 dark:text-white mb-3">
-                        Order Status
-                      </h4>
-                      {getStatusTimeline(order.status, order.createdAt)}
-                      {order.status === "pending" && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                          Waiting for farmer confirmation
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="border-t border-gray-200 dark:border-gray-600 pt-4 flex flex-wrap gap-3">
-                      {order.status === "delivered" && (
-                        <>
-                          <button className="flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition">
-                            <i className="fas fa-download mr-2"></i>
-                            Download Receipt
-                          </button>
-                          <Link
-                            href={`/review?orderId=${order._id}`}
-                            className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition"
-                          >
-                            <i className="fas fa-star mr-2"></i>
-                            Write Review
-                          </Link>
-                          <button
-                            onClick={() => handleReorder(order)}
-                            className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition"
-                          >
-                            <i className="fas fa-redo mr-2"></i>
-                            Reorder
-                          </button>
-                        </>
-                      )}
-                      {(order.status === "pending" ||
-                        order.status === "confirmed") && (
-                        <button
-                          onClick={() => handleCancelOrder(order._id)}
-                          className="flex items-center px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded-lg font-medium transition"
-                        >
-                          <i className="fas fa-times mr-2"></i>
-                          Cancel Order
-                        </button>
-                      )}
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                      Total Orders
                     </div>
                   </div>
                 </div>
-              ))}
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      {orderStats.delivered}
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                      Delivered
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                      {orderStats.pending}
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                      Pending
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300">
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                      {formatPrice(orderStats.totalSpent)}
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                      Total Spent
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
+        </div>
 
-          {/* Pagination */}
+        {/* Advanced Filters and Controls */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 mb-8">
+            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+              {/* Search */}
+              <div className="flex-1 max-w-md">
+                <div className="relative">
+                  <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                  <input
+                    type="text"
+                    placeholder="Search orders, products, or farmers..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all duration-200"
+                  />
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap gap-3">
+                <select
+                  value={statusFilter}
+                  onChange={handleStatusChange}
+                  className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all duration-200"
+                >
+                  <option>All Orders</option>
+                  <option>Pending</option>
+                  <option>Confirmed</option>
+                  <option>Shipped</option>
+                  <option>Delivered</option>
+                  <option>Cancelled</option>
+                </select>
+
+                <select
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all duration-200"
+                >
+                  <option value="all">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="week">Last Week</option>
+                  <option value="month">Last Month</option>
+                </select>
+
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                  className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all duration-200"
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="highest">Highest Value</option>
+                  <option value="lowest">Lowest Value</option>
+                </select>
+
+                {/* View Mode Toggle */}
+                <div className="flex bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
+                  <button
+                    onClick={() => setViewMode("cards")}
+                    className={`px-4 py-2 rounded-lg transition-all duration-200 ${
+                      viewMode === "cards"
+                        ? "bg-white dark:bg-gray-600 text-blue-600 shadow-sm"
+                        : "text-gray-600 dark:text-gray-400"
+                    }`}
+                  >
+                    <i className="fas fa-th-large"></i>
+                  </button>
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={`px-4 py-2 rounded-lg transition-all duration-200 ${
+                      viewMode === "list"
+                        ? "bg-white dark:bg-gray-600 text-blue-600 shadow-sm"
+                        : "text-gray-600 dark:text-gray-400"
+                    }`}
+                  >
+                    <i className="fas fa-list"></i>
+                  </button>
+                </div>
+
+                {/* Refresh Button */}
+                <button
+                  onClick={refreshOrders}
+                  disabled={refreshing}
+                  className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all duration-200 disabled:opacity-50 flex items-center"
+                >
+                  <i
+                    className={`fas fa-sync-alt mr-2 ${refreshing ? "animate-spin" : ""}`}
+                  ></i>
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Orders Display - Full Width Cards */}
+          <div className="space-y-6">
+            {currentOrders.map((order, index) => (
+              <div
+                key={order._id}
+                className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 transform hover:-translate-y-1"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                {/* Order Header */}
+                <div className="bg-gradient-to-r from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 p-6 border-b border-gray-200 dark:border-gray-600">
+                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                    <div className="flex-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+                            Order #
+                            {order._id?.slice(-8)?.toUpperCase() || "N/A"}
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+                            <i className="fas fa-calendar mr-2"></i>
+                            {formatDate(order.createdAt)}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                          {getStatusBadge(order.status)}
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                              {formatPrice(order.total)}
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              {order.items?.length} items
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Enhanced Progress Timeline */}
+                      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center">
+                            <i className="fas fa-route mr-2 text-blue-600"></i>
+                            Order Progress
+                          </h4>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {(() => {
+                              const statuses = [
+                                "pending",
+                                "confirmed",
+                                "shipped",
+                                "delivered",
+                              ];
+                              const currentIndex = statuses.indexOf(
+                                order.status?.toLowerCase(),
+                              );
+                              return `${currentIndex + 1}/${statuses.length}`;
+                            })()}
+                          </span>
+                        </div>
+
+                        {/* Progress Steps */}
+                        <div className="relative">
+                          <div className="flex items-center justify-between">
+                            {(() => {
+                              const steps = [
+                                {
+                                  status: "pending",
+                                  icon: "fas fa-clock",
+                                  label: "Order Placed",
+                                  color: "yellow",
+                                },
+                                {
+                                  status: "confirmed",
+                                  icon: "fas fa-check",
+                                  label: "Confirmed",
+                                  color: "blue",
+                                },
+                                {
+                                  status: "shipped",
+                                  icon: "fas fa-truck",
+                                  label: "Shipped",
+                                  color: "purple",
+                                },
+                                {
+                                  status: "delivered",
+                                  icon: "fas fa-check-circle",
+                                  label: "Delivered",
+                                  color: "green",
+                                },
+                              ];
+
+                              const currentIndex = steps.findIndex(
+                                (step) =>
+                                  step.status === order.status?.toLowerCase(),
+                              );
+
+                              return steps.map((step, index) => {
+                                const isCompleted = index <= currentIndex;
+                                const isActive = index === currentIndex;
+                                const isCancelled =
+                                  order.status?.toLowerCase() === "cancelled";
+
+                                return (
+                                  <div
+                                    key={step.status}
+                                    className="flex flex-col items-center relative z-10"
+                                  >
+                                    {/* Step Icon */}
+                                    <div
+                                      className={`
+                                      w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300
+                                      ${
+                                        isCancelled
+                                          ? "bg-red-100 border-red-300 text-red-600"
+                                          : isCompleted
+                                            ? `bg-${step.color}-100 border-${step.color}-500 text-${step.color}-600`
+                                            : isActive
+                                              ? `bg-${step.color}-50 border-${step.color}-300 text-${step.color}-500 animate-pulse`
+                                              : "bg-gray-100 border-gray-300 text-gray-400"
+                                      }
+                                    `}
+                                    >
+                                      <i
+                                        className={`${isCancelled ? "fas fa-times" : step.icon} text-lg`}
+                                      ></i>
+                                    </div>
+
+                                    {/* Step Label */}
+                                    <span
+                                      className={`
+                                      mt-2 text-xs font-medium text-center
+                                      ${
+                                        isCancelled
+                                          ? "text-red-600"
+                                          : isCompleted
+                                            ? "text-gray-900 dark:text-white"
+                                            : "text-gray-500 dark:text-gray-400"
+                                      }
+                                    `}
+                                    >
+                                      {isCancelled && index === currentIndex
+                                        ? "Cancelled"
+                                        : step.label}
+                                    </span>
+
+                                    {/* Date/Time for completed steps */}
+                                    {isCompleted && !isCancelled && (
+                                      <span className="text-xs text-gray-400 mt-1">
+                                        {index === 0
+                                          ? new Date(
+                                              order.createdAt,
+                                            ).toLocaleDateString()
+                                          : "TBD"}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              });
+                            })()}
+                          </div>
+
+                          {/* Progress Line */}
+                          <div className="absolute top-6 left-6 right-6 h-0.5 bg-gray-200 dark:bg-gray-600 -z-0">
+                            <div
+                              className={`h-full transition-all duration-700 ease-out ${
+                                order.status?.toLowerCase() === "cancelled"
+                                  ? "bg-red-400"
+                                  : "bg-gradient-to-r from-yellow-400 via-blue-400 via-purple-400 to-green-400"
+                              }`}
+                              style={{
+                                width: (() => {
+                                  const statuses = [
+                                    "pending",
+                                    "confirmed",
+                                    "shipped",
+                                    "delivered",
+                                  ];
+                                  const currentIndex = statuses.indexOf(
+                                    order.status?.toLowerCase(),
+                                  );
+                                  if (
+                                    order.status?.toLowerCase() === "cancelled"
+                                  )
+                                    return "25%";
+                                  return `${((currentIndex + 1) / statuses.length) * 100}%`;
+                                })(),
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+
+                        {/* Status Message */}
+                        <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {order.status === "pending" && (
+                              <>
+                                <i className="fas fa-hourglass-half mr-2 text-yellow-500"></i>
+                                Waiting for farmer confirmation. We'll notify
+                                you once your order is confirmed.
+                              </>
+                            )}
+                            {order.status === "confirmed" && (
+                              <>
+                                <i className="fas fa-thumbs-up mr-2 text-blue-500"></i>
+                                Your order has been confirmed! The farmer is
+                                preparing your items.
+                              </>
+                            )}
+                            {order.status === "shipped" && (
+                              <>
+                                <i className="fas fa-shipping-fast mr-2 text-purple-500"></i>
+                                Your order is on the way! Track your delivery
+                                for real-time updates.
+                              </>
+                            )}
+                            {order.status === "delivered" && (
+                              <>
+                                <i className="fas fa-box-open mr-2 text-green-500"></i>
+                                Order delivered successfully! Enjoy your fresh
+                                products.
+                              </>
+                            )}
+                            {order.status === "cancelled" && (
+                              <>
+                                <i className="fas fa-ban mr-2 text-red-500"></i>
+                                This order has been cancelled. If you have
+                                questions, please contact support.
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Content */}
+                <div className="p-6">
+                  {/* Order Items Grid */}
+                  <div className="mb-6">
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                      <i className="fas fa-box mr-2 text-blue-600"></i>
+                      Order Items ({order.items?.length || 0})
+                    </h4>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4">
+                      {order.items?.slice(0, 8).map((item, index) => (
+                        <div
+                          key={index}
+                          className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200 border border-gray-200 dark:border-gray-600"
+                        >
+                          <div className="flex items-start space-x-3">
+                            <div className="relative flex-shrink-0">
+                              <img
+                                src={
+                                  item.image ||
+                                  "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=60&h=60&fit=crop"
+                                }
+                                alt={item.productName}
+                                className="w-16 h-16 rounded-lg object-cover border-2 border-white dark:border-gray-600 shadow-sm"
+                              />
+                              <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+                                {item.quantity}
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h5 className="font-medium text-gray-900 dark:text-white text-sm mb-1 truncate">
+                                {item.productName}
+                              </h5>
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 flex items-center">
+                                <i className="fas fa-user-tie mr-1"></i>
+                                {item.farmerName || "Local Farmer"}
+                              </p>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  {formatPrice(item.price)}/unit
+                                </span>
+                                <span className="font-semibold text-gray-900 dark:text-white text-sm">
+                                  {formatPrice(item.price * item.quantity)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {order.items?.length > 8 && (
+                      <div className="text-center">
+                        <button
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setShowOrderDetails(true);
+                          }}
+                          className="inline-flex items-center px-4 py-2 text-blue-600 hover:text-blue-700 font-medium text-sm rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors duration-200"
+                        >
+                          <i className="fas fa-plus mr-2"></i>
+                          View {order.items.length - 8} more items
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Order Summary & Actions */}
+                  <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                      {/* Order Summary */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
+                        <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                          <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                            {order.items?.length || 0}
+                          </div>
+                          <div className="text-xs text-blue-600 dark:text-blue-400">
+                            Items
+                          </div>
+                        </div>
+                        <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
+                          <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                            {formatPrice(order.subtotal || order.total || 0)}
+                          </div>
+                          <div className="text-xs text-green-600 dark:text-green-400">
+                            Subtotal
+                          </div>
+                        </div>
+                        <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700">
+                          <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                            {formatPrice(order.deliveryFee || 50)}
+                          </div>
+                          <div className="text-xs text-purple-600 dark:text-purple-400">
+                            Delivery
+                          </div>
+                        </div>
+                        <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                          <div className="text-lg font-bold text-gray-900 dark:text-white">
+                            {formatPrice(order.total)}
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                            Total
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setShowOrderDetails(true);
+                          }}
+                          className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg"
+                        >
+                          <i className="fas fa-eye mr-2"></i>
+                          View Details
+                        </button>
+
+                        {order.status === "delivered" && (
+                          <>
+                            <button className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg">
+                              <i className="fas fa-download mr-2"></i>
+                              Receipt
+                            </button>
+                            <Link
+                              href={`/review?orderId=${order._id}`}
+                              className="flex items-center px-4 py-2 border border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900 rounded-lg font-medium transition-all duration-200"
+                            >
+                              <i className="fas fa-star mr-2"></i>
+                              Review
+                            </Link>
+                            <button
+                              onClick={() => handleReorder(order)}
+                              className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition-all duration-200"
+                            >
+                              <i className="fas fa-redo mr-2"></i>
+                              Reorder
+                            </button>
+                          </>
+                        )}
+
+                        {(order.status === "pending" ||
+                          order.status === "confirmed") && (
+                          <button
+                            onClick={() => handleCancelOrder(order._id)}
+                            className="flex items-center px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded-lg font-medium transition-all duration-200"
+                          >
+                            <i className="fas fa-times mr-2"></i>
+                            Cancel Order
+                          </button>
+                        )}
+
+                        {order.status === "shipped" && (
+                          <button className="flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg">
+                            <i className="fas fa-map-marker-alt mr-2"></i>
+                            Track Order
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Enhanced Pagination */}
           {totalPages > 1 && (
-            <div className="flex justify-center mt-12">
-              <nav aria-label="Pagination">
-                <ul className="inline-flex items-center -space-x-px text-gray-600 dark:text-gray-300">
-                  <li>
-                    <button
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.max(prev - 1, 1))
-                      }
-                      disabled={currentPage === 1}
-                      className="block px-3 py-2 ml-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50"
-                    >
-                      <i className="fas fa-chevron-left"></i>
-                    </button>
-                  </li>
-                  {[...Array(totalPages)].map((_, index) => (
-                    <li key={index}>
+            <div className="flex flex-col sm:flex-row justify-between items-center mt-12 bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+              <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 sm:mb-0">
+                Showing {indexOfFirstOrder + 1} to{" "}
+                {Math.min(indexOfLastOrder, filteredOrders.length)} of{" "}
+                {filteredOrders.length} orders
+              </div>
+
+              <nav
+                aria-label="Pagination"
+                className="flex items-center space-x-2"
+              >
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                >
+                  <i className="fas fa-chevron-left"></i>
+                </button>
+
+                {[...Array(totalPages)].map((_, index) => {
+                  const page = index + 1;
+                  if (
+                    page === currentPage ||
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
                       <button
-                        onClick={() => setCurrentPage(index + 1)}
-                        className={`px-3 py-2 leading-tight border ${
-                          currentPage === index + 1
-                            ? "text-white bg-primary-600 border-primary-600 hover:bg-primary-700"
-                            : "text-gray-500 bg-white border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                          currentPage === page
+                            ? "bg-blue-600 text-white shadow-lg transform scale-110"
+                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600"
                         }`}
                       >
-                        {index + 1}
+                        {page}
                       </button>
-                    </li>
-                  ))}
-                  <li>
-                    <button
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                      }
-                      disabled={currentPage === totalPages}
-                      className="block px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white disabled:opacity-50"
-                    >
-                      <i className="fas fa-chevron-right"></i>
-                    </button>
-                  </li>
-                </ul>
+                    );
+                  } else if (
+                    page === currentPage - 2 ||
+                    page === currentPage + 2
+                  ) {
+                    return (
+                      <span key={page} className="px-2 text-gray-400">
+                        ...
+                      </span>
+                    );
+                  }
+                  return null;
+                })}
+
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                >
+                  <i className="fas fa-chevron-right"></i>
+                </button>
               </nav>
             </div>
           )}
         </div>
       </div>
+
+      {/* Enhanced Order Details Modal */}
+      {showOrderDetails && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-2xl font-bold mb-1">
+                    Order #{selectedOrder._id?.slice(-8)?.toUpperCase()}
+                  </h3>
+                  <p className="text-blue-100">
+                    Placed on {formatDate(selectedOrder.createdAt)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowOrderDetails(false)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors duration-200"
+                >
+                  <i className="fas fa-times text-xl"></i>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Order Summary */}
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                      <i className="fas fa-clipboard-list mr-2 text-blue-600"></i>
+                      Order Summary
+                    </h4>
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">
+                          Status:
+                        </span>
+                        {getStatusBadge(selectedOrder.status)}
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">
+                          Total Amount:
+                        </span>
+                        <span className="text-xl font-bold text-gray-900 dark:text-white">
+                          {formatPrice(selectedOrder.total)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">
+                          Items:
+                        </span>
+                        <span className="font-medium text-gray-900 dark:text-white">
+                          {selectedOrder.items?.length} items
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Delivery Information */}
+                  {selectedOrder.deliveryAddress && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                        <i className="fas fa-map-marker-alt mr-2 text-green-600"></i>
+                        Delivery Information
+                      </h4>
+                      <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 space-y-2">
+                        <p className="text-gray-900 dark:text-white font-medium">
+                          {selectedOrder.deliveryAddress.name}
+                        </p>
+                        <p className="text-gray-600 dark:text-gray-400">
+                          {selectedOrder.deliveryAddress.address}
+                        </p>
+                        <p className="text-gray-600 dark:text-gray-400">
+                          {selectedOrder.deliveryAddress.city}
+                        </p>
+                        <p className="text-gray-600 dark:text-gray-400">
+                          <i className="fas fa-phone mr-2"></i>
+                          {selectedOrder.deliveryAddress.phone}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Order Items */}
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                    <i className="fas fa-box mr-2 text-purple-600"></i>
+                    Items Ordered
+                  </h4>
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {selectedOrder.items?.map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl"
+                      >
+                        <img
+                          src={
+                            item.image ||
+                            "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=60&h=60&fit=crop"
+                          }
+                          alt={item.productName}
+                          className="w-16 h-16 rounded-lg object-cover"
+                        />
+                        <div className="flex-1">
+                          <h5 className="font-medium text-gray-900 dark:text-white">
+                            {item.productName}
+                          </h5>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            By {item.farmerName || "Local Farmer"}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Quantity: {item.quantity} •{" "}
+                            {formatPrice(item.price)}/unit
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold text-gray-900 dark:text-white">
+                            {formatPrice(item.price * item.quantity)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-gray-200 dark:border-gray-600 p-6 bg-gray-50 dark:bg-gray-700">
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowOrderDetails(false)}
+                  className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-xl font-medium transition-all duration-200"
+                >
+                  Close
+                </button>
+                {selectedOrder.status === "delivered" && (
+                  <button className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all duration-200">
+                    <i className="fas fa-download mr-2"></i>
+                    Download Receipt
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </>

@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/contexts/CartContext";
-import Image from "next/image";
 import Link from "next/link";
 import Footer from "@/components/Footer";
 
@@ -13,9 +12,8 @@ export default function Payment() {
   const router = useRouter();
   const {
     items: cartItems,
-    getCartTotal,
     loading: cartLoading,
-    clearCart,
+    clearCartAfterPayment,
     updateQuantity,
     removeFromCart,
   } = useCart();
@@ -23,11 +21,8 @@ export default function Payment() {
   // Enhanced state management
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showAddressModal, setShowAddressModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [redirectingToSuccess, setRedirectingToSuccess] = useState(false);
-  const [step, setStep] = useState(1); // 1: Review, 2: Address, 3: Payment, 4: Confirmation
   const [notifications, setNotifications] = useState([]);
   const [promoCode, setPromoCode] = useState("");
   const [promoDiscount, setPromoDiscount] = useState(0);
@@ -389,14 +384,22 @@ export default function Payment() {
           }
 
           setRedirectingToSuccess(true);
-          router.replace(`/success?orderId=${orderId}`);
-          setTimeout(() => clearCart(), 100);
+
+          // Redirect immediately to prevent any flash of cart page
+          router.push(`/success?orderId=${orderId}`);
+
+          // Clear the cart in the background after redirect starts
+          setTimeout(() => {
+            clearCartAfterPayment();
+          }, 50);
         } else {
           addNotification(
             "Order created successfully! Redirecting...",
             "success",
           );
-          router.replace("/");
+          setTimeout(() => {
+            router.push("/");
+          }, 100);
         }
       } else {
         const errorData = await response
@@ -1359,7 +1362,6 @@ export default function Payment() {
           </div>
         </div>
       </div>
-
 
       {/* Enhanced Edit Order Modal */}
       {showEditModal && (
