@@ -1,113 +1,131 @@
 "use client";
 
-import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import Footer from "@/components/Footer";
 import { debounce } from "@/utils/debounce";
+import { apiService } from "@/lib/api-service";
+
+// Move constants outside component to prevent recreations
+const CATEGORY_OPTIONS = [
+  "All Categories",
+  "Vegetables",
+  "Fruits",
+  "Grains",
+  "Dairy",
+  "Honey",
+  "Herbs",
+];
+
+const PRICE_RANGE_OPTIONS = [
+  { label: "Under ৳50", min: 0, max: 49 },
+  { label: "৳50 - ৳100", min: 50, max: 100 },
+  { label: "৳100 - ৳200", min: 101, max: 200 },
+  { label: "৳200 - ৳500", min: 201, max: 500 },
+  { label: "Above ৳500", min: 501, max: 9999 },
+];
+
+const TAG_OPTIONS = [
+  "Organic",
+  "Fresh",
+  "Local",
+  "Premium",
+  "Seasonal",
+  "Limited Stock",
+];
+
+const ITEMS_PER_PAGE = 12;
 
 export default function Products() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [categories, setCategories] = useState([]);
-  const [pagination, setPagination] = useState({});
 
-  // Search and filter states
-  const [searchTerm, setSearchTerm] = useState(
-    searchParams.get("search") || "",
-  );
-  const [selectedCategory, setSelectedCategory] = useState(
-    searchParams.get("category") || "All Categories",
-  );
-  const [selectedPriceRanges, setSelectedPriceRanges] = useState([]);
-  const [selectedRatings, setSelectedRatings] = useState([]);
-  const [selectedFarmers, setSelectedFarmers] = useState([]);
-  const [selectedTags, setSelectedTags] = useState([]);
-  const [priceRangeSlider, setPriceRangeSlider] = useState([0, 10000]);
-  const [sortBy, setSortBy] = useState("newest");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  // Core data states
+  const [allProducts, setAllProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [availableFarmers, setAvailableFarmers] = useState([]);
 
-  const categoryOptions = [
-    "All Categories",
-    "Vegetables",
-    "Fruits",
-    "Grains",
-    "Dairy",
-    "Honey",
-    "Herbs",
-  ];
+  // Filter states - Initialize from URL params
+  const [filters, setFilters] = useState(() => ({
+    searchTerm: searchParams.get("search") || "",
+    selectedCategory: searchParams.get("category") || "All Categories",
+    selectedPriceRanges: searchParams.get("priceRanges")?.split(",") || [],
+    selectedRatings: searchParams.get("ratings")?.split(",").map(Number) || [],
+    selectedFarmers: searchParams.get("farmers")?.split(",") || [],
+    selectedTags: searchParams.get("tags")?.split(",") || [],
+    priceRangeSlider: [
+      Number(searchParams.get("minPrice")) || 0,
+      Number(searchParams.get("maxPrice")) || 10000,
+    ],
+    sortBy: searchParams.get("sort") || "newest",
+  }));
 
-  const priceRangeOptions = [
-    { label: "Under ৳50", min: 0, max: 49 },
-    { label: "৳50 - ৳100", min: 50, max: 100 },
-    { label: "৳100 - ৳200", min: 101, max: 200 },
-    { label: "৳200 - ৳500", min: 201, max: 500 },
-    { label: "Above ৳500", min: 501, max: 9999 },
-  ];
+  const [currentPage, setCurrentPage] = useState(
+    Number(searchParams.get("page")) || 1,
+  );
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  const tagOptions = [
-    "Organic",
-    "Fresh",
-    "Local",
-    "Premium",
-    "Seasonal",
-    "Limited Stock",
-  ];
-
-  const applyFilters = useCallback((products) => {
-    let filtered = [...products];
+  // Memoized filtered and sorted products
+  const filteredProducts = useMemo(() => {
+    let filtered = [...allProducts];
 
     // Apply price range checkboxes
-    if (selectedPriceRanges.length > 0) {
+    if (filters.selectedPriceRanges.length > 0) {
       filtered = filtered.filter((product) => {
-        return selectedPriceRanges.some((range) => {
-          const option = priceRangeOptions.find((opt) => opt.label === range);
+        return filters.selectedPriceRanges.some((range) => {
+          const option = PRICE_RANGE_OPTIONS.find((opt) => opt.label === range);
           const price = parseFloat(product.price) || 0;
           return price >= option.min && price <= option.max;
         });
       });
     }
 
-    // Apply price range slider (always apply)
+    // Apply price range slider
     filtered = filtered.filter((product) => {
       const price = parseFloat(product.price) || 0;
-      return price >= priceRangeSlider[0] && price <= priceRangeSlider[1];
+      return (
+        price >= filters.priceRangeSlider[0] &&
+        price <= filters.priceRangeSlider[1]
+      );
     });
 
     // Apply rating filters
-    if (selectedRatings.length > 0) {
+    if (filters.selectedRatings.length > 0) {
       filtered = filtered.filter((product) => {
         const productRating = parseFloat(product.averageRating) || 0;
-        return selectedRatings.some((rating) => productRating >= rating);
+        return filters.selectedRatings.some(
+          (rating) => productRating >= rating,
+        );
       });
     }
 
     // Apply farmer filters
-    if (selectedFarmers.length > 0) {
+    if (filters.selectedFarmers.length > 0) {
       filtered = filtered.filter((product) => {
         const farmerName = product.farmer?.name || product.farmerName || "";
-        return selectedFarmers.includes(farmerName);
+        return filters.selectedFarmers.includes(farmerName);
       });
     }
 
     // Apply tag filters
-    if (selectedTags.length > 0) {
+    if (filters.selectedTags.length > 0) {
       filtered = filtered.filter((product) => {
-        return selectedTags.some((tag) => {
+        return filters.selectedTags.some((tag) => {
           switch (tag) {
             case "Organic":
-              return product.isOrganic === true ||
-                     (product.tags && product.tags.includes("organic"));
+              return (
+                product.isOrganic === true ||
+                (product.tags && product.tags.includes("organic"))
+              );
             case "Fresh":
-              return product.isFresh === true ||
-                     (product.tags && product.tags.includes("fresh"));
+              return (
+                product.isFresh === true ||
+                (product.tags && product.tags.includes("fresh"))
+              );
             case "Local":
-              return true; // Assuming all products are local
+              return true;
             case "Premium":
               return parseFloat(product.price) > 200;
             case "Seasonal":
@@ -122,7 +140,7 @@ export default function Products() {
     }
 
     // Apply sorting
-    switch (sortBy) {
+    switch (filters.sortBy) {
       case "price-low":
         filtered.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
         break;
@@ -130,13 +148,16 @@ export default function Products() {
         filtered.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
         break;
       case "rating":
-        filtered.sort((a, b) =>
-          (parseFloat(b.averageRating) || 0) - (parseFloat(a.averageRating) || 0)
+        filtered.sort(
+          (a, b) =>
+            (parseFloat(b.averageRating) || 0) -
+            (parseFloat(a.averageRating) || 0),
         );
         break;
       case "popular":
-        filtered.sort((a, b) =>
-          (parseInt(b.purchaseCount) || 0) - (parseInt(a.purchaseCount) || 0)
+        filtered.sort(
+          (a, b) =>
+            (parseInt(b.purchaseCount) || 0) - (parseInt(a.purchaseCount) || 0),
         );
         break;
       case "newest":
@@ -150,432 +171,303 @@ export default function Products() {
     }
 
     return filtered;
-  }, [selectedPriceRanges, priceRangeSlider, selectedRatings, selectedFarmers, selectedTags, sortBy]);
+  }, [allProducts, filters]);
 
+  // Memoized pagination data
+  const paginationData = useMemo(() => {
+    const totalProducts = filteredProducts.length;
+    const totalPages = Math.ceil(totalProducts / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+
+    return {
+      products: paginatedProducts,
+      pagination: {
+        currentPage,
+        totalPages,
+        totalProducts,
+        hasNextPage: currentPage < totalPages,
+        hasPrevPage: currentPage > 1,
+      },
+    };
+  }, [filteredProducts, currentPage]);
+
+  // Use optimized API service with caching
   const fetchProducts = useCallback(async () => {
     setLoading(true);
+    setError(null);
+
     try {
-      const params = new URLSearchParams();
-      if (searchTerm) params.append("search", searchTerm);
-      if (selectedCategory !== "All Categories")
-        params.append("category", selectedCategory);
-      params.append("limit", "1000");
-      params.append("sortBy", sortBy);
+      const params = {
+        limit: 1000, // Fetch more products for client-side filtering
+      };
 
-      const response = await fetch(`/api/products?${params}`);
-      if (response.ok) {
-        const data = await response.json();
-        let allProducts = data.products || [];
-
-        // Apply client-side filters
-        let filteredProducts = applyFilters(allProducts);
-
-        // Apply pagination
-        const itemsPerPage = 12;
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
-
-        setProducts(paginatedProducts);
-        setPagination({
-          currentPage: currentPage,
-          totalPages: Math.ceil(filteredProducts.length / itemsPerPage),
-          totalProducts: filteredProducts.length,
-          hasNextPage: currentPage < Math.ceil(filteredProducts.length / itemsPerPage),
-          hasPrevPage: currentPage > 1,
-        });
+      // Add search/category filters for server-side optimization
+      if (filters.searchTerm) params.search = filters.searchTerm;
+      if (filters.selectedCategory !== "All Categories") {
+        params.category = filters.selectedCategory;
       }
+
+      const data = await apiService.getProducts(params);
+      setAllProducts(data.products || []);
     } catch (error) {
       console.error("Error fetching products:", error);
+      setError("Failed to load products. Please try again.");
+      setAllProducts([]);
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, selectedCategory, sortBy, currentPage, applyFilters]);
+  }, [filters.searchTerm, filters.selectedCategory]);
 
-  const fetchAvailableFarmers = async () => {
+  // Fetch available farmers using cached API
+  const fetchAvailableFarmers = useCallback(async () => {
     try {
-      const farmers = [];
-
-      // Fetch from products API to get farmers
-      try {
-        const response = await fetch("/api/products?limit=1000");
-        if (response.ok) {
-          const data = await response.json();
-          const uniqueFarmers = [...new Set(
-            data.products
-              .map(p => p.farmer?.name || p.farmerName)
-              .filter(Boolean)
-          )];
-          farmers.push(...uniqueFarmers);
-        }
-      } catch (error) {
-        console.error("Error fetching farmers:", error);
-      }
-
-      // Sort and set farmers
-      farmers.sort();
-      setAvailableFarmers(farmers);
+      const data = await apiService.getProducts({ limit: 1000 });
+      const uniqueFarmers = [
+        ...new Set(
+          data.products
+            .map((p) => p.farmer?.name || p.farmerName)
+            .filter(Boolean),
+        ),
+      ].sort();
+      setAvailableFarmers(uniqueFarmers);
     } catch (error) {
-      console.error("Error in fetchAvailableFarmers:", error);
+      console.error("Error fetching farmers:", error);
       setAvailableFarmers([]);
     }
-  };
+  }, []);
 
-  // Create debounced fetch function after fetchProducts is defined
-  const debouncedFetchProducts = useCallback(
+  // Initial data fetch
+  useEffect(() => {
+    fetchProducts();
+    fetchAvailableFarmers();
+  }, [fetchProducts, fetchAvailableFarmers]);
+
+  // Update URL when filters change (with debouncing)
+  const updateURL = useCallback(
     debounce(() => {
-      fetchProducts();
+      const params = new URLSearchParams();
+
+      // Only add non-default parameters to keep URLs clean
+      if (filters.searchTerm) params.set("search", filters.searchTerm);
+      if (filters.selectedCategory !== "All Categories")
+        params.set("category", filters.selectedCategory);
+      if (filters.selectedPriceRanges.length > 0)
+        params.set("priceRanges", filters.selectedPriceRanges.join(","));
+      if (filters.selectedRatings.length > 0)
+        params.set("ratings", filters.selectedRatings.join(","));
+      if (filters.selectedFarmers.length > 0)
+        params.set("farmers", filters.selectedFarmers.join(","));
+      if (filters.selectedTags.length > 0)
+        params.set("tags", filters.selectedTags.join(","));
+      if (filters.priceRangeSlider[0] > 0)
+        params.set("minPrice", filters.priceRangeSlider[0]);
+      if (filters.priceRangeSlider[1] < 10000)
+        params.set("maxPrice", filters.priceRangeSlider[1]);
+      if (filters.sortBy !== "newest") params.set("sort", filters.sortBy);
+      if (currentPage > 1) params.set("page", currentPage);
+
+      const newURL = params.toString() ? `?${params.toString()}` : "";
+      router.push(`/products${newURL}`, { scroll: false });
     }, 300),
-    [fetchProducts]
+    [filters, currentPage, router],
   );
 
-  // Main effect for triggering product fetch
   useEffect(() => {
+    updateURL();
+  }, [updateURL]);
+
+  // Handle filter changes
+  const handleFilterChange = useCallback((filterType, value) => {
+    setFilters((prev) => {
+      const newFilters = { ...prev };
+
+      switch (filterType) {
+        case "searchTerm":
+          newFilters.searchTerm = value;
+          break;
+        case "category":
+          newFilters.selectedCategory = value;
+          break;
+        case "priceRange":
+          if (newFilters.selectedPriceRanges.includes(value)) {
+            newFilters.selectedPriceRanges =
+              newFilters.selectedPriceRanges.filter((range) => range !== value);
+          } else {
+            newFilters.selectedPriceRanges = [
+              ...newFilters.selectedPriceRanges,
+              value,
+            ];
+          }
+          break;
+        case "rating":
+          if (newFilters.selectedRatings.includes(value)) {
+            newFilters.selectedRatings = newFilters.selectedRatings.filter(
+              (rating) => rating !== value,
+            );
+          } else {
+            newFilters.selectedRatings = [...newFilters.selectedRatings, value];
+          }
+          break;
+        case "farmer":
+          if (newFilters.selectedFarmers.includes(value)) {
+            newFilters.selectedFarmers = newFilters.selectedFarmers.filter(
+              (farmer) => farmer !== value,
+            );
+          } else {
+            newFilters.selectedFarmers = [...newFilters.selectedFarmers, value];
+          }
+          break;
+        case "tag":
+          if (newFilters.selectedTags.includes(value)) {
+            newFilters.selectedTags = newFilters.selectedTags.filter(
+              (tag) => tag !== value,
+            );
+          } else {
+            newFilters.selectedTags = [...newFilters.selectedTags, value];
+          }
+          break;
+        case "priceSlider":
+          newFilters.priceRangeSlider = value;
+          break;
+        case "sortBy":
+          newFilters.sortBy = value;
+          break;
+      }
+
+      return newFilters;
+    });
+
+    // Reset to first page when filters change
+    if (filterType !== "sortBy") {
+      setCurrentPage(1);
+    }
+  }, []);
+
+  // Clear all filters
+  const clearAllFilters = useCallback(() => {
+    setFilters({
+      searchTerm: "",
+      selectedCategory: "All Categories",
+      selectedPriceRanges: [],
+      selectedRatings: [],
+      selectedFarmers: [],
+      selectedTags: [],
+      priceRangeSlider: [0, 10000],
+      sortBy: "newest",
+    });
+    setCurrentPage(1);
+  }, []);
+
+  // Handle page changes
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  // Refresh data
+  const refreshData = useCallback(() => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Separate useEffect for fetching farmers (only once)
-  useEffect(() => {
-    fetchAvailableFarmers();
-  }, []);
-
-  // Update states from URL params
-  useEffect(() => {
-    const newSearchTerm = searchParams.get("search") || "";
-    const newCategory = searchParams.get("category") || "All Categories";
-
-    setSearchTerm(newSearchTerm);
-    setSelectedCategory(newCategory);
-
-    // Restore price ranges from URL
-    const priceRanges = searchParams.get("priceRanges");
-    if (priceRanges) {
-      setSelectedPriceRanges(priceRanges.split(","));
-    } else {
-      setSelectedPriceRanges([]);
-    }
-
-    // Restore ratings from URL
-    const ratings = searchParams.get("ratings");
-    if (ratings) {
-      setSelectedRatings(ratings.split(",").map(Number));
-    } else {
-      setSelectedRatings([]);
-    }
-
-    // Restore farmers from URL
-    const farmers = searchParams.get("farmers");
-    if (farmers) {
-      setSelectedFarmers(farmers.split(","));
-    } else {
-      setSelectedFarmers([]);
-    }
-
-    // Restore tags from URL
-    const tags = searchParams.get("tags");
-    if (tags) {
-      setSelectedTags(tags.split(","));
-    } else {
-      setSelectedTags([]);
-    }
-
-    // Restore price range slider from URL
-    const minPrice = searchParams.get("minPrice");
-    const maxPrice = searchParams.get("maxPrice");
-    if (minPrice && maxPrice) {
-      setPriceRangeSlider([Number(minPrice), Number(maxPrice)]);
-    } else {
-      setPriceRangeSlider([0, 10000]);
-    }
-
-    // Restore sort option from URL
-    setSortBy(searchParams.get("sort") || "newest");
-
-    // Restore page from URL
-    setCurrentPage(Number(searchParams.get("page")) || 1);
-  }, [searchParams]);
-
-  // Handle search functionality
-  const handleSearch = () => {
-    const params = new URLSearchParams();
-    if (searchTerm) params.append("search", searchTerm);
-    if (selectedCategory !== "All Categories")
-      params.append("category", selectedCategory);
-    router.push(`/products?${params.toString()}`);
-    setCurrentPage(1);
-    fetchProducts();
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
-
-  const handleCategoryChange = (category) => {
-    setSelectedCategory(category);
-    setCurrentPage(1);
-
-    // Immediate URL update like other filters
-    updateURLWithFilters({
-      selectedCategory: category,
-    });
-  };
-
-  const handlePriceRangeChange = (range) => {
-    const newPriceRanges = selectedPriceRanges.includes(range)
-      ? selectedPriceRanges.filter((r) => r !== range)
-      : [...selectedPriceRanges, range];
-
-    setSelectedPriceRanges(newPriceRanges);
-    setCurrentPage(1);
-
-    // Immediate URL update
-    updateURLWithFilters({
-      selectedPriceRanges: newPriceRanges,
-    });
-  };
-
-  const handleRatingChange = (rating) => {
-    const newRatings = selectedRatings.includes(rating)
-      ? selectedRatings.filter((r) => r !== rating)
-      : [...selectedRatings, rating];
-
-    setSelectedRatings(newRatings);
-    setCurrentPage(1);
-
-    // Immediate URL update
-    updateURLWithFilters({
-      selectedRatings: newRatings,
-    });
-  };
-
-  const handleFarmerChange = (farmer) => {
-    const newFarmers = selectedFarmers.includes(farmer)
-      ? selectedFarmers.filter((f) => f !== farmer)
-      : [...selectedFarmers, farmer];
-
-    setSelectedFarmers(newFarmers);
-    setCurrentPage(1);
-
-    // Immediate URL update
-    updateURLWithFilters({
-      selectedFarmers: newFarmers,
-    });
-  };
-
-  const handleTagChange = (tag) => {
-    const newTags = selectedTags.includes(tag)
-      ? selectedTags.filter((t) => t !== tag)
-      : [...selectedTags, tag];
-
-    setSelectedTags(newTags);
-    setCurrentPage(1);
-
-    // Immediate URL update
-    updateURLWithFilters({
-      selectedTags: newTags,
-    });
-  };
-
-  const handlePriceSliderChange = (newPriceRange) => {
-    setPriceRangeSlider(newPriceRange);
-    setCurrentPage(1);
-
-    // Immediate URL update
-    updateURLWithFilters({
-      priceRangeSlider: newPriceRange,
-    });
-  };
-
-  const handleSortChange = (newSort) => {
-    setSortBy(newSort);
-    setCurrentPage(1);
-
-    // Immediate URL update
-    updateURLWithFilters({
-      sortBy: newSort,
-    });
-  };
-
-  const clearAllFilters = () => {
-    setSelectedCategory("All Categories");
-    setSearchTerm("");
-    setSelectedPriceRanges([]);
-    setSelectedRatings([]);
-    setSelectedFarmers([]);
-    setSelectedTags([]);
-    setPriceRangeSlider([0, 10000]);
-    setCurrentPage(1);
-    updateURL();
-  };
-
-  const updateURL = () => {
-    const params = new URLSearchParams();
-
-    // Add search term
-    if (searchTerm) params.append("search", searchTerm);
-
-    // Add category
-    if (selectedCategory !== "All Categories")
-      params.append("category", selectedCategory);
-
-    // Add price ranges
-    if (selectedPriceRanges.length > 0) {
-      params.append("priceRanges", selectedPriceRanges.join(","));
-    }
-
-    // Add ratings
-    if (selectedRatings.length > 0) {
-      params.append("ratings", selectedRatings.join(","));
-    }
-
-    // Add farmers
-    if (selectedFarmers.length > 0) {
-      params.append("farmers", selectedFarmers.join(","));
-    }
-
-    // Add tags
-    if (selectedTags.length > 0) {
-      params.append("tags", selectedTags.join(","));
-    }
-
-    // Add price range slider
-    if (priceRangeSlider[0] !== 0 || priceRangeSlider[1] !== 10000) {
-      params.append("minPrice", priceRangeSlider[0]);
-      params.append("maxPrice", priceRangeSlider[1]);
-    }
-
-    // Add sort option
-    if (sortBy !== "newest") {
-      params.append("sort", sortBy);
-    }
-
-    // Add current page if not first page
-    if (currentPage > 1) {
-      params.append("page", currentPage);
-    }
-
-    const newURL = `/products${params.toString() ? `?${params.toString()}` : ""}`;
-    router.push(newURL, { shallow: true });
-  };
-
-  const updateURLWithFilters = (overrides = {}) => {
-    console.log(" updateURLWithFilters called with overrides:", overrides);
-
-    const params = new URLSearchParams();
-
-    // Use current state values or overrides
-    const currentSearchTerm =
-      overrides.searchTerm !== undefined ? overrides.searchTerm : searchTerm;
-    const currentCategory =
-      overrides.selectedCategory !== undefined
-        ? overrides.selectedCategory
-        : selectedCategory;
-    const currentPriceRanges =
-      overrides.selectedPriceRanges !== undefined
-        ? overrides.selectedPriceRanges
-        : selectedPriceRanges;
-    const currentRatings =
-      overrides.selectedRatings !== undefined
-        ? overrides.selectedRatings
-        : selectedRatings;
-    const currentFarmers =
-      overrides.selectedFarmers !== undefined
-        ? overrides.selectedFarmers
-        : selectedFarmers;
-    const currentTags =
-      overrides.selectedTags !== undefined
-        ? overrides.selectedTags
-        : selectedTags;
-    const currentPriceSlider =
-      overrides.priceRangeSlider !== undefined
-        ? overrides.priceRangeSlider
-        : priceRangeSlider;
-    const currentSort =
-      overrides.sortBy !== undefined ? overrides.sortBy : sortBy;
-    const currentPageNumber =
-      overrides.currentPage !== undefined ? overrides.currentPage : 1; // Reset to page 1 for filters
-
-    console.log(" Final values to use:", {
-      currentSearchTerm,
-      currentCategory,
-      currentPriceRanges,
-      currentRatings,
-      currentFarmers,
-      currentTags,
-      currentPriceSlider,
-      currentSort,
-      currentPageNumber,
-    });
-
-    // Add search term
-    if (currentSearchTerm) params.append("search", currentSearchTerm);
-
-    // Add category
-    if (currentCategory !== "All Categories")
-      params.append("category", currentCategory);
-
-    // Add price ranges
-    if (currentPriceRanges.length > 0) {
-      params.append("priceRanges", currentPriceRanges.join(","));
-    }
-
-    // Add ratings
-    if (currentRatings.length > 0) {
-      params.append("ratings", currentRatings.join(","));
-    }
-
-    // Add farmers
-    if (currentFarmers.length > 0) {
-      params.append("farmers", currentFarmers.join(","));
-    }
-
-    // Add tags
-    if (currentTags.length > 0) {
-      params.append("tags", currentTags.join(","));
-    }
-
-    // Add price range slider
-    if (currentPriceSlider[0] !== 0 || currentPriceSlider[1] !== 10000) {
-      params.append("minPrice", currentPriceSlider[0]);
-      params.append("maxPrice", currentPriceSlider[1]);
-    }
-
-    // Add sort option
-    if (currentSort !== "newest") {
-      params.append("sort", currentSort);
-    }
-
-    // Add current page if not first page
-    if (currentPageNumber > 1) {
-      params.append("page", currentPageNumber);
-    }
-
-    const newURL = `/products${params.toString() ? `?${params.toString()}` : ""}`;
-    console.log(" Generated URL with filters:", newURL);
-    router.push(newURL, { shallow: true });
-  };
-
-  const handlePageChange = (page) => {
-    console.log(" Page change clicked:", page);
-    setCurrentPage(page);
-    // Update URL immediately for page changes
-    updateURLWithFilters({
-      currentPage: page,
-    });
-  };
-
+  // Get active filter count
   const getActiveFilterCount = () => {
     let count = 0;
-    if (selectedCategory !== "All Categories") count++;
-    if (selectedPriceRanges.length > 0) count++;
-    if (selectedRatings.length > 0) count++;
-    if (selectedFarmers.length > 0) count++;
-    if (selectedTags.length > 0) count++;
-    if (priceRangeSlider[0] !== 0 || priceRangeSlider[1] !== 10000) count++;
+    if (filters.selectedCategory !== "All Categories") count++;
+    if (filters.selectedPriceRanges.length > 0) count++;
+    if (filters.selectedRatings.length > 0) count++;
+    if (filters.selectedFarmers.length > 0) count++;
+    if (filters.selectedTags.length > 0) count++;
+    if (
+      filters.priceRangeSlider[0] !== 0 ||
+      filters.priceRangeSlider[1] !== 10000
+    )
+      count++;
     return count;
   };
+
+  // Pagination Component
+  const PaginationComponent = useMemo(() => {
+    if (paginationData.pagination.totalPages <= 1) return null;
+
+    return (
+      <div className="flex justify-center items-center space-x-2 mt-8">
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={!paginationData.pagination.hasPrevPage}
+          className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed
+                     hover:bg-gray-50 transition-colors duration-200"
+        >
+          Previous
+        </button>
+
+        <div className="flex space-x-1">
+          {Array.from(
+            { length: Math.min(5, paginationData.pagination.totalPages) },
+            (_, i) => {
+              const page = Math.max(1, currentPage - 2) + i;
+              if (page > paginationData.pagination.totalPages) return null;
+
+              return (
+                <button
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={`px-3 py-2 rounded-lg transition-colors duration-200 ${
+                    page === currentPage
+                      ? "bg-green-600 text-white"
+                      : "border hover:bg-gray-50"
+                  }`}
+                >
+                  {page}
+                </button>
+              );
+            },
+          )}
+        </div>
+
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={!paginationData.pagination.hasNextPage}
+          className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed
+                     hover:bg-gray-50 transition-colors duration-200"
+        >
+          Next
+        </button>
+      </div>
+    );
+  }, [paginationData.pagination, currentPage, handlePageChange]);
+
+  if (loading && allProducts.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading fresh products...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <div className="text-red-600 text-lg mb-4">{error}</div>
+            <button
+              onClick={refreshData}
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -589,28 +481,29 @@ export default function Products() {
             </p>
 
             {/* Search Results Info */}
-            {(searchTerm || selectedCategory !== "All Categories") && (
+            {(filters.searchTerm ||
+              filters.selectedCategory !== "All Categories") && (
               <div className="mt-6 p-4 bg-primary-700 rounded-lg">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
-                    {searchTerm && (
+                    {filters.searchTerm && (
                       <p className="text-primary-100">
                         Search results for:{" "}
                         <span className="font-semibold text-white">
-                          "{searchTerm}"
+                          "{filters.searchTerm}"
                         </span>
                       </p>
                     )}
-                    {selectedCategory !== "All Categories" && (
+                    {filters.selectedCategory !== "All Categories" && (
                       <p className="text-primary-100">
                         Category:{" "}
                         <span className="font-semibold text-white">
-                          {selectedCategory}
+                          {filters.selectedCategory}
                         </span>
                       </p>
                     )}
                     <p className="text-sm text-primary-200">
-                      {pagination.totalProducts} products found
+                      {paginationData.pagination.totalProducts} products found
                     </p>
                   </div>
 
@@ -620,12 +513,14 @@ export default function Products() {
                       type="text"
                       placeholder="Search products..."
                       className="px-4 py-2 rounded-lg text-gray-900 focus:outline-none"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                      value={filters.searchTerm}
+                      onChange={(e) =>
+                        handleFilterChange("searchTerm", e.target.value)
+                      }
+                      onKeyPress={(e) => e.key === "Enter" && fetchProducts()}
                     />
                     <button
-                      onClick={handleSearch}
+                      onClick={fetchProducts}
                       className="px-4 py-2 bg-primary-500 hover:bg-primary-400 rounded-lg transition"
                     >
                       <i className="fas fa-search"></i>
@@ -675,79 +570,84 @@ export default function Products() {
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {selectedCategory !== "All Categories" && (
+                {filters.selectedCategory !== "All Categories" && (
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200">
-                    Category: {selectedCategory}
+                    Category: {filters.selectedCategory}
                     <button
-                      onClick={() => handleCategoryChange("All Categories")}
+                      onClick={() =>
+                        handleFilterChange("category", "All Categories")
+                      }
                       className="ml-2 text-primary-600 hover:text-primary-800"
                     >
                       ×
                     </button>
                   </span>
                 )}
-                {selectedPriceRanges.map((range) => (
+                {filters.selectedPriceRanges.map((range) => (
                   <span
                     key={range}
                     className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
                   >
                     {range}
                     <button
-                      onClick={() => handlePriceRangeChange(range)}
+                      onClick={() => handleFilterChange("priceRange", range)}
                       className="ml-2 text-green-600 hover:text-green-800"
                     >
                       ×
                     </button>
                   </span>
                 ))}
-                {selectedRatings.map((rating) => (
+                {filters.selectedRatings.map((rating) => (
                   <span
                     key={rating}
                     className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
                   >
                     {rating}+ Stars
                     <button
-                      onClick={() => handleRatingChange(rating)}
+                      onClick={() => handleFilterChange("rating", rating)}
                       className="ml-2 text-yellow-600 hover:text-yellow-800"
                     >
                       ×
                     </button>
                   </span>
                 ))}
-                {selectedFarmers.map((farmer) => (
+                {filters.selectedFarmers.map((farmer) => (
                   <span
                     key={farmer}
                     className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                   >
                     {farmer}
                     <button
-                      onClick={() => handleFarmerChange(farmer)}
+                      onClick={() => handleFilterChange("farmer", farmer)}
                       className="ml-2 text-blue-600 hover:text-blue-800"
                     >
                       ×
                     </button>
                   </span>
                 ))}
-                {selectedTags.map((tag) => (
+                {filters.selectedTags.map((tag) => (
                   <span
                     key={tag}
                     className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
                   >
                     {tag}
                     <button
-                      onClick={() => handleTagChange(tag)}
+                      onClick={() => handleFilterChange("tag", tag)}
                       className="ml-2 text-purple-600 hover:text-purple-800"
                     >
                       ×
                     </button>
                   </span>
                 ))}
-                {(priceRangeSlider[0] !== 0 ||
-                  priceRangeSlider[1] !== 10000) && (
+                {(filters.priceRangeSlider[0] !== 0 ||
+                  filters.priceRangeSlider[1] !== 10000) && (
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
-                    ৳{priceRangeSlider[0]} - ৳{priceRangeSlider[1]}
+                    ৳{filters.priceRangeSlider[0]} - ৳
+                    {filters.priceRangeSlider[1]}
                     <button
-                      onClick={() => setPriceRangeSlider([0, 10000])}
+                      onClick={() =>
+                        handleFilterChange("priceSlider", [0, 10000])
+                      }
                       className="ml-2 text-orange-600 hover:text-orange-800"
                     >
                       ×
@@ -782,7 +682,7 @@ export default function Products() {
                     Category
                   </h4>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {categoryOptions.map((category) => (
+                    {CATEGORY_OPTIONS.map((category) => (
                       <label
                         key={category}
                         className="flex items-center hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded cursor-pointer"
@@ -790,8 +690,10 @@ export default function Products() {
                         <input
                           type="radio"
                           name="category"
-                          checked={selectedCategory === category}
-                          onChange={() => handleCategoryChange(category)}
+                          checked={filters.selectedCategory === category}
+                          onChange={() =>
+                            handleFilterChange("category", category)
+                          }
                           className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
@@ -817,11 +719,11 @@ export default function Products() {
                         min="0"
                         max="10000"
                         step="10"
-                        value={priceRangeSlider[0]}
+                        value={filters.priceRangeSlider[0]}
                         onChange={(e) =>
-                          handlePriceSliderChange([
+                          handleFilterChange("priceSlider", [
                             +e.target.value,
-                            priceRangeSlider[1],
+                            filters.priceRangeSlider[1],
                           ])
                         }
                         className="absolute w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
@@ -831,10 +733,10 @@ export default function Products() {
                         min="0"
                         max="10000"
                         step="10"
-                        value={priceRangeSlider[1]}
+                        value={filters.priceRangeSlider[1]}
                         onChange={(e) =>
-                          handlePriceSliderChange([
-                            priceRangeSlider[0],
+                          handleFilterChange("priceSlider", [
+                            filters.priceRangeSlider[0],
                             +e.target.value,
                           ])
                         }
@@ -844,28 +746,32 @@ export default function Products() {
                         <div
                           className="absolute h-2 bg-primary-600 rounded-lg"
                           style={{
-                            left: `${(priceRangeSlider[0] / 10000) * 100}%`,
-                            width: `${((priceRangeSlider[1] - priceRangeSlider[0]) / 10000) * 100}%`,
+                            left: `${(filters.priceRangeSlider[0] / 10000) * 100}%`,
+                            width: `${((filters.priceRangeSlider[1] - filters.priceRangeSlider[0]) / 10000) * 100}%`,
                           }}
                         ></div>
                       </div>
                     </div>
                     <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mt-2">
-                      <span>৳{priceRangeSlider[0]}</span>
-                      <span>৳{priceRangeSlider[1]}</span>
+                      <span>৳{filters.priceRangeSlider[0]}</span>
+                      <span>৳{filters.priceRangeSlider[1]}</span>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    {priceRangeOptions.map((option) => (
+                    {PRICE_RANGE_OPTIONS.map((option) => (
                       <label
                         key={option.label}
                         className="flex items-center hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded cursor-pointer"
                       >
                         <input
                           type="checkbox"
-                          checked={selectedPriceRanges.includes(option.label)}
-                          onChange={() => handlePriceRangeChange(option.label)}
+                          checked={filters.selectedPriceRanges.includes(
+                            option.label,
+                          )}
+                          onChange={() =>
+                            handleFilterChange("priceRange", option.label)
+                          }
                           className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
@@ -890,8 +796,8 @@ export default function Products() {
                       >
                         <input
                           type="checkbox"
-                          checked={selectedRatings.includes(rating)}
-                          onChange={() => handleRatingChange(rating)}
+                          checked={filters.selectedRatings.includes(rating)}
+                          onChange={() => handleFilterChange("rating", rating)}
                           className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 flex items-center">
@@ -923,8 +829,10 @@ export default function Products() {
                         >
                           <input
                             type="checkbox"
-                            checked={selectedFarmers.includes(farmer)}
-                            onChange={() => handleFarmerChange(farmer)}
+                            checked={filters.selectedFarmers.includes(farmer)}
+                            onChange={() =>
+                              handleFilterChange("farmer", farmer)
+                            }
                             className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
                           <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 truncate">
@@ -947,15 +855,15 @@ export default function Products() {
                     Tags
                   </h4>
                   <div className="space-y-2">
-                    {tagOptions.map((tag) => (
+                    {TAG_OPTIONS.map((tag) => (
                       <label
                         key={tag}
                         className="flex items-center hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded cursor-pointer"
                       >
                         <input
                           type="checkbox"
-                          checked={selectedTags.includes(tag)}
-                          onChange={() => handleTagChange(tag)}
+                          checked={filters.selectedTags.includes(tag)}
+                          onChange={() => handleFilterChange("tag", tag)}
                           className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
@@ -987,7 +895,7 @@ export default function Products() {
                 <div className="flex items-center space-x-4">
                   <span className="text-gray-700 dark:text-gray-300 font-medium">
                     <i className="fas fa-box mr-2 text-primary-600"></i>
-                    {pagination.totalProducts} products
+                    {paginationData.pagination.totalProducts} products
                   </span>
                   {loading && (
                     <div className="flex items-center text-primary-600">
@@ -1002,8 +910,10 @@ export default function Products() {
                     Sort by:
                   </label>
                   <select
-                    value={sortBy}
-                    onChange={(e) => handleSortChange(e.target.value)}
+                    value={filters.sortBy}
+                    onChange={(e) =>
+                      handleFilterChange("sortBy", e.target.value)
+                    }
                     className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                   >
                     <option value="newest">Newest First</option>
@@ -1034,55 +944,15 @@ export default function Products() {
                     </div>
                   ))}
                 </div>
-              ) : products.length > 0 ? (
+              ) : paginationData.products.length > 0 ? (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {products.map((product) => (
+                    {paginationData.products.map((product) => (
                       <ProductCard key={product._id} product={product} />
                     ))}
                   </div>
 
-                  {/* Pagination */}
-                  {pagination.totalPages > 1 && (
-                    <div className="mt-8 flex justify-center">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={!pagination.hasPrevPage}
-                          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          Previous
-                        </button>
-
-                        {[...Array(Math.min(5, pagination.totalPages))].map(
-                          (_, index) => {
-                            const pageNum = index + 1;
-                            return (
-                              <button
-                                key={pageNum}
-                                onClick={() => handlePageChange(pageNum)}
-                                className={`px-3 py-2 border rounded-lg ${
-                                  currentPage === pageNum
-                                    ? "bg-primary-600 text-white border-primary-600"
-                                    : "border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                }`}
-                              >
-                                {pageNum}
-                              </button>
-                            );
-                          },
-                        )}
-
-                        <button
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={!pagination.hasNextPage}
-                          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  {PaginationComponent}
                 </>
               ) : (
                 <div className="text-center py-12">
@@ -1093,12 +963,12 @@ export default function Products() {
                   <p className="text-gray-600 dark:text-gray-400 mb-4">
                     Try adjusting your search criteria or browse all products
                   </p>
-                  <Link
-                    href="/products"
+                  <button
+                    onClick={clearAllFilters}
                     className="inline-block bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition"
                   >
                     Browse All Products
-                  </Link>
+                  </button>
                 </div>
               )}
             </div>

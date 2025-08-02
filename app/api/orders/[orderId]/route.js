@@ -2,6 +2,73 @@ import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
+// Cache to track if indexes have been initialized
+let orderDetailIndexesInitialized = false;
+
+// Initialize indexes for better performance on single order operations (only once)
+async function initializeOrderDetailIndexes(db) {
+  // Skip if already initialized in this session
+  if (orderDetailIndexesInitialized) return;
+
+  try {
+    const ordersCollection = db.collection("orders");
+    const productsCollection = db.collection("products");
+
+    // Check existing indexes first to avoid conflicts
+    const existingOrderIndexes = await ordersCollection.listIndexes().toArray();
+    const orderIndexNames = existingOrderIndexes.map((idx) => idx.name);
+
+    // Orders collection indexes for efficient lookups - only create if they don't exist
+    if (!orderIndexNames.some((name) => name.includes("status_1_createdAt"))) {
+      await ordersCollection.createIndex(
+        { status: 1, createdAt: -1 },
+        { name: "orders_status_date_idx", background: true },
+      );
+    }
+
+    if (!orderIndexNames.some((name) => name.includes("items.productId"))) {
+      await ordersCollection.createIndex(
+        { "items.productId": 1 },
+        { name: "orders_items_product_idx", background: true },
+      );
+    }
+
+    if (
+      !orderIndexNames.some(
+        (name) => name.includes("userId_1") && !name.includes("items"),
+      )
+    ) {
+      await ordersCollection.createIndex(
+        { userId: 1 },
+        { name: "orders_user_idx", background: true },
+      );
+    }
+
+    // Products collection indexes for stock operations
+    const existingProductIndexes = await productsCollection
+      .listIndexes()
+      .toArray();
+    const productIndexNames = existingProductIndexes.map((idx) => idx.name);
+
+    if (
+      !productIndexNames.some(
+        (name) => name.includes("stock_1") && !name.includes("_id"),
+      )
+    ) {
+      await productsCollection.createIndex(
+        { stock: 1 },
+        { name: "products_stock_idx", background: true },
+      );
+    }
+
+    orderDetailIndexesInitialized = true;
+    console.log("Order detail indexes initialized successfully");
+  } catch (error) {
+    console.log("Index initialization note:", error.message);
+    // Don't throw error, just log it - indexes might already exist
+  }
+}
+
 export async function GET(request, { params }) {
   try {
     const { orderId } = params;
@@ -16,9 +83,31 @@ export async function GET(request, { params }) {
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
-    const order = await db.collection("orders").findOne({
-      _id: new ObjectId(orderId),
-    });
+    // Initialize indexes once per application lifecycle
+    await initializeOrderDetailIndexes(db);
+
+    // Use aggregation pipeline for optimized order retrieval
+    const orderPipeline = [
+      { $match: { _id: new ObjectId(orderId) } },
+      {
+        $addFields: {
+          // Ensure statusHistory is always an array
+          statusHistory: {
+            $cond: {
+              if: { $isArray: "$statusHistory" },
+              then: "$statusHistory",
+              else: [],
+            },
+          },
+        },
+      },
+      { $limit: 1 },
+    ];
+
+    const [order] = await db
+      .collection("orders")
+      .aggregate(orderPipeline)
+      .toArray();
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
@@ -39,8 +128,6 @@ export async function PATCH(request, { params }) {
     const { orderId } = params;
     const updateData = await request.json();
 
-    console.log("Updating order:", orderId, "with data:", updateData);
-
     if (!orderId) {
       return NextResponse.json(
         { error: "Order ID is required" },
@@ -50,7 +137,6 @@ export async function PATCH(request, { params }) {
 
     // Validate ObjectId format
     if (!ObjectId.isValid(orderId)) {
-      console.error("Invalid ObjectId format:", orderId);
       return NextResponse.json(
         { error: "Invalid order ID format" },
         { status: 400 },
@@ -60,17 +146,31 @@ export async function PATCH(request, { params }) {
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
-    // Check if order exists first
-    const existingOrder = await db.collection("orders").findOne({
-      _id: new ObjectId(orderId),
-    });
+    // Initialize indexes once per application lifecycle
+    await initializeOrderDetailIndexes(db);
+
+    // Use aggregation pipeline to get order info and check cancellation status
+    const orderInfoPipeline = [
+      { $match: { _id: new ObjectId(orderId) } },
+      {
+        $project: {
+          _id: 1,
+          status: 1,
+          items: 1,
+          statusHistory: 1,
+        },
+      },
+      { $limit: 1 },
+    ];
+
+    const [existingOrder] = await db
+      .collection("orders")
+      .aggregate(orderInfoPipeline)
+      .toArray();
 
     if (!existingOrder) {
-      console.error("Order not found:", orderId);
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
-
-    console.log("Existing order found, proceeding with update...");
 
     // Check if order status is being changed to cancelled/returned
     const isBeingCancelled =
@@ -79,88 +179,56 @@ export async function PATCH(request, { params }) {
       existingOrder.status !== "cancelled" &&
       existingOrder.status !== "returned";
 
-    // If order is being cancelled, restore stock
+    // If order is being cancelled, restore stock using bulk operations
     if (isBeingCancelled && existingOrder.items) {
-      console.log(
-        `Order ${orderId} is being cancelled/returned, restoring stock...`,
-      );
+      const stockRestoreOperations = existingOrder.items.map((item) => ({
+        updateOne: {
+          filter: { _id: new ObjectId(item.productId) },
+          update: {
+            $inc: { stock: item.quantity },
+            $set: { updatedAt: new Date() },
+          },
+        },
+      }));
 
-      for (const item of existingOrder.items) {
-        const productId = item.productId;
-        const orderQuantity = item.quantity;
-
-        // Get current product
-        const product = await db
-          .collection("products")
-          .findOne({ _id: new ObjectId(productId) });
-
-        if (product) {
-          // Restore product stock
-          const newStock = product.stock + orderQuantity;
-          await db.collection("products").updateOne(
-            { _id: new ObjectId(productId) },
-            {
-              $set: {
-                stock: newStock,
-                updatedAt: new Date(),
-              },
-            },
-          );
-
-          console.log(
-            `Restored stock for ${item.name}: ${product.stock} -> ${newStock}`,
-          );
-        } else {
-          console.warn(`Product ${productId} not found when restoring stock`);
-        }
+      if (stockRestoreOperations.length > 0) {
+        await db.collection("products").bulkWrite(stockRestoreOperations);
       }
     }
 
-    // Check the current statusHistory structure
-    const currentStatusHistory = existingOrder.statusHistory;
-    console.log("Current statusHistory type:", typeof currentStatusHistory);
-    console.log(
-      "Current statusHistory is array:",
-      Array.isArray(currentStatusHistory),
-    );
-
-    // Prepare the update operation
+    // Prepare the update operation with optimized status history handling
     const updateOperation = {
       $set: {
         ...updateData,
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date(),
       },
     };
 
-    // Handle statusHistory properly based on current state
+    // Handle statusHistory efficiently
     if (updateData.statusHistory) {
-      if (Array.isArray(currentStatusHistory)) {
-        // statusHistory is already an array, use $push
-        updateOperation.$push = {
-          statusHistory: updateData.statusHistory,
-        };
-      } else {
-        // statusHistory doesn't exist or is not an array, initialize/replace it
-        updateOperation.$set.statusHistory =
-          currentStatusHistory && Array.isArray(currentStatusHistory)
-            ? [...currentStatusHistory, updateData.statusHistory]
-            : [updateData.statusHistory];
-      }
+      // Use $push to add to statusHistory array, initializing if needed
+      updateOperation.$push = {
+        statusHistory: updateData.statusHistory,
+      };
 
-      // Remove statusHistory from $set if we're using $push
-      if (updateOperation.$push) {
-        delete updateOperation.$set.statusHistory;
+      // Remove statusHistory from $set to avoid conflicts
+      delete updateOperation.$set.statusHistory;
+
+      // If statusHistory doesn't exist or isn't an array, initialize it first
+      if (!Array.isArray(existingOrder.statusHistory)) {
+        await db
+          .collection("orders")
+          .updateOne(
+            { _id: new ObjectId(orderId) },
+            { $set: { statusHistory: [] } },
+          );
       }
     }
 
-    console.log("Update operation:", JSON.stringify(updateOperation, null, 2));
-
-    // Perform the update
+    // Perform the optimized update
     const result = await db
       .collection("orders")
       .updateOne({ _id: new ObjectId(orderId) }, updateOperation);
-
-    console.log("Update result:", result);
 
     if (result.matchedCount === 0) {
       return NextResponse.json(
@@ -169,27 +237,35 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    if (result.modifiedCount === 0) {
-      console.warn("Order found but not modified - possibly same data");
-    }
+    // Use aggregation to get the updated order with proper field formatting
+    const updatedOrderPipeline = [
+      { $match: { _id: new ObjectId(orderId) } },
+      {
+        $addFields: {
+          statusHistory: {
+            $cond: {
+              if: { $isArray: "$statusHistory" },
+              then: "$statusHistory",
+              else: [],
+            },
+          },
+        },
+      },
+      { $limit: 1 },
+    ];
 
-    // Fetch the updated order to return the complete data
-    const updatedOrder = await db.collection("orders").findOne({
-      _id: new ObjectId(orderId),
-    });
-
-    console.log("Order updated successfully:", orderId);
+    const [updatedOrder] = await db
+      .collection("orders")
+      .aggregate(updatedOrderPipeline)
+      .toArray();
 
     return NextResponse.json({
       message: "Order updated successfully",
       order: updatedOrder,
-      stockRestored: isBeingCancelled
-        ? "Stock has been restored for cancelled order"
-        : "No stock changes needed",
+      stockRestored: isBeingCancelled,
     });
   } catch (error) {
     console.error("Update order error:", error);
-    console.error("Error stack:", error.stack);
     return NextResponse.json(
       { error: "Failed to update order", details: error.message },
       { status: 500 },
@@ -211,22 +287,53 @@ export async function DELETE(request, { params }) {
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
-    // Check if order exists and can be deleted
-    const order = await db.collection("orders").findOne({
-      _id: new ObjectId(orderId),
-    });
+    // Initialize indexes once per application lifecycle
+    await initializeOrderDetailIndexes(db);
 
-    if (!order) {
+    // Use aggregation pipeline to check deletion eligibility
+    const deletionCheckPipeline = [
+      { $match: { _id: new ObjectId(orderId) } },
+      {
+        $addFields: {
+          canDelete: {
+            $or: [
+              { $eq: ["$status", "cancelled"] },
+              {
+                $and: [
+                  { $eq: ["$status", "pending"] },
+                  {
+                    $lt: [
+                      { $subtract: [new Date(), "$createdAt"] },
+                      300000, // 5 minutes in milliseconds
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          status: 1,
+          canDelete: 1,
+          createdAt: 1,
+        },
+      },
+      { $limit: 1 },
+    ];
+
+    const [orderCheck] = await db
+      .collection("orders")
+      .aggregate(deletionCheckPipeline)
+      .toArray();
+
+    if (!orderCheck) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    // Only allow deletion of cancelled orders or very recent pending orders
-    const canDelete =
-      order.status === "cancelled" ||
-      (order.status === "pending" &&
-        Date.now() - new Date(order.createdAt).getTime() < 300000); // 5 minutes
-
-    if (!canDelete) {
+    if (!orderCheck.canDelete) {
       return NextResponse.json(
         {
           error:

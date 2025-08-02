@@ -6,6 +6,36 @@ import {
   enhanceProductsWithRatings,
 } from "@/lib/reviewUtils";
 
+// Initialize indexes for better performance on product details queries
+async function initializeProductDetailIndexes(db) {
+  try {
+    const productsCollection = db.collection("products");
+    const ordersCollection = db.collection("orders");
+    const reviewsCollection = db.collection("reviews");
+    const usersCollection = db.collection("users");
+
+    // Product collection indexes
+    await productsCollection.createIndex({ _id: 1 });
+    await productsCollection.createIndex({ farmerId: 1 });
+    await productsCollection.createIndex({ "farmer.id": 1 });
+    await productsCollection.createIndex({ "farmer._id": 1 });
+    await productsCollection.createIndex({ category: 1, status: 1 });
+    await productsCollection.createIndex({ status: 1 });
+
+    // Orders collection indexes for performance metrics
+    await ordersCollection.createIndex({ "items.productId": 1, status: 1 });
+    await ordersCollection.createIndex({ status: 1 });
+
+    // Reviews collection indexes
+    await reviewsCollection.createIndex({ productId: 1 });
+
+    // Users collection indexes for favorites
+    await usersCollection.createIndex({ favorites: 1 });
+  } catch (error) {
+    console.log("Index creation note:", error.message);
+  }
+}
+
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
@@ -13,150 +43,123 @@ export async function GET(request, { params }) {
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
-    // First, let's check what products actually exist
-    const allProductsCheck = await db.collection("products").find({}).toArray();
+    // Initialize indexes for optimal performance
+    await initializeProductDetailIndexes(db);
 
-    let targetProduct = null;
+    // Build efficient aggregation pipeline to find the product
+    const productPipeline = [
+      {
+        $match: {
+          $or: [
+            { _id: id },
+            ...(ObjectId.isValid(id) ? [{ _id: new ObjectId(id) }] : []),
+            { farmerId: id },
+            { "farmer.id": id },
+            { "farmer._id": id },
+          ],
+        },
+      },
+      {
+        $limit: 1,
+      },
+    ];
 
-    // Try multiple approaches to find the product
+    const [targetProduct] = await db
+      .collection("products")
+      .aggregate(productPipeline)
+      .toArray();
 
-    // 1. Try exact string match
-    targetProduct = await db.collection("products").findOne({ _id: id });
+    // If it's a farmer ID, return farmer details with optimized query
+    if (targetProduct && targetProduct.farmerId === id) {
+      const farmerProductsPipeline = [
+        { $match: { farmerId: id } },
+        {
+          $project: {
+            _id: 1,
+            name: 1,
+            price: 1,
+            image: 1,
+            images: 1,
+            category: 1,
+            stock: 1,
+            farmer: 1,
+            isOrganic: 1,
+            isFresh: 1,
+          },
+        },
+      ];
 
-    // 2. If not found and ID looks like ObjectId, try ObjectId
-    if (!targetProduct && ObjectId.isValid(id)) {
-      targetProduct = await db
+      const farmerProducts = await db
         .collection("products")
-        .findOne({ _id: new ObjectId(id) });
-    }
-
-    // 3. Try farmerId field match (in case it's stored there)
-    if (!targetProduct) {
-      targetProduct = await db.collection("products").findOne({ farmerId: id });
-
-      // If we found a product by farmerId, this means we're looking for farmer details, not product details
-      if (targetProduct) {
-        // Since this is a farmer ID, let's find all products by this farmer and return farmer info
-        const farmerProducts = await db
-          .collection("products")
-          .find({ farmerId: id })
-          .toArray();
-
-        // Get farmer info from the first product or create default
-        const farmerInfo = targetProduct.farmer || {
-          name: "Local Farmer",
-          location: "Bangladesh",
-          bio: "Dedicated to providing fresh, high-quality produce using sustainable farming practices.",
-          experience: 5,
-          id: id,
-        };
-
-        // Return farmer details with their products
-        return NextResponse.json({
-          isFarmerDetails: true,
-          farmer: farmerInfo,
-          farmerProducts: farmerProducts.map((p) => ({
-            ...p,
-            images: (() => {
-              const imageArray = [];
-              if (p.image) imageArray.push(p.image);
-              if (p.images && Array.isArray(p.images))
-                imageArray.push(...p.images);
-              return [
-                ...new Set(imageArray.filter((img) => img && img.trim())),
-              ];
-            })(),
-          })),
-          totalProducts: farmerProducts.length,
-          farmerId: id,
-        });
-      }
-    }
-
-    // 4. Try searching in nested structures (legacy support)
-    if (!targetProduct) {
-      const productDocuments = await db
-        .collection("products")
-        .find({})
+        .aggregate(farmerProductsPipeline)
         .toArray();
 
-      for (const doc of productDocuments) {
-        if (doc.products && Array.isArray(doc.products)) {
-          const found = doc.products.find(
-            (product) =>
-              product._id === id ||
-              product._id?.toString() === id ||
-              product.farmerId === id ||
-              (ObjectId.isValid(id) &&
-                product._id?.toString() === new ObjectId(id).toString()),
-          );
-          if (found) {
-            targetProduct = found;
-            break;
-          }
-        }
-      }
+      const farmerInfo = targetProduct.farmer || {
+        name: "Local Farmer",
+        location: "Bangladesh",
+        bio: "Dedicated to providing fresh, high-quality produce using sustainable farming practices.",
+        experience: 5,
+        id: id,
+      };
+
+      return NextResponse.json({
+        isFarmerDetails: true,
+        farmer: farmerInfo,
+        farmerProducts: farmerProducts.map((p) => ({
+          ...p,
+          images: combineProductImages(p),
+        })),
+        totalProducts: farmerProducts.length,
+        farmerId: id,
+      });
     }
 
-    // 5. Last resort: search by any field that might contain this ID
+    // Fallback: Search in nested structures if no direct product found
     if (!targetProduct) {
-      const regexSearch = await db.collection("products").findOne({
-        $or: [
-          { _id: { $regex: id, $options: "i" } },
-          { farmerId: { $regex: id, $options: "i" } },
-          { "farmer.id": id },
-          { "farmer._id": id },
-        ],
-      });
-      targetProduct = regexSearch;
+      const nestedProductPipeline = [
+        { $match: { products: { $exists: true, $ne: [] } } },
+        { $unwind: "$products" },
+        {
+          $match: {
+            $or: [
+              { "products._id": id },
+              { "products.farmerId": id },
+              ...(ObjectId.isValid(id)
+                ? [{ "products._id": new ObjectId(id) }]
+                : []),
+            ],
+          },
+        },
+        { $replaceRoot: { newRoot: "$products" } },
+        { $limit: 1 },
+      ];
+
+      const [nestedProduct] = await db
+        .collection("products")
+        .aggregate(nestedProductPipeline)
+        .toArray();
+
+      if (!nestedProduct) {
+        return NextResponse.json(
+          { error: "Product not found", searchedId: id },
+          { status: 404 },
+        );
+      }
+
+      targetProduct = nestedProduct;
     }
 
     if (!targetProduct) {
       return NextResponse.json(
-        {
-          error: "Product not found",
-          searchedId: id,
-          totalProductsInDb: allProductsCheck.length,
-          availableIds: allProductsCheck.slice(0, 10).map((p) => p._id),
-        },
+        { error: "Product not found", searchedId: id },
         { status: 404 },
       );
     }
 
-    // Get all products for finding related products
-    let allProducts = await db.collection("products").find({}).toArray();
-
-    // If products are in nested structure, extract them
-    if (allProducts.length > 0 && allProducts[0].products) {
-      let extractedProducts = [];
-      allProducts.forEach((doc) => {
-        if (doc.products && Array.isArray(doc.products)) {
-          extractedProducts = extractedProducts.concat(doc.products);
-        }
-      });
-      allProducts = extractedProducts;
-    }
-
-    // Add default values for missing fields
+    // Enhanced product with default values
     const product = {
       ...targetProduct,
-      // Combine both image sources - single image field and images array
-      images: (() => {
-        const imageArray = [];
-
-        // Add single image if it exists
-        if (targetProduct.image) {
-          imageArray.push(targetProduct.image);
-        }
-
-        // Add images array if it exists
-        if (targetProduct.images && Array.isArray(targetProduct.images)) {
-          imageArray.push(...targetProduct.images);
-        }
-
-        // Remove duplicates and empty values
-        return [...new Set(imageArray.filter((img) => img && img.trim()))];
-      })(),
+      images: combineProductImages(targetProduct),
       farmer: targetProduct.farmer || {
         name: "Local Farmer",
         location: "Bangladesh",
@@ -176,46 +179,55 @@ export async function GET(request, { params }) {
     // Calculate real ratings and review counts from reviews data
     const enhancedProduct = enhanceProductWithRatings(product);
 
-    // Fetch real performance metrics from orders collection
-    const performanceMetrics = await calculateProductPerformance(db, id);
-
-    // Add performance metrics to the product
+    // Fetch performance metrics using optimized aggregation
+    const performanceMetrics = await calculateProductPerformanceOptimized(
+      db,
+      id,
+    );
     enhancedProduct.performanceMetrics = performanceMetrics;
 
-    // Get related products (same category, exclude current product)
-    let relatedProducts = allProducts
-      .filter(
-        (p) =>
-          p.category === enhancedProduct.category &&
-          p._id !== enhancedProduct._id,
-      )
-      .slice(0, 4)
-      .map((p) => ({
-        ...p,
-        // Fix related products images too - combine both sources
-        images: (() => {
-          const imageArray = [];
+    // Get related products using efficient aggregation
+    const relatedProductsPipeline = [
+      {
+        $match: {
+          category: enhancedProduct.category,
+          _id: { $ne: enhancedProduct._id },
+          status: { $ne: "deleted" },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          price: 1,
+          image: 1,
+          images: 1,
+          category: 1,
+          stock: 1,
+          farmer: 1,
+          isOrganic: 1,
+          isFresh: 1,
+          averageRating: 1,
+        },
+      },
+      { $limit: 4 },
+    ];
 
-          // Add single image if it exists
-          if (p.image) {
-            imageArray.push(p.image);
-          }
+    const relatedProductsResult = await db
+      .collection("products")
+      .aggregate(relatedProductsPipeline)
+      .toArray();
 
-          // Add images array if it exists
-          if (p.images && Array.isArray(p.images)) {
-            imageArray.push(...p.images);
-          }
+    let relatedProducts = relatedProductsResult.map((p) => ({
+      ...p,
+      images: combineProductImages(p),
+      farmer: p.farmer || { name: "Local Farmer", location: "Bangladesh" },
+      stock: p.stock || 50,
+      isOrganic: p.isOrganic || false,
+      isFresh: p.isFresh || true,
+    }));
 
-          // Remove duplicates and empty values
-          return [...new Set(imageArray.filter((img) => img && img.trim()))];
-        })(),
-        farmer: p.farmer || { name: "Local Farmer", location: "Bangladesh" },
-        stock: p.stock || 50,
-        isOrganic: p.isOrganic || false,
-        isFresh: p.isFresh || true,
-      }));
-
-    // Calculate real ratings for related products too
+    // Calculate real ratings for related products
     relatedProducts = await enhanceProductsWithRatings(relatedProducts, db);
 
     return NextResponse.json({
@@ -228,6 +240,160 @@ export async function GET(request, { params }) {
       { error: "Failed to fetch product details" },
       { status: 500 },
     );
+  }
+}
+
+// Helper function to combine product images efficiently
+function combineProductImages(product) {
+  const imageArray = [];
+
+  if (product.image) {
+    imageArray.push(product.image);
+  }
+
+  if (product.images && Array.isArray(product.images)) {
+    imageArray.push(...product.images);
+  }
+
+  return [...new Set(imageArray.filter((img) => img && img.trim()))];
+}
+
+// Optimized performance calculation using aggregation pipeline
+async function calculateProductPerformanceOptimized(db, productId) {
+  try {
+    const productIdQuery = ObjectId.isValid(productId)
+      ? new ObjectId(productId)
+      : productId;
+
+    // Sales metrics pipeline
+    const salesPipeline = [
+      {
+        $match: {
+          status: { $in: ["completed", "delivered", "shipped"] },
+          "items.productId": {
+            $in: [productId, productIdQuery, productId.toString()],
+          },
+        },
+      },
+      { $unwind: "$items" },
+      {
+        $match: {
+          "items.productId": {
+            $in: [productId, productIdQuery, productId.toString()],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalSales: { $sum: "$items.quantity" },
+          totalRevenue: {
+            $sum: { $multiply: ["$items.quantity", "$items.price"] },
+          },
+          totalOrders: { $sum: 1 },
+        },
+      },
+    ];
+
+    // Reviews metrics pipeline
+    const reviewsPipeline = [
+      {
+        $match: {
+          productId: { $in: [productId, productIdQuery, productId.toString()] },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalReviews: { $sum: 1 },
+          averageRating: { $avg: "$rating" },
+          ratingDistribution: {
+            $push: "$rating",
+          },
+        },
+      },
+      {
+        $addFields: {
+          ratingCounts: {
+            5: {
+              $size: {
+                $filter: {
+                  input: "$ratingDistribution",
+                  cond: { $eq: ["$$this", 5] },
+                },
+              },
+            },
+            4: {
+              $size: {
+                $filter: {
+                  input: "$ratingDistribution",
+                  cond: { $eq: ["$$this", 4] },
+                },
+              },
+            },
+            3: {
+              $size: {
+                $filter: {
+                  input: "$ratingDistribution",
+                  cond: { $eq: ["$$this", 3] },
+                },
+              },
+            },
+            2: {
+              $size: {
+                $filter: {
+                  input: "$ratingDistribution",
+                  cond: { $eq: ["$$this", 2] },
+                },
+              },
+            },
+            1: {
+              $size: {
+                $filter: {
+                  input: "$ratingDistribution",
+                  cond: { $eq: ["$$this", 1] },
+                },
+              },
+            },
+          },
+        },
+      },
+    ];
+
+    const [salesData, reviewsData] = await Promise.all([
+      db.collection("orders").aggregate(salesPipeline).toArray(),
+      db.collection("reviews").aggregate(reviewsPipeline).toArray(),
+    ]);
+
+    const sales = salesData[0] || {
+      totalSales: 0,
+      totalRevenue: 0,
+      totalOrders: 0,
+    };
+    const reviews = reviewsData[0] || {
+      totalReviews: 0,
+      averageRating: 0,
+      ratingCounts: {},
+    };
+
+    return {
+      totalSales: sales.totalSales,
+      totalRevenue: sales.totalRevenue,
+      totalOrders: sales.totalOrders,
+      totalReviews: reviews.totalReviews,
+      averageRating: Number((reviews.averageRating || 0).toFixed(1)),
+      ratingDistribution: reviews.ratingCounts || {},
+    };
+  } catch (error) {
+    console.error("Error calculating performance metrics:", error);
+    return {
+      totalSales: 0,
+      totalRevenue: 0,
+      totalOrders: 0,
+      totalReviews: 0,
+      averageRating: 0,
+      ratingDistribution: {},
+    };
   }
 }
 

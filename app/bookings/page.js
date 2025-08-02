@@ -1,130 +1,154 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Footer from "@/components/Footer";
 
-export default function Bookings() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+// Constants for better maintainability
+const ORDER_STATUSES = {
+  ALL: "All Orders",
+  PENDING: "pending",
+  CONFIRMED: "confirmed",
+  SHIPPED: "shipped",
+  DELIVERED: "delivered",
+  CANCELLED: "cancelled",
+};
+
+const DATE_FILTERS = {
+  ALL: "all",
+  TODAY: "today",
+  WEEK: "week",
+  MONTH: "month",
+};
+
+const SORT_OPTIONS = {
+  NEWEST: "newest",
+  OLDEST: "oldest",
+  HIGHEST: "highest",
+  LOWEST: "lowest",
+};
+
+const VIEW_MODES = {
+  CARDS: "cards",
+  LIST: "list",
+};
+
+// Custom hooks for better code organization
+const useOrdersData = (session, status) => {
   const [orders, setOrders] = useState([]);
-  const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("All Orders");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [dateFilter, setDateFilter] = useState("all");
-  const [sortOrder, setSortOrder] = useState("newest");
-  const [viewMode, setViewMode] = useState("cards"); // cards or list
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [showOrderDetails, setShowOrderDetails] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const ordersPerPage = viewMode === "list" ? 10 : 6;
+  const [error, setError] = useState(null);
+  const abortControllerRef = useRef(null);
 
-  // Enhanced order statistics
-  const orderStats = useMemo(() => {
-    const stats = {
-      total: orders.length,
-      pending: orders.filter((o) => o.status === "pending").length,
-      confirmed: orders.filter((o) => o.status === "confirmed").length,
-      shipped: orders.filter((o) => o.status === "shipped").length,
-      delivered: orders.filter((o) => o.status === "delivered").length,
-      cancelled: orders.filter((o) => o.status === "cancelled").length,
-      totalSpent: orders.reduce((sum, order) => sum + (order.total || 0), 0),
-      averageOrderValue:
-        orders.length > 0
-          ? orders.reduce((sum, order) => sum + (order.total || 0), 0) /
-            orders.length
-          : 0,
-    };
-    return stats;
-  }, [orders]);
+  const fetchOrders = useCallback(
+    async (showLoading = true) => {
+      if (status !== "authenticated" || !session?.user) return;
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-      return;
-    }
+      // Cancel previous request if still pending
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
 
-    if (status === "authenticated" && session?.user) {
-      fetchOrders();
-    }
-  }, [session, status, router]);
+      abortControllerRef.current = new AbortController();
 
-  useEffect(() => {
-    if (!loading) {
-      filterOrders();
-    }
-  }, [orders, statusFilter, searchTerm, dateFilter, sortOrder, loading]);
+      try {
+        if (showLoading) setLoading(true);
+        setError(null);
 
-  const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      const userId =
-        session.user.userId ||
-        session.user.id ||
-        session.user._id ||
-        session.user.email;
+        const userId =
+          session.user.userId ||
+          session.user.id ||
+          session.user._id ||
+          session.user.email;
+        const userRole =
+          session.user.userType || session.user.role || "customer";
 
-      const userRole = session.user.userType || session.user.role || "customer";
-      let apiUrl;
+        let apiUrl;
+        if (userRole === "farmer") {
+          const farmerId =
+            session.user.userId || session.user.id || session.user._id;
+          const farmerEmail = session.user.email;
 
-      if (userRole === "farmer") {
-        const farmerId =
-          session.user.userId || session.user.id || session.user._id;
-        const farmerEmail = session.user.email;
-
-        if (farmerId) {
-          apiUrl = `/api/orders?farmerId=${encodeURIComponent(farmerId)}`;
-        } else if (farmerEmail) {
-          apiUrl = `/api/orders?farmerEmail=${encodeURIComponent(farmerEmail)}`;
+          if (farmerId) {
+            apiUrl = `/api/orders?farmerId=${encodeURIComponent(farmerId)}`;
+          } else if (farmerEmail) {
+            apiUrl = `/api/orders?farmerEmail=${encodeURIComponent(farmerEmail)}`;
+          } else {
+            throw new Error("No farmer identifier found");
+          }
         } else {
-          setOrders([]);
-          setLoading(false);
+          apiUrl = `/api/orders?userId=${encodeURIComponent(userId)}`;
+        }
+
+        const response = await fetch(apiUrl, {
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        // Validate response structure
+        if (!data || !Array.isArray(data.orders)) {
+          throw new Error("Invalid API response format");
+        }
+
+        setOrders(data.orders);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          console.log("Request was cancelled");
           return;
         }
-      } else {
-        apiUrl = `/api/orders?userId=${encodeURIComponent(userId)}`;
-      }
 
-      const response = await fetch(apiUrl);
-
-      if (response.ok) {
-        const data = await response.json();
-        setOrders(data.orders || []);
-      } else {
+        console.error("Error fetching orders:", error);
+        setError(error.message || "Failed to fetch orders");
         setOrders([]);
+      } finally {
+        if (showLoading) setLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-      setOrders([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [session, status],
+  );
 
-  const refreshOrders = async () => {
-    setRefreshing(true);
-    await fetchOrders();
-    setRefreshing(false);
-  };
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
-  const filterOrders = () => {
+  return { orders, loading, error, fetchOrders };
+};
+
+const useOrderFilters = (orders) => {
+  const [statusFilter, setStatusFilter] = useState(ORDER_STATUSES.ALL);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState(DATE_FILTERS.ALL);
+  const [sortOrder, setSortOrder] = useState(SORT_OPTIONS.NEWEST);
+
+  const filteredOrders = useMemo(() => {
     let filtered = [...orders];
 
     // Status filter
-    if (statusFilter !== "All Orders") {
+    if (statusFilter !== ORDER_STATUSES.ALL) {
       filtered = filtered.filter(
-        (order) => order.status.toLowerCase() === statusFilter.toLowerCase(),
+        (order) => order.status?.toLowerCase() === statusFilter.toLowerCase(),
       );
     }
 
     // Search filter
-    if (searchTerm) {
+    if (searchTerm.trim()) {
+      const searchText = searchTerm.toLowerCase().trim();
       filtered = filtered.filter((order) => {
-        const searchText = searchTerm.toLowerCase();
         return (
           order._id?.toLowerCase().includes(searchText) ||
           order.customerName?.toLowerCase().includes(searchText) ||
@@ -138,17 +162,17 @@ export default function Bookings() {
     }
 
     // Date filter
-    if (dateFilter !== "all") {
+    if (dateFilter !== DATE_FILTERS.ALL) {
       const now = new Date();
       filtered = filtered.filter((order) => {
         const orderDate = new Date(order.createdAt);
         switch (dateFilter) {
-          case "today":
+          case DATE_FILTERS.TODAY:
             return orderDate.toDateString() === now.toDateString();
-          case "week":
+          case DATE_FILTERS.WEEK:
             const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
             return orderDate >= weekAgo;
-          case "month":
+          case DATE_FILTERS.MONTH:
             const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
             return orderDate >= monthAgo;
           default:
@@ -160,68 +184,221 @@ export default function Bookings() {
     // Sort orders
     filtered.sort((a, b) => {
       switch (sortOrder) {
-        case "newest":
+        case SORT_OPTIONS.NEWEST:
           return new Date(b.createdAt) - new Date(a.createdAt);
-        case "oldest":
+        case SORT_OPTIONS.OLDEST:
           return new Date(a.createdAt) - new Date(b.createdAt);
-        case "highest":
+        case SORT_OPTIONS.HIGHEST:
           return (b.total || 0) - (a.total || 0);
-        case "lowest":
+        case SORT_OPTIONS.LOWEST:
           return (a.total || 0) - (b.total || 0);
         default:
           return 0;
       }
     });
 
-    setFilteredOrders(filtered);
-    setCurrentPage(1);
+    return filtered;
+  }, [orders, statusFilter, searchTerm, dateFilter, sortOrder]);
+
+  return {
+    filteredOrders,
+    statusFilter,
+    setStatusFilter,
+    searchTerm,
+    setSearchTerm,
+    dateFilter,
+    setDateFilter,
+    sortOrder,
+    setSortOrder,
   };
+};
 
-  const handleStatusChange = (e) => {
-    setStatusFilter(e.target.value);
-  };
-
-  const handleCancelOrder = async (orderId) => {
-    if (!confirm("Are you sure you want to cancel this order?")) return;
-
-    try {
-      const response = await fetch(`/api/orders/${orderId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "cancelled" }),
-      });
-
-      if (response.ok) {
-        alert("Order cancelled successfully");
-        fetchOrders();
-      } else {
-        alert("Failed to cancel order");
-      }
-    } catch (error) {
-      console.error("Error cancelling order:", error);
-      alert("Error cancelling order");
+const useOrderStats = (orders) => {
+  return useMemo(() => {
+    if (!orders.length) {
+      return {
+        total: 0,
+        pending: 0,
+        confirmed: 0,
+        shipped: 0,
+        delivered: 0,
+        cancelled: 0,
+        totalSpent: 0,
+        averageOrderValue: 0,
+      };
     }
-  };
 
-  const handleReorder = (order) => {
-    router.push("/products");
-  };
+    const stats = orders.reduce(
+      (acc, order) => {
+        const status = order.status?.toLowerCase();
+        const total = order.total || 0;
 
-  const formatPrice = (price) => {
+        acc.total++;
+        acc.totalSpent += total;
+
+        if (status in acc) {
+          acc[status]++;
+        }
+
+        return acc;
+      },
+      {
+        total: 0,
+        pending: 0,
+        confirmed: 0,
+        shipped: 0,
+        delivered: 0,
+        cancelled: 0,
+        totalSpent: 0,
+      },
+    );
+
+    stats.averageOrderValue =
+      stats.total > 0 ? stats.totalSpent / stats.total : 0;
+
+    return stats;
+  }, [orders]);
+};
+
+export default function Bookings() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  // Custom hooks
+  const { orders, loading, error, fetchOrders } = useOrdersData(
+    session,
+    status,
+  );
+  const orderStats = useOrderStats(orders);
+  const {
+    filteredOrders,
+    statusFilter,
+    setStatusFilter,
+    searchTerm,
+    setSearchTerm,
+    dateFilter,
+    setDateFilter,
+    sortOrder,
+    setSortOrder,
+  } = useOrderFilters(orders);
+
+  // UI state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState(VIEW_MODES.CARDS);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [actionLoading, setActionLoading] = useState(new Set());
+
+  const ordersPerPage = viewMode === VIEW_MODES.LIST ? 10 : 6;
+
+  // Authentication check
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status, router]);
+
+  // Initial data fetch
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      fetchOrders();
+    }
+  }, [session, status, fetchOrders]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, searchTerm, dateFilter, sortOrder]);
+
+  // Optimized handlers with error handling
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchOrders(false);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchOrders]);
+
+  const handleCancelOrder = useCallback(
+    async (orderId) => {
+      if (!window.confirm("Are you sure you want to cancel this order?"))
+        return;
+
+      setActionLoading((prev) => new Set(prev).add(orderId));
+
+      try {
+        const response = await fetch(`/api/orders/${orderId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+          },
+          body: JSON.stringify({ status: ORDER_STATUSES.CANCELLED }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.message ||
+              `HTTP ${response.status}: ${response.statusText}`,
+          );
+        }
+
+        // Show success feedback
+        alert("Order cancelled successfully");
+
+        // Refresh orders
+        await fetchOrders(false);
+      } catch (error) {
+        console.error("Error cancelling order:", error);
+        alert(`Error cancelling order: ${error.message}`);
+      } finally {
+        setActionLoading((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(orderId);
+          return newSet;
+        });
+      }
+    },
+    [fetchOrders],
+  );
+
+  const handleReorder = useCallback(
+    (order) => {
+      // Store order items in session storage for reorder functionality
+      try {
+        sessionStorage.setItem("reorderItems", JSON.stringify(order.items));
+        router.push("/products?reorder=true");
+      } catch (error) {
+        console.error("Failed to store reorder data:", error);
+        router.push("/products");
+      }
+    },
+    [router],
+  );
+
+  // Utility functions
+  const formatPrice = useCallback((price) => {
     const numericPrice =
       typeof price === "number" ? price : parseFloat(price) || 0;
     return `৳${numericPrice.toFixed(0)}`;
-  };
+  }, []);
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  const formatDate = useCallback((dateString) => {
+    try {
+      return new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (error) {
+      return "Invalid Date";
+    }
+  }, []);
 
   const getStatusBadge = (status) => {
     const statusConfig = {
@@ -426,15 +603,17 @@ export default function Bookings() {
               <div className="flex flex-wrap gap-3">
                 <select
                   value={statusFilter}
-                  onChange={handleStatusChange}
+                  onChange={(e) => setStatusFilter(e.target.value)}
                   className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all duration-200"
                 >
-                  <option>All Orders</option>
-                  <option>Pending</option>
-                  <option>Confirmed</option>
-                  <option>Shipped</option>
-                  <option>Delivered</option>
-                  <option>Cancelled</option>
+                  <option value={ORDER_STATUSES.ALL}>
+                    {ORDER_STATUSES.ALL}
+                  </option>
+                  <option value={ORDER_STATUSES.PENDING}>Pending</option>
+                  <option value={ORDER_STATUSES.CONFIRMED}>Confirmed</option>
+                  <option value={ORDER_STATUSES.SHIPPED}>Shipped</option>
+                  <option value={ORDER_STATUSES.DELIVERED}>Delivered</option>
+                  <option value={ORDER_STATUSES.CANCELLED}>Cancelled</option>
                 </select>
 
                 <select
@@ -442,10 +621,10 @@ export default function Bookings() {
                   onChange={(e) => setDateFilter(e.target.value)}
                   className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all duration-200"
                 >
-                  <option value="all">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="week">Last Week</option>
-                  <option value="month">Last Month</option>
+                  <option value={DATE_FILTERS.ALL}>All Time</option>
+                  <option value={DATE_FILTERS.TODAY}>Today</option>
+                  <option value={DATE_FILTERS.WEEK}>Last Week</option>
+                  <option value={DATE_FILTERS.MONTH}>Last Month</option>
                 </select>
 
                 <select
@@ -453,18 +632,18 @@ export default function Bookings() {
                   onChange={(e) => setSortOrder(e.target.value)}
                   className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all duration-200"
                 >
-                  <option value="newest">Newest First</option>
-                  <option value="oldest">Oldest First</option>
-                  <option value="highest">Highest Value</option>
-                  <option value="lowest">Lowest Value</option>
+                  <option value={SORT_OPTIONS.NEWEST}>Newest First</option>
+                  <option value={SORT_OPTIONS.OLDEST}>Oldest First</option>
+                  <option value={SORT_OPTIONS.HIGHEST}>Highest Value</option>
+                  <option value={SORT_OPTIONS.LOWEST}>Lowest Value</option>
                 </select>
 
                 {/* View Mode Toggle */}
                 <div className="flex bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
                   <button
-                    onClick={() => setViewMode("cards")}
+                    onClick={() => setViewMode(VIEW_MODES.CARDS)}
                     className={`px-4 py-2 rounded-lg transition-all duration-200 ${
-                      viewMode === "cards"
+                      viewMode === VIEW_MODES.CARDS
                         ? "bg-white dark:bg-gray-600 text-blue-600 shadow-sm"
                         : "text-gray-600 dark:text-gray-400"
                     }`}
@@ -472,9 +651,9 @@ export default function Bookings() {
                     <i className="fas fa-th-large"></i>
                   </button>
                   <button
-                    onClick={() => setViewMode("list")}
+                    onClick={() => setViewMode(VIEW_MODES.LIST)}
                     className={`px-4 py-2 rounded-lg transition-all duration-200 ${
-                      viewMode === "list"
+                      viewMode === VIEW_MODES.LIST
                         ? "bg-white dark:bg-gray-600 text-blue-600 shadow-sm"
                         : "text-gray-600 dark:text-gray-400"
                     }`}
@@ -485,7 +664,7 @@ export default function Bookings() {
 
                 {/* Refresh Button */}
                 <button
-                  onClick={refreshOrders}
+                  onClick={handleRefresh}
                   disabled={refreshing}
                   className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all duration-200 disabled:opacity-50 flex items-center"
                 >

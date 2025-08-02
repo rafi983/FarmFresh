@@ -2,6 +2,112 @@ import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
+// Cache to track if indexes have been initialized
+let indexesInitialized = false;
+
+// Initialize indexes for better performance on reviews queries (only once)
+async function initializeReviewIndexes(db) {
+  // Skip if already initialized in this session
+  if (indexesInitialized) return;
+
+  try {
+    const reviewsCollection = db.collection("reviews");
+    const productsCollection = db.collection("products");
+    const ordersCollection = db.collection("orders");
+    const usersCollection = db.collection("users");
+
+    // Check existing indexes first to avoid conflicts
+    const existingReviewIndexes = await reviewsCollection
+      .listIndexes()
+      .toArray();
+    const indexNames = existingReviewIndexes.map((idx) => idx.name);
+
+    // Reviews collection indexes - only create if they don't exist
+    if (!indexNames.some((name) => name.includes("productId_1_createdAt"))) {
+      await reviewsCollection.createIndex(
+        { productId: 1, createdAt: -1 },
+        { name: "reviews_product_date_idx", background: true },
+      );
+    }
+
+    if (!indexNames.some((name) => name.includes("productId_1_userId"))) {
+      await reviewsCollection.createIndex(
+        { productId: 1, userId: 1 },
+        { name: "reviews_product_user_idx", background: true },
+      );
+    }
+
+    if (
+      !indexNames.some(
+        (name) => name.includes("userId_1") && !name.includes("productId"),
+      )
+    ) {
+      await reviewsCollection.createIndex(
+        { userId: 1 },
+        { name: "reviews_user_idx", background: true },
+      );
+    }
+
+    if (
+      !indexNames.some(
+        (name) => name.includes("createdAt_-1") && !name.includes("productId"),
+      )
+    ) {
+      await reviewsCollection.createIndex(
+        { createdAt: -1 },
+        { name: "reviews_date_idx", background: true },
+      );
+    }
+
+    // Products collection indexes for reviews
+    const existingProductIndexes = await productsCollection
+      .listIndexes()
+      .toArray();
+    const productIndexNames = existingProductIndexes.map((idx) => idx.name);
+
+    if (!productIndexNames.some((name) => name.includes("reviews.userId"))) {
+      await productsCollection.createIndex(
+        { "reviews.userId": 1 },
+        { name: "products_reviews_user_idx", background: true },
+      );
+    }
+
+    // Orders collection indexes for purchase verification
+    const existingOrderIndexes = await ordersCollection.listIndexes().toArray();
+    const orderIndexNames = existingOrderIndexes.map((idx) => idx.name);
+
+    if (
+      !orderIndexNames.some((name) => name.includes("userId_1_items.productId"))
+    ) {
+      await ordersCollection.createIndex(
+        { userId: 1, "items.productId": 1, status: 1 },
+        { name: "orders_user_product_status_idx", background: true },
+      );
+    }
+
+    // Users collection indexes
+    const existingUserIndexes = await usersCollection.listIndexes().toArray();
+    const userIndexNames = existingUserIndexes.map((idx) => idx.name);
+
+    if (
+      !userIndexNames.some(
+        (name) => name.includes("email_1") && !name.includes("_id"),
+      )
+    ) {
+      await usersCollection.createIndex(
+        { email: 1 },
+        { name: "users_email_idx", background: true, unique: true },
+      );
+    }
+
+    indexesInitialized = true;
+    console.log("Review indexes initialized successfully");
+  } catch (error) {
+    console.log("Index initialization note:", error.message);
+    // Don't throw error, just log it - indexes might already exist
+  }
+}
+
 export async function GET(request, { params }) {
   try {
     const { id } = params; // product ID
@@ -13,102 +119,183 @@ export async function GET(request, { params }) {
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
-    // Check if reviews are stored in the product document itself
-    const product = await db
-      .collection("products")
-      .findOne(
-        { _id: new ObjectId(id) },
-        { projection: { reviews: 1, ratings: 1, comments: 1 } },
-      );
+    // Initialize indexes once per application lifecycle
+    await initializeReviewIndexes(db);
 
     let reviews = [];
     let totalReviews = 0;
 
-    if (product && product.reviews && Array.isArray(product.reviews)) {
-      // Reviews are stored in the product document
-      reviews = product.reviews;
-      totalReviews = reviews.length;
-      console.log("DEBUG - Found reviews in product document:", totalReviews);
-      console.log(
-        "DEBUG - Raw reviews structure:",
-        JSON.stringify(reviews, null, 2),
-      );
+    // First try to get reviews from separate reviews collection using aggregation pipeline
+    const reviewsPipeline = [
+      {
+        $match: {
+          $or: [
+            { productId: id },
+            { productId: new ObjectId(id) },
+            { product_id: id },
+            { "product._id": new ObjectId(id) },
+          ],
+        },
+      },
+      {
+        $addFields: {
+          // Normalize reviewer field
+          normalizedReviewer: {
+            $ifNull: ["$reviewer", "Anonymous"],
+          },
+          // Normalize comment field
+          normalizedComment: {
+            $ifNull: [
+              "$comment",
+              { $ifNull: ["$text", { $ifNull: ["$content", ""] }] },
+            ],
+          },
+          // Normalize createdAt field
+          normalizedCreatedAt: {
+            $ifNull: [
+              "$createdAt",
+              { $ifNull: ["$date", { $ifNull: ["$timestamp", new Date()] }] },
+            ],
+          },
+        },
+      },
+      {
+        $project: {
+          _id: {
+            $ifNull: ["$_id", { $ifNull: ["$reviewId", new ObjectId()] }],
+          },
+          rating: { $ifNull: ["$rating", 5] },
+          comment: "$normalizedComment",
+          createdAt: "$normalizedCreatedAt",
+          reviewer: "$normalizedReviewer",
+          userId: 1,
+        },
+      },
+      {
+        $sort: {
+          // Prioritize user's own review if userId is provided
+          ...(userId
+            ? {
+                userPriority: {
+                  $cond: [{ $eq: ["$userId", userId] }, 0, 1],
+                },
+              }
+            : {}),
+          createdAt: -1,
+        },
+      },
+      {
+        $facet: {
+          reviews: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+          totalCount: [{ $count: "count" }],
+        },
+      },
+    ];
+
+    const [reviewsResult] = await db
+      .collection("reviews")
+      .aggregate(reviewsPipeline)
+      .toArray();
+
+    if (reviewsResult && reviewsResult.reviews.length > 0) {
+      reviews = reviewsResult.reviews;
+      totalReviews = reviewsResult.totalCount[0]?.count || 0;
     } else {
-      // Try the separate reviews collection with different query formats
-      const possibleQueries = [
-        { productId: id },
-        { productId: new ObjectId(id) },
-        { product_id: id },
-        { "product._id": new ObjectId(id) },
+      // Fallback: Check if reviews are stored in the product document
+      const productReviewsPipeline = [
+        { $match: { _id: new ObjectId(id) } },
+        { $project: { reviews: 1 } },
+        {
+          $addFields: {
+            reviewsArray: { $ifNull: ["$reviews", []] },
+          },
+        },
+        {
+          $addFields: {
+            totalReviews: { $size: "$reviewsArray" },
+            normalizedReviews: {
+              $map: {
+                input: "$reviewsArray",
+                as: "review",
+                in: {
+                  _id: {
+                    $ifNull: [
+                      "$$review._id",
+                      { $ifNull: ["$$review.reviewId", new ObjectId()] },
+                    ],
+                  },
+                  rating: { $ifNull: ["$$review.rating", 5] },
+                  comment: {
+                    $ifNull: [
+                      "$$review.comment",
+                      {
+                        $ifNull: [
+                          "$$review.text",
+                          { $ifNull: ["$$review.content", ""] },
+                        ],
+                      },
+                    ],
+                  },
+                  createdAt: {
+                    $ifNull: [
+                      "$$review.createdAt",
+                      {
+                        $ifNull: [
+                          "$$review.date",
+                          { $ifNull: ["$$review.timestamp", new Date()] },
+                        ],
+                      },
+                    ],
+                  },
+                  reviewer: { $ifNull: ["$$review.reviewer", "Anonymous"] },
+                  userId: "$$review.userId",
+                },
+              },
+            },
+          },
+        },
+        {
+          $addFields: {
+            sortedReviews: {
+              $slice: [
+                {
+                  $sortArray: {
+                    input: "$normalizedReviews",
+                    sortBy: {
+                      ...(userId
+                        ? {
+                            userPriority: {
+                              $cond: [{ $eq: ["$userId", userId] }, 0, 1],
+                            },
+                          }
+                        : {}),
+                      createdAt: -1,
+                    },
+                  },
+                },
+                (page - 1) * limit,
+                limit,
+              ],
+            },
+          },
+        },
       ];
 
-      for (const query of possibleQueries) {
-        try {
-          const foundReviews = await db
-            .collection("reviews")
-            .find(query)
-            .toArray();
-          if (foundReviews.length > 0) {
-            reviews = foundReviews;
-            totalReviews = foundReviews.length;
-            break;
-          }
-        } catch (error) {
-          console.log("Query failed:", error.message);
-        }
+      const [productResult] = await db
+        .collection("products")
+        .aggregate(productReviewsPipeline)
+        .toArray();
+
+      if (productResult && productResult.sortedReviews) {
+        reviews = productResult.sortedReviews;
+        totalReviews = productResult.totalReviews || 0;
       }
     }
 
-    // If still no reviews found, check all documents in reviews collection
-    if (reviews.length === 0) {
-      const allReviews = await db.collection("reviews").find({}).toArray();
-      if (allReviews.length > 0) {
-        console.log(
-          "DEBUG - Sample review structure:",
-          JSON.stringify(allReviews[0], null, 2),
-        );
-      }
-    }
-
-    // Normalize the review format with better field checking
-    const normalizedReviews = await Promise.all(
-      reviews.map(async (review) => {
-        // Only use reviewer field since that's the standard now
-        let userName = review.reviewer || "Anonymous";
-
-        return {
-          _id: review._id || review.reviewId || new ObjectId(),
-          rating: review.rating || 5,
-          comment: review.comment || review.text || review.content || "",
-          createdAt:
-            review.createdAt || review.date || review.timestamp || new Date(),
-          reviewer: userName, // Only keep reviewer field
-          userId: review.userId, // Include userId for sorting
-        };
-      }),
-    );
-
-    // Sort reviews to show logged-in user's review first
-    const sortedReviews = normalizedReviews.sort((a, b) => {
-      // If userId is provided, prioritize that user's review
-      if (userId) {
-        if (a.userId === userId && b.userId !== userId) return -1;
-        if (b.userId === userId && a.userId !== userId) return 1;
-      }
-      // Then sort by creation date (newest first)
-      return new Date(b.createdAt) - new Date(a.createdAt);
-    });
-
-    // Apply pagination
-    const startIndex = (page - 1) * limit;
-    const paginatedReviews = sortedReviews.slice(
-      startIndex,
-      startIndex + limit,
-    );
     const hasMore = totalReviews > page * limit;
 
     return NextResponse.json({
-      reviews: paginatedReviews,
+      reviews,
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(totalReviews / limit),
@@ -147,12 +334,52 @@ export async function POST(request, { params }) {
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
-    // Check if user has purchased this product
-    const hasPurchased = await db.collection("orders").findOne({
+    // Initialize indexes for optimal performance
+    await initializeReviewIndexes(db);
+
+    // Use aggregation pipeline to check purchase and existing review in parallel
+    const verificationPipeline = [
+      {
+        $facet: {
+          hasPurchased: [
+            {
+              $match: {
+                userId,
+                "items.productId": id,
+                status: { $in: ["delivered", "confirmed", "pending"] },
+              },
+            },
+            { $limit: 1 },
+            { $count: "count" },
+          ],
+          existingReview: [
+            {
+              $match: {
+                productId: id,
+                userId,
+              },
+            },
+            { $limit: 1 },
+            { $count: "count" },
+          ],
+        },
+      },
+    ];
+
+    const [verification] = await db
+      .collection("orders")
+      .aggregate([{ $match: { userId } }, ...verificationPipeline])
+      .toArray();
+
+    // Also check reviews collection for existing review
+    const existingReviewCheck = await db.collection("reviews").findOne({
+      productId: id,
       userId,
-      "items.productId": id,
-      status: { $in: ["delivered", "confirmed", "pending"] }, // Allow reviews for any order status
     });
+
+    const hasPurchased = verification?.hasPurchased?.[0]?.count > 0;
+    const hasExistingReview =
+      verification?.existingReview?.[0]?.count > 0 || !!existingReviewCheck;
 
     if (!hasPurchased) {
       return NextResponse.json(
@@ -161,24 +388,33 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Check if user has already reviewed this product
-    const existingReview = await db.collection("reviews").findOne({
-      productId: id,
-      userId,
-    });
-
-    if (existingReview) {
+    if (hasExistingReview) {
       return NextResponse.json(
         { error: "You have already reviewed this product" },
         { status: 409 },
       );
     }
 
-    // Get user information to include reviewer name
-    const user = await db.collection("users").findOne({
-      $or: [{ _id: new ObjectId(userId) }, { email: userId }],
-    });
+    // Get user information efficiently
+    const userPipeline = [
+      {
+        $match: {
+          $or: [{ _id: new ObjectId(userId) }, { email: userId }],
+        },
+      },
+      {
+        $project: {
+          name: 1,
+          email: 1,
+        },
+      },
+      { $limit: 1 },
+    ];
 
+    const [user] = await db
+      .collection("users")
+      .aggregate(userPipeline)
+      .toArray();
     const reviewerName =
       user?.name || user?.email?.split("@")[0] || "Anonymous";
 
@@ -186,7 +422,7 @@ export async function POST(request, { params }) {
     const review = {
       productId: id,
       userId,
-      reviewer: reviewerName, // Add the reviewer name
+      reviewer: reviewerName,
       rating: parseInt(rating),
       comment,
       createdAt: new Date(),
@@ -195,30 +431,45 @@ export async function POST(request, { params }) {
 
     const result = await db.collection("reviews").insertOne(review);
 
-    // Update product average rating
-    const allReviews = await db
-      .collection("reviews")
-      .find({ productId: id })
-      .toArray();
-    const averageRating =
-      allReviews.reduce((sum, review) => sum + review.rating, 0) /
-      allReviews.length;
-
-    await db.collection("products").updateOne(
-      { _id: new ObjectId(id) },
+    // Update product average rating using aggregation pipeline
+    const ratingUpdatePipeline = [
+      { $match: { productId: id } },
       {
-        $set: {
-          averageRating: Math.round(averageRating * 10) / 10,
-          totalRatings: allReviews.length,
+        $group: {
+          _id: null,
+          averageRating: { $avg: "$rating" },
+          totalRatings: { $sum: 1 },
         },
       },
-    );
+    ];
+
+    const [ratingStats] = await db
+      .collection("reviews")
+      .aggregate(ratingUpdatePipeline)
+      .toArray();
+
+    if (ratingStats) {
+      await db.collection("products").updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $set: {
+            averageRating: Math.round(ratingStats.averageRating * 10) / 10,
+            totalRatings: ratingStats.totalRatings,
+          },
+        },
+      );
+
+      return NextResponse.json({
+        success: true,
+        reviewId: result.insertedId,
+        averageRating: Math.round(ratingStats.averageRating * 10) / 10,
+        totalRatings: ratingStats.totalRatings,
+      });
+    }
 
     return NextResponse.json({
       success: true,
       reviewId: result.insertedId,
-      averageRating: Math.round(averageRating * 10) / 10,
-      totalRatings: allReviews.length,
     });
   } catch (error) {
     console.error("Error creating review:", error);

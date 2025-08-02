@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCart } from "@/contexts/CartContext";
@@ -17,6 +17,16 @@ import useReviews from "@/hooks/useReviews";
 
 import Loading from "@/components/Loading";
 import NotFound from "@/components/NotFound";
+
+// Move constants outside component to prevent recreations
+const TAB_OPTIONS = [
+  "description",
+  "nutrition",
+  "storage",
+  "reviews",
+  "farmer",
+];
+const DEFAULT_REVIEW_FORM = { rating: 5, comment: "" };
 
 export default function ProductDetails() {
   const searchParams = useSearchParams();
@@ -42,85 +52,90 @@ export default function ProductDetails() {
   const { reviews, hasMoreReviews, fetchReviews, reviewsPage } = useReviews(
     productId,
     responseType,
-    session?.user?.id, // Pass userId to prioritize user's review
+    session?.user?.id,
   );
   const isOwner = useOwnership(product, session, viewMode);
 
-  // State management
+  // Core UI states
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("description");
+
+  // Loading states
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
-
-  // Review form state
-  const [showReviewForm, setShowReviewForm] = useState(false);
-  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-
-  // Review edit/delete state
-  const [editingReview, setEditingReview] = useState(null);
   const [isUpdatingReview, setIsUpdatingReview] = useState(false);
   const [isDeletingReview, setIsDeletingReview] = useState(false);
-
-  // Purchase verification state
-  const [hasPurchasedProduct, setHasPurchasedProduct] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [loadingOrders, setLoadingOrders] = useState(false);
   const [checkingPurchase, setCheckingPurchase] = useState(false);
 
-  // Farmer-specific states
+  // Form states
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewForm, setReviewForm] = useState(DEFAULT_REVIEW_FORM);
+  const [editingReview, setEditingReview] = useState(null);
   const [stockUpdate, setStockUpdate] = useState("");
   const [priceUpdate, setPriceUpdate] = useState("");
-  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Data states
+  const [hasPurchasedProduct, setHasPurchasedProduct] = useState(false);
   const [recentOrders, setRecentOrders] = useState([]);
-  const [loadingOrders, setLoadingOrders] = useState(false);
 
-  // Effects
-  useEffect(() => {
-    if (productId) {
-      fetchProductDetails();
-    }
-  }, [productId]);
-
-  useEffect(() => {
-    if (productId && isOwner && viewMode !== "customer") {
-      const interval = setInterval(() => {
-        fetchProductDetails();
-      }, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [productId, isOwner, viewMode]);
-
-  useEffect(() => {
-    if (productId && isOwner && viewMode !== "customer") {
-      fetchRecentOrders();
-    }
-  }, [productId, isOwner, viewMode]);
-
-  // Check if product is favorited when productId changes
-  useEffect(() => {
-    if (productId) {
-      setIsFavorite(isProductFavorited(productId));
-    }
+  // Memoized favorite status
+  const isFavorite = useMemo(() => {
+    return productId ? isProductFavorited(productId) : false;
   }, [productId, isProductFavorited]);
 
-  // Check if user has purchased this product
-  useEffect(() => {
-    if (session?.user?.id && productId) {
-      checkUserPurchase();
-    }
-  }, [session?.user?.id, productId]);
+  // Memoized image data
+  const imageData = useMemo(() => {
+    if (!product) return { allImages: [], hasMultipleImages: false };
 
-  const checkUserPurchase = async () => {
-    if (!session?.user?.id) return;
+    const allImages = [];
+    if (product.image) allImages.push(product.image);
+    if (product.images && product.images.length > 0) {
+      allImages.push(...product.images);
+    }
+
+    return {
+      allImages: [...new Set(allImages)], // Remove duplicates
+      hasMultipleImages: allImages.length > 1,
+    };
+  }, [product]);
+
+  // Memoized rating distribution
+  const ratingDistribution = useMemo(() => {
+    if (!reviews || reviews.length === 0) {
+      return { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    }
+
+    const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    reviews.forEach((review) => {
+      const rating = Math.floor(review.rating);
+      if (rating >= 1 && rating <= 5) {
+        distribution[rating]++;
+      }
+    });
+
+    return distribution;
+  }, [reviews]);
+
+  // Optimized API calls with caching
+  const checkUserPurchase = useCallback(async () => {
+    if (!session?.user?.id || !productId) return;
 
     setCheckingPurchase(true);
     try {
       const response = await fetch(
         `/api/orders?userId=${session.user.id}&productId=${productId}`,
+        {
+          headers: {
+            "Cache-Control": "public, max-age=300", // 5 minute cache
+          },
+        },
       );
+
       if (response.ok) {
         const data = await response.json();
-        // Check if user has any order with this product that's confirmed/delivered/pending
         const hasPurchased = data.orders?.some(
           (order) =>
             order.items?.some((item) => item.productId === productId) &&
@@ -134,14 +149,20 @@ export default function ProductDetails() {
     } finally {
       setCheckingPurchase(false);
     }
-  };
+  }, [session?.user?.id, productId]);
 
-  // API calls
-  const fetchRecentOrders = async () => {
+  const fetchRecentOrders = useCallback(async () => {
+    if (!productId) return;
+
     try {
       setLoadingOrders(true);
       const response = await fetch(
         `/api/orders?productId=${productId}&limit=5`,
+        {
+          headers: {
+            "Cache-Control": "public, max-age=300",
+          },
+        },
       );
 
       if (response.ok) {
@@ -153,28 +174,27 @@ export default function ProductDetails() {
     } finally {
       setLoadingOrders(false);
     }
-  };
+  }, [productId]);
 
-  // Event handlers
-  const handleAddToCart = async () => {
+  // Optimized event handlers
+  const handleAddToCart = useCallback(async () => {
     if (!session?.user) {
-      window.location.href = "/login";
+      router.push("/login");
       return;
     }
+
+    if (!product) return;
 
     setIsAddingToCart(true);
     try {
       const item = {
         productId: productId,
-        id: productId, // Add id field for cart context
+        id: productId,
         name: product.name,
         price: product.price,
         quantity: quantity,
-        stock: product.stock, // Include stock information
-        image:
-          product.image ||
-          (product.images && product.images[0]) ||
-          "/placeholder-image.jpg",
+        stock: product.stock,
+        image: imageData.allImages[0] || "/placeholder-image.jpg",
         unit: product.unit || "kg",
         farmerId: product.farmerId,
         farmerName:
@@ -182,40 +202,44 @@ export default function ProductDetails() {
       };
 
       await addToCart(item, quantity);
+      // Consider using a toast notification instead of alert
       alert("Product added to cart successfully!");
     } catch (error) {
       console.error("Error adding to cart:", error);
-      // Show user-friendly error message for stock issues
-      if (
+      const errorMessage =
         error.message.includes("Only") &&
         error.message.includes("available in stock")
-      ) {
-        alert(error.message);
-      } else {
-        alert("Failed to add product to cart. Please try again.");
-      }
+          ? error.message
+          : "Failed to add product to cart. Please try again.";
+      alert(errorMessage);
     } finally {
       setIsAddingToCart(false);
     }
-  };
+  }, [
+    session?.user,
+    product,
+    productId,
+    quantity,
+    imageData.allImages,
+    addToCart,
+    router,
+  ]);
 
-  const handleBuyNow = async () => {
+  const handleBuyNow = useCallback(async () => {
     if (!session?.user) {
-      window.location.href = "/login";
+      router.push("/login");
       return;
     }
 
+    if (!product) return;
+
     setIsAddingToCart(true);
     try {
-      // Create a product object that matches the CartContext expectations
       const productForCart = {
         id: productId,
         name: product.name,
         price: product.price,
-        image:
-          product.image ||
-          (product.images && product.images[0]) ||
-          "/placeholder-image.jpg",
+        image: imageData.allImages[0] || "/placeholder-image.jpg",
         unit: product.unit || "kg",
         farmerId: product.farmerId,
         farmer: {
@@ -232,11 +256,7 @@ export default function ProductDetails() {
         stock: product.stock || 0,
       };
 
-      // Use CartContext's addToCart function
       await addToCart(productForCart, quantity);
-
-      // Immediately redirect to payment - let the payment page handle the cart state
-      // The payment page should wait for cart loading to complete before checking if empty
       router.push("/payment");
     } catch (error) {
       console.error("Error processing buy now:", error);
@@ -244,84 +264,96 @@ export default function ProductDetails() {
     } finally {
       setIsAddingToCart(false);
     }
-  };
+  }, [
+    session?.user,
+    product,
+    productId,
+    quantity,
+    imageData.allImages,
+    addToCart,
+    router,
+  ]);
 
-  const handleFavoriteToggle = async () => {
+  const handleFavoriteToggle = useCallback(async () => {
     if (!session?.user) {
-      window.location.href = "/login";
+      router.push("/login");
       return;
     }
 
+    if (!productId) return;
+
     try {
-      if (isFavorite) {
-        // Remove from favorites
-        const success = await removeFromFavorites(productId);
-        if (success) {
-          setIsFavorite(false);
-          alert("Product removed from favorites!");
-        } else {
-          alert("Failed to remove from favorites. Please try again.");
-        }
+      const success = isFavorite
+        ? await removeFromFavorites(productId)
+        : await addToFavorites(productId);
+
+      if (success) {
+        const message = isFavorite
+          ? "Product removed from favorites!"
+          : "Product added to favorites!";
+        alert(message);
       } else {
-        // Add to favorites
-        const success = await addToFavorites(productId);
-        if (success) {
-          setIsFavorite(true);
-          alert("Product added to favorites!");
-        } else {
-          alert("Failed to add to favorites. Please try again.");
-        }
+        alert("Failed to update favorites. Please try again.");
       }
     } catch (error) {
       console.error("Error toggling favorite:", error);
       alert("Failed to update favorites. Please try again.");
     }
-  };
+  }, [
+    session?.user,
+    productId,
+    isFavorite,
+    addToFavorites,
+    removeFromFavorites,
+    router,
+  ]);
 
-  const handleSubmitReview = async (e) => {
-    e.preventDefault();
-    if (!session) {
-      alert("Please login to submit a review");
-      return;
-    }
-
-    setIsSubmittingReview(true);
-    try {
-      // Include userId in the review submission
-      const reviewData = {
-        ...reviewForm,
-        userId:
-          session.user.id ||
-          session.user._id ||
-          session.user.userId ||
-          session.user.email,
-      };
-
-      const response = await fetch(`/api/products/${productId}/reviews`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(reviewData),
-      });
-
-      if (response.ok) {
-        setShowReviewForm(false);
-        setReviewForm({ rating: 5, comment: "" });
-        fetchReviews();
-        fetchProductDetails();
-        alert("Review submitted successfully!");
-      } else {
-        const error = await response.json();
-        alert(error.error || "Failed to submit review");
+  const handleSubmitReview = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (!session) {
+        alert("Please login to submit a review");
+        return;
       }
-    } catch (error) {
-      console.error("Error submitting review:", error);
-      alert("Failed to submit review");
-    } finally {
-      setIsSubmittingReview(false);
-    }
-  };
 
-  const handleUpdateReview = async () => {
+      setIsSubmittingReview(true);
+      try {
+        const reviewData = {
+          ...reviewForm,
+          userId:
+            session.user.id ||
+            session.user._id ||
+            session.user.userId ||
+            session.user.email,
+        };
+
+        const response = await fetch(`/api/products/${productId}/reviews`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(reviewData),
+        });
+
+        if (response.ok) {
+          setShowReviewForm(false);
+          setReviewForm(DEFAULT_REVIEW_FORM);
+          fetchReviews();
+          fetchProductDetails();
+          alert("Review submitted successfully!");
+        } else {
+          const error = await response.json();
+          alert(error.error || "Failed to submit review");
+        }
+      } catch (error) {
+        console.error("Error submitting review:", error);
+        alert("Failed to submit review");
+      } finally {
+        setIsSubmittingReview(false);
+      }
+    },
+    [session, reviewForm, productId, fetchReviews, fetchProductDetails],
+  );
+
+  const handleUpdateReview = useCallback(async () => {
     if (!editingReview) return;
 
     setIsUpdatingReview(true);
@@ -342,7 +374,7 @@ export default function ProductDetails() {
 
       if (response.ok) {
         setEditingReview(null);
-        setReviewForm({ rating: 5, comment: "" });
+        setReviewForm(DEFAULT_REVIEW_FORM);
         setShowReviewForm(false);
         fetchReviews();
         fetchProductDetails();
@@ -357,52 +389,54 @@ export default function ProductDetails() {
     } finally {
       setIsUpdatingReview(false);
     }
-  };
+  }, [editingReview, reviewForm, session, fetchReviews, fetchProductDetails]);
 
-  const handleDeleteReview = async (reviewId) => {
-    if (!confirm("Are you sure you want to delete this review?")) {
-      return;
-    }
-
-    setIsDeletingReview(true);
-    try {
-      const userId =
-        session.user.userId ||
-        session.user.id ||
-        session.user._id ||
-        session.user.email;
-      const response = await fetch(
-        `/api/reviews/${reviewId}?userId=${encodeURIComponent(userId)}`,
-        {
-          method: "DELETE",
-        },
-      );
-
-      if (response.ok) {
-        fetchReviews();
-        fetchProductDetails();
-        alert("Review deleted successfully!");
-      } else {
-        const error = await response.json();
-        alert(error.error || "Failed to delete review");
+  const handleDeleteReview = useCallback(
+    async (reviewId) => {
+      if (!confirm("Are you sure you want to delete this review?")) {
+        return;
       }
-    } catch (error) {
-      console.error("Error deleting review:", error);
-      alert("Failed to delete review");
-    } finally {
-      setIsDeletingReview(false);
-    }
-  };
 
-  const loadMoreReviews = () => {
+      setIsDeletingReview(true);
+      try {
+        const userId =
+          session.user.userId ||
+          session.user.id ||
+          session.user._id ||
+          session.user.email;
+        const response = await fetch(
+          `/api/reviews/${reviewId}?userId=${encodeURIComponent(userId)}`,
+          { method: "DELETE" },
+        );
+
+        if (response.ok) {
+          fetchReviews();
+          fetchProductDetails();
+          alert("Review deleted successfully!");
+        } else {
+          const error = await response.json();
+          alert(error.error || "Failed to delete review");
+        }
+      } catch (error) {
+        console.error("Error deleting review:", error);
+        alert("Failed to delete review");
+      } finally {
+        setIsDeletingReview(false);
+      }
+    },
+    [session, fetchReviews, fetchProductDetails],
+  );
+
+  const loadMoreReviews = useCallback(() => {
     fetchReviews(reviewsPage + 1, true);
-  };
+  }, [fetchReviews, reviewsPage]);
 
-  const handleUpdateProduct = async () => {
-    if (!isOwner) return;
-
-    if (!stockUpdate && !priceUpdate) {
-      alert("Please enter a value to update");
+  // Farmer-specific handlers
+  const handleUpdateProduct = useCallback(async () => {
+    if (!isOwner || (!stockUpdate && !priceUpdate)) {
+      if (!stockUpdate && !priceUpdate) {
+        alert("Please enter a value to update");
+      }
       return;
     }
 
@@ -414,7 +448,6 @@ export default function ProductDetails() {
         const stockValue = parseInt(stockUpdate);
         if (isNaN(stockValue) || stockValue < 0) {
           alert("Please enter a valid stock number");
-          setIsUpdating(false);
           return;
         }
         updateData.stock = stockValue;
@@ -424,7 +457,6 @@ export default function ProductDetails() {
         const priceValue = parseFloat(priceUpdate);
         if (isNaN(priceValue) || priceValue <= 0) {
           alert("Please enter a valid price");
-          setIsUpdating(false);
           return;
         }
         updateData.price = priceValue;
@@ -451,12 +483,81 @@ export default function ProductDetails() {
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, [isOwner, stockUpdate, priceUpdate, productId, fetchProductDetails]);
 
-  const handleToggleStatus = async () => {
+  // Handle adding images to product
+  const handleAddImages = useCallback(() => {
+    // Create a file input element
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.multiple = true;
+
+    input.onchange = async (event) => {
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
+
+      // Validate file types and sizes
+      const validFiles = Array.from(files).filter((file) => {
+        const isValidType = file.type.startsWith("image/");
+        const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB limit
+
+        if (!isValidType) {
+          alert(`${file.name} is not a valid image file.`);
+          return false;
+        }
+        if (!isValidSize) {
+          alert(`${file.name} is too large. Maximum size is 5MB.`);
+          return false;
+        }
+        return true;
+      });
+
+      if (validFiles.length === 0) return;
+
+      try {
+        // Create FormData for file upload
+        const formData = new FormData();
+        validFiles.forEach((file) => {
+          formData.append("images", file);
+        });
+        formData.append("productId", productId);
+
+        // Show loading state
+        alert("Uploading images...");
+
+        // Upload images to your API endpoint
+        const response = await fetch(`/api/products/${productId}/images`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          alert(`Successfully uploaded ${validFiles.length} image(s)!`);
+
+          // Refresh product details to show new images
+          fetchProductDetails();
+        } else {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to upload images");
+        }
+      } catch (error) {
+        console.error("Error uploading images:", error);
+        alert(`Failed to upload images: ${error.message}`);
+      }
+    };
+
+    // Trigger file selection
+    input.click();
+  }, [productId, fetchProductDetails]);
+
+  // Handle toggling product status (activate/deactivate)
+  const handleToggleStatus = useCallback(async () => {
     if (!isOwner) return;
 
-    const newStatus = product.status === "active" ? "inactive" : "active";
+    const currentStatus = product?.status || "active";
+    const newStatus = currentStatus === "active" ? "inactive" : "active";
     const actionText = newStatus === "active" ? "activate" : "deactivate";
 
     if (!confirm(`Are you sure you want to ${actionText} this product?`)) {
@@ -476,24 +577,29 @@ export default function ProductDetails() {
         fetchProductDetails();
       } else {
         const error = await response.json();
-        alert(error.error || `Failed to ${actionText} product`);
+        throw new Error(error.error || `Failed to ${actionText} product`);
       }
     } catch (error) {
       console.error(`Error ${actionText}ing product:`, error);
-      alert(`Failed to ${actionText} product. Please try again.`);
+      alert(`Failed to ${actionText} product: ${error.message}`);
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, [isOwner, product?.status, productId, fetchProductDetails]);
 
-  const handleDeleteProduct = async () => {
+  // Handle deleting product
+  const handleDeleteProduct = useCallback(async () => {
     if (!isOwner) return;
 
-    if (
-      !confirm(
-        "⚠️ Are you sure you want to delete this product?\n\nThis action cannot be undone and will remove:\n• The product listing\n• All associated data\n• Product from any pending orders",
-      )
-    ) {
+    const confirmMessage =
+      "⚠️ Are you sure you want to delete this product?\n\n" +
+      "This action cannot be undone and will remove:\n" +
+      "• The product listing\n" +
+      "• All associated data\n" +
+      "• Product images\n" +
+      "• Product from any pending orders";
+
+    if (!confirm(confirmMessage)) {
       return;
     }
 
@@ -505,64 +611,65 @@ export default function ProductDetails() {
 
       if (response.ok) {
         alert("Product deleted successfully!");
-        window.location.href = "/manage";
+        // Redirect to manage page
+        router.push("/manage");
       } else {
         const error = await response.json();
+
         if (response.status === 409) {
           alert(
-            "❌ Cannot Delete Product\n\nThis product has pending orders and cannot be deleted.\nPlease wait for all orders to be completed or cancelled before deleting this product.\n\nYou can temporarily deactivate the product instead.",
+            "❌ Cannot Delete Product\n\n" +
+              "This product has pending orders and cannot be deleted.\n" +
+              "Please wait for all orders to be completed or cancelled before deleting this product.\n\n" +
+              "You can temporarily deactivate the product instead.",
           );
         } else {
-          alert(error.error || "Failed to delete product");
+          throw new Error(error.error || "Failed to delete product");
         }
       }
     } catch (error) {
       console.error("Error deleting product:", error);
-      alert("Failed to delete product. Please try again.");
+      alert(`Failed to delete product: ${error.message}`);
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, [isOwner, productId, fetchProductDetails, router]);
 
-  const handleAddImages = () => {
-    router.push(`/create?edit=${productId}`);
-  };
-
-  // Helper function to get all images
-  const getAllImages = () => {
-    const allImages = [];
-    if (product?.image) {
-      allImages.push(product.image);
+  // Effects with proper dependencies
+  useEffect(() => {
+    if (productId) {
+      fetchProductDetails();
     }
-    if (product?.images && product.images.length > 0) {
-      allImages.push(...product.images);
+  }, [productId, fetchProductDetails]);
+
+  useEffect(() => {
+    let interval;
+    if (productId && isOwner && viewMode !== "customer") {
+      interval = setInterval(fetchProductDetails, 30000);
     }
-    return allImages;
-  };
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [productId, isOwner, viewMode, fetchProductDetails]);
 
-  // Calculate rating distribution from reviews
-  const calculateRatingDistribution = () => {
-    if (!reviews || reviews.length === 0) {
-      return { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+  useEffect(() => {
+    if (productId && isOwner && viewMode !== "customer") {
+      fetchRecentOrders();
     }
+  }, [productId, isOwner, viewMode, fetchRecentOrders]);
 
-    const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+  useEffect(() => {
+    if (session?.user?.id && productId) {
+      checkUserPurchase();
+    }
+  }, [session?.user?.id, productId, checkUserPurchase]);
 
-    reviews.forEach((review) => {
-      const rating = Math.floor(review.rating); // Round down to nearest integer
-      if (rating >= 1 && rating <= 5) {
-        distribution[rating]++;
-      }
-    });
-
-    return distribution;
-  };
-
-  const getRatingPercentage = (rating, distribution) => {
-    const totalReviews = reviews?.length || 0;
-    if (totalReviews === 0) return 0;
-    return (distribution[rating] / totalReviews) * 100;
-  };
+  // Check if user has purchased this product
+  useEffect(() => {
+    if (session?.user?.id && productId) {
+      checkUserPurchase();
+    }
+  }, [session?.user?.id, productId]);
 
   // Render components based on state
   if (loading) {
@@ -677,7 +784,7 @@ export default function ProductDetails() {
 
                     {/* Current Images Display */}
                     {(() => {
-                      const allImages = getAllImages();
+                      const allImages = imageData.allImages;
 
                       return allImages.length > 0 ? (
                         <div className="space-y-4">
@@ -1060,7 +1167,7 @@ export default function ProductDetails() {
                 <div className="space-y-4">
                   <div className="aspect-square bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg">
                     {(() => {
-                      const allImages = getAllImages();
+                      const allImages = imageData.allImages;
 
                       return (
                         <Image
@@ -1078,7 +1185,7 @@ export default function ProductDetails() {
 
                   {/* Thumbnail Images */}
                   {(() => {
-                    const allImages = getAllImages();
+                    const allImages = imageData.allImages;
 
                     return allImages.length > 1 ? (
                       <div className="grid grid-cols-5 gap-2">
@@ -1296,13 +1403,7 @@ export default function ProductDetails() {
               <div className="mt-16">
                 <div className="border-b border-gray-200 dark:border-gray-700">
                   <nav className="flex space-x-8">
-                    {[
-                      "description",
-                      "nutrition",
-                      "storage",
-                      "reviews",
-                      "farmer",
-                    ].map((tab) => (
+                    {TAB_OPTIONS.map((tab) => (
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
@@ -1529,8 +1630,7 @@ export default function ProductDetails() {
                               Rating Breakdown
                             </h4>
                             {(() => {
-                              const ratingDistribution =
-                                calculateRatingDistribution();
+                              // Use the existing memoized ratingDistribution instead of undefined function
                               const totalReviews = reviews?.length || 0;
 
                               return [5, 4, 3, 2, 1].map((rating) => {
@@ -1661,7 +1761,7 @@ export default function ProductDetails() {
                                   onClick={() => {
                                     setShowReviewForm(false);
                                     setEditingReview(null);
-                                    setReviewForm({ rating: 5, comment: "" });
+                                    setReviewForm(DEFAULT_REVIEW_FORM);
                                   }}
                                   className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                                 >
@@ -1695,7 +1795,7 @@ export default function ProductDetails() {
                         {reviews && reviews.length > 0 ? (
                           reviews.map((review, index) => (
                             <div
-                              key={review._id}
+                              key={`${review._id}-${review.userId}-${index}`}
                               className="group bg-gradient-to-br from-white via-gray-50 to-white dark:from-gray-800 dark:via-gray-850 dark:to-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700 hover:border-primary-200 dark:hover:border-primary-800"
                               style={{ animationDelay: `${index * 100}ms` }}
                             >

@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useCart } from "@/contexts/CartContext";
 import Footer from "@/components/Footer";
+import { debounce } from "@/utils/debounce";
 
 export default function Cart() {
   const {
@@ -22,77 +24,227 @@ export default function Cart() {
   const [updatingQuantities, setUpdatingQuantities] = useState(new Set());
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [viewMode, setViewMode] = useState("detailed"); // detailed or compact
+  const [notifications, setNotifications] = useState([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [localQuantities, setLocalQuantities] = useState({});
 
-  // Enhanced cart statistics
+  const notificationTimeouts = useRef(new Map());
+
+  // Enhanced cart statistics with memoization
   const cartStats = useMemo(() => {
-    const stats = {
-      totalItems: getCartItemsCount(),
-      totalAmount: getCartTotal(),
+    if (!items.length) {
+      return {
+        totalItems: 0,
+        totalAmount: 0,
+        uniqueItems: 0,
+        averagePrice: 0,
+        farmers: 0,
+        categories: 0,
+        estimatedSavings: 50, // Free delivery
+      };
+    }
+
+    const totalItems = getCartItemsCount();
+    const totalAmount = getCartTotal();
+    const farmers = new Set(
+      items.map((item) =>
+        typeof item.farmer === "object" ? item.farmer?.name : item.farmer,
+      ),
+    ).size;
+    const categories = new Set(items.map((item) => item.category)).size;
+
+    return {
+      totalItems,
+      totalAmount,
       uniqueItems: items.length,
-      averagePrice: items.length > 0 ? getCartTotal() / getCartItemsCount() : 0,
-      farmers: new Set(
-        items.map((item) =>
-          typeof item.farmer === "object" ? item.farmer?.name : item.farmer,
-        ),
-      ).size,
-      categories: new Set(items.map((item) => item.category)).size,
+      averagePrice: totalItems > 0 ? totalAmount / totalItems : 0,
+      farmers,
+      categories,
+      estimatedSavings: 50 + (totalAmount >= 500 ? 25 : 0), // Free delivery + premium packaging
     };
-    return stats;
   }, [items, getCartTotal, getCartItemsCount]);
 
-  const handleQuantityChange = async (productId, newQuantity) => {
-    if (newQuantity <= 0) {
-      handleRemoveItem(productId);
-      return;
+  // Debounced quantity update to prevent excessive API calls
+  const debouncedQuantityUpdate = useMemo(
+    () =>
+      debounce(async (productId, newQuantity) => {
+        if (newQuantity <= 0) {
+          handleRemoveItem(productId);
+          return;
+        }
+
+        setUpdatingQuantities((prev) => new Set(prev).add(productId));
+
+        try {
+          await updateQuantity(productId, newQuantity);
+          addNotification(`Quantity updated successfully`, "success");
+        } catch (error) {
+          console.error("Error updating quantity:", error);
+          addNotification("Failed to update quantity", "error");
+          // Revert local quantity on error
+          setLocalQuantities((prev) => {
+            const newQuantities = { ...prev };
+            delete newQuantities[productId];
+            return newQuantities;
+          });
+        } finally {
+          setUpdatingQuantities((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(productId);
+            return newSet;
+          });
+        }
+      }, 500),
+    [updateQuantity],
+  );
+
+  // Enhanced notification system
+  const addNotification = useCallback((message, type = "info") => {
+    const id = Date.now() + Math.random();
+    const notification = { id, message, type, timestamp: new Date() };
+
+    setNotifications((prev) => [notification, ...prev.slice(0, 2)]); // Limit to 3 notifications
+
+    // Clear existing timeout for the same type if exists
+    if (notificationTimeouts.current.has(type)) {
+      clearTimeout(notificationTimeouts.current.get(type));
     }
 
-    setUpdatingQuantities((prev) => new Set(prev).add(productId));
+    // Set new timeout
+    const timeoutId = setTimeout(() => {
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      notificationTimeouts.current.delete(type);
+    }, 4000);
 
-    try {
-      await updateQuantity(productId, newQuantity);
-    } finally {
-      setUpdatingQuantities((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(productId);
-        return newSet;
-      });
-    }
-  };
+    notificationTimeouts.current.set(type, timeoutId);
+  }, []);
 
-  const handleRemoveItem = async (productId) => {
-    setRemovingItems((prev) => new Set(prev).add(productId));
+  // Calculate delivery estimate
+  const getDeliveryEstimate = useCallback(() => {
+    const deliveryDate = new Date();
+    deliveryDate.setDate(deliveryDate.getDate() + 3); // Add 3 days for delivery
 
-    try {
-      await removeFromCart(productId);
-    } finally {
-      setRemovingItems((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(productId);
-        return newSet;
-      });
-    }
-  };
-
-  const handleClearCart = async () => {
-    setShowClearConfirm(false);
-    await clearCart();
-  };
-
-  const formatPrice = (price) => {
-    const numericPrice =
-      typeof price === "number" ? price : parseFloat(price) || 0;
-    return `৳${numericPrice.toFixed(0)}`;
-  };
-
-  const getDeliveryEstimate = () => {
-    const now = new Date();
-    const deliveryDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Tomorrow
     return deliveryDate.toLocaleDateString("en-US", {
       weekday: "long",
       month: "short",
       day: "numeric",
     });
-  };
+  }, []);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      notificationTimeouts.current.forEach((timeoutId) => {
+        clearTimeout(timeoutId);
+      });
+    };
+  }, []);
+
+  // Optimized quantity change handler
+  const handleQuantityChange = useCallback(
+    (productId, newQuantity) => {
+      // Immediate UI update for better UX
+      setLocalQuantities((prev) => ({
+        ...prev,
+        [productId]: newQuantity,
+      }));
+
+      // Debounced API call
+      debouncedQuantityUpdate(productId, newQuantity);
+    },
+    [debouncedQuantityUpdate],
+  );
+
+  // Enhanced remove item handler
+  const handleRemoveItem = useCallback(
+    async (productId) => {
+      setRemovingItems((prev) => new Set(prev).add(productId));
+      setIsProcessing(true);
+
+      try {
+        await removeFromCart(productId);
+        addNotification("Item removed from cart", "success");
+        // Clear local quantity if exists
+        setLocalQuantities((prev) => {
+          const newQuantities = { ...prev };
+          delete newQuantities[productId];
+          return newQuantities;
+        });
+      } catch (error) {
+        console.error("Error removing item:", error);
+        addNotification("Failed to remove item", "error");
+      } finally {
+        setRemovingItems((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(productId);
+          return newSet;
+        });
+        setIsProcessing(false);
+      }
+    },
+    [removeFromCart, addNotification],
+  );
+
+  // Enhanced clear cart handler
+  const handleClearCart = useCallback(async () => {
+    setShowClearConfirm(false);
+    setIsProcessing(true);
+
+    try {
+      await clearCart();
+      setLocalQuantities({});
+      addNotification("Cart cleared successfully", "success");
+    } catch (error) {
+      console.error("Error clearing cart:", error);
+      addNotification("Failed to clear cart", "error");
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [clearCart, addNotification]);
+
+  // Optimized price formatter with memoization
+  const formatPrice = useCallback((price) => {
+    const numericPrice =
+      typeof price === "number" ? price : parseFloat(price) || 0;
+    return `৳${numericPrice.toFixed(0)}`;
+  }, []);
+
+  // Enhanced delivery estimate
+  const deliveryEstimate = useMemo(() => {
+    const now = new Date();
+    const deliveryDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    return {
+      date: deliveryDate.toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+      }),
+      timeSlot: "9 AM - 6 PM",
+      express: cartStats.totalAmount >= 1000,
+    };
+  }, [cartStats.totalAmount]);
+
+  // Get effective quantity (local or actual)
+  const getEffectiveQuantity = useCallback(
+    (item) => {
+      return localQuantities[item.id] !== undefined
+        ? localQuantities[item.id]
+        : item.quantity;
+    },
+    [localQuantities],
+  );
+
+  // Memoized cart items to prevent unnecessary re-renders
+  const memoizedCartItems = useMemo(
+    () =>
+      items.map((item) => ({
+        ...item,
+        effectiveQuantity: getEffectiveQuantity(item),
+        isUpdating: updatingQuantities.has(item.id),
+        isRemoving: removingItems.has(item.id),
+      })),
+    [items, getEffectiveQuantity, updatingQuantities, removingItems],
+  );
 
   if (loading) {
     return (
@@ -123,6 +275,39 @@ export default function Cart() {
 
   return (
     <>
+      {/* Enhanced Notification System */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {notifications.map((notification) => (
+          <div
+            key={notification.id}
+            className={`px-6 py-4 rounded-lg shadow-lg text-white transform transition-all duration-500 slide-in-right ${
+              notification.type === "success"
+                ? "bg-green-600"
+                : notification.type === "error"
+                  ? "bg-red-600"
+                  : notification.type === "warning"
+                    ? "bg-yellow-600"
+                    : "bg-blue-600"
+            }`}
+          >
+            <div className="flex items-center">
+              <i
+                className={`fas ${
+                  notification.type === "success"
+                    ? "fa-check-circle"
+                    : notification.type === "error"
+                      ? "fa-exclamation-circle"
+                      : notification.type === "warning"
+                        ? "fa-exclamation-triangle"
+                        : "fa-info-circle"
+                } mr-2`}
+              ></i>
+              {notification.message}
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-green-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         {/* Enhanced Header Section */}
         <div className="relative overflow-hidden">
@@ -172,7 +357,7 @@ export default function Cart() {
                 </p>
               </div>
 
-              {/* Quick Stats Cards */}
+              {/* Quick Stats Cards - Only show if items exist */}
               {items.length > 0 && (
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full lg:w-auto">
                   <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-lg border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300">

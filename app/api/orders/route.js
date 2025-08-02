@@ -2,329 +2,298 @@ import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
+// Track if indexes have been initialized to avoid repeated calls
+let indexesInitialized = false;
+
+// Initialize indexes optimized for MongoDB Atlas performance
+async function initializeOrderIndexes(db) {
+  // Only initialize once per application lifecycle
+  if (indexesInitialized) {
+    return;
+  }
+
+  try {
+    const ordersCollection = db.collection("orders");
+    const productsCollection = db.collection("products");
+
+    // Check if indexes already exist before creating them
+    const existingIndexes = await ordersCollection.listIndexes().toArray();
+    const indexNames = existingIndexes.map((index) => index.name);
+
+    // Atlas-optimized compound indexes for better performance
+    const indexesToCreate = [
+      // Core user queries
+      {
+        key: { userId: 1, createdAt: -1 },
+        name: "userId_createdAt_idx",
+        options: { background: true },
+      },
+      // Farmer queries - optimized for Atlas
+      {
+        key: { "items.farmerId": 1, status: 1, createdAt: -1 },
+        name: "items_farmerId_status_date_idx",
+        options: { background: true },
+      },
+      {
+        key: { "items.farmerEmail": 1, status: 1, createdAt: -1 },
+        name: "items_farmerEmail_status_date_idx",
+        options: { background: true },
+      },
+      // Alternative farmer fields
+      {
+        key: { farmerIds: 1, createdAt: -1 },
+        name: "farmerIds_createdAt_idx",
+        options: { background: true },
+      },
+      {
+        key: { farmerEmails: 1, createdAt: -1 },
+        name: "farmerEmails_createdAt_idx",
+        options: { background: true },
+      },
+      // Product queries
+      {
+        key: { "items.productId": 1, createdAt: -1 },
+        name: "items_productId_createdAt_idx",
+        options: { background: true },
+      },
+      // Status and date queries
+      {
+        key: { status: 1, createdAt: -1 },
+        name: "status_createdAt_idx",
+        options: { background: true },
+      },
+      // General date sorting
+      {
+        key: { createdAt: -1 },
+        name: "createdAt_idx",
+        options: { background: true },
+      },
+    ];
+
+    for (const indexSpec of indexesToCreate) {
+      if (!indexNames.includes(indexSpec.name)) {
+        await ordersCollection.createIndex(indexSpec.key, {
+          name: indexSpec.name,
+          ...indexSpec.options,
+        });
+      }
+    }
+
+    // Products collection indexes for order operations
+    const productIndexes = await productsCollection.listIndexes().toArray();
+    const productIndexNames = productIndexes.map((index) => index.name);
+
+    if (!productIndexNames.includes("stock_status_idx")) {
+      await productsCollection.createIndex(
+        { stock: 1, status: 1 },
+        { name: "stock_status_idx", background: true },
+      );
+    }
+
+    indexesInitialized = true;
+    console.log("Atlas-optimized order indexes initialized successfully");
+  } catch (error) {
+    console.log("Order index initialization note:", error.message);
+  }
+}
+
+// Cache for database connection and collections
+let cachedDb = null;
+let cachedOrdersCollection = null;
+
+// Response cache for identical requests (3 minutes for orders - shorter than products)
+const responseCache = new Map();
+const CACHE_TTL = 3 * 60 * 1000;
+
+// Generate cache key for request
+function generateCacheKey(searchParams) {
+  const params = {};
+  searchParams.forEach((value, key) => {
+    params[key] = value;
+  });
+  return JSON.stringify(params);
+}
+
+// Get cached response if available and not expired
+function getCachedResponse(cacheKey) {
+  const cached = responseCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  responseCache.delete(cacheKey);
+  return null;
+}
+
+// Set response in cache
+function setCachedResponse(cacheKey, data) {
+  responseCache.set(cacheKey, {
+    data,
+    timestamp: Date.now(),
+  });
+
+  // Clean up expired entries
+  if (responseCache.size > 50) {
+    const now = Date.now();
+    for (const [key, value] of responseCache.entries()) {
+      if (now - value.timestamp >= CACHE_TTL) {
+        responseCache.delete(key);
+      }
+    }
+  }
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-    const orderId = searchParams.get("orderId");
-    const farmerId = searchParams.get("farmerId");
-    const farmerEmail = searchParams.get("farmerEmail");
-    const productId = searchParams.get("productId");
-    const limit = parseInt(searchParams.get("limit")) || null;
 
-    if (!userId && !orderId && !farmerId && !farmerEmail && !productId) {
-      return NextResponse.json(
-        {
-          error:
-            "User ID, Order ID, Farmer ID, Farmer Email, or Product ID is required",
-        },
-        { status: 400 },
-      );
+    // Check cache first
+    const cacheKey = generateCacheKey(searchParams);
+    const cachedResponse = getCachedResponse(cacheKey);
+    if (cachedResponse) {
+      return NextResponse.json(cachedResponse);
     }
 
-    const client = await clientPromise;
-    const db = client.db("farmfresh");
+    const userId = searchParams.get("userId");
+    const farmerId = searchParams.get("farmerId");
+    const farmerEmail = searchParams.get("farmerEmail");
+    const status = searchParams.get("status");
+    const limit = parseInt(searchParams.get("limit")) || 50;
+    const page = parseInt(searchParams.get("page")) || 1;
 
-    if (orderId) {
-      // Get specific order
-      const order = await db
-        .collection("orders")
-        .findOne({ _id: new ObjectId(orderId) });
+    // Reuse database connection
+    if (!cachedDb) {
+      const client = await clientPromise;
+      cachedDb = client.db("farmfresh");
+      cachedOrdersCollection = cachedDb.collection("orders");
+    }
 
-      if (!order) {
-        return NextResponse.json({ error: "Order not found" }, { status: 404 });
-      }
+    // Initialize indexes
+    await initializeOrderIndexes(cachedDb);
 
-      return NextResponse.json({ order });
-    } else if (productId) {
-      // Get orders containing a specific product
-      console.log("Fetching orders for productId:", productId);
+    // Build optimized query
+    const query = {};
 
-      const productSearchCriteria = [
-        { "products.productId": productId },
-        { "products._id": productId },
-        { "items.productId": productId },
-        { "items._id": productId },
-      ];
+    if (userId) {
+      query.userId = userId;
+    }
 
-      // Also try ObjectId if the productId is a valid ObjectId
-      if (ObjectId.isValid(productId)) {
-        productSearchCriteria.push(
-          { "products.productId": new ObjectId(productId) },
-          { "products._id": new ObjectId(productId) },
-          { "items.productId": new ObjectId(productId) },
-          { "items._id": new ObjectId(productId) },
-        );
-      }
+    if (status) {
+      query.status = status;
+    }
 
-      let query = { $or: productSearchCriteria };
-      let orders = await db
-        .collection("orders")
-        .find(query)
-        .sort({ createdAt: -1 });
-
-      if (limit) {
-        orders = orders.limit(limit);
-      }
-
-      const ordersArray = await orders.toArray();
-
-      console.log(
-        `Found ${ordersArray.length} orders containing product ${productId}`,
-      );
-
-      // Filter and transform orders to show only items for this product
-      const filteredOrders = ordersArray
-        .map((order) => {
-          // Find items/products that match the productId
-          const matchingItems = [];
-
-          // Check both 'products' and 'items' arrays (different orders might use different structures)
-          if (order.products) {
-            const products = order.products.filter(
-              (item) =>
-                item.productId === productId ||
-                item._id === productId ||
-                (ObjectId.isValid(productId) &&
-                  (item.productId?.toString() === productId ||
-                    item._id?.toString() === productId)),
-            );
-            matchingItems.push(...products);
-          }
-
-          if (order.items) {
-            const items = order.items.filter(
-              (item) =>
-                item.productId === productId ||
-                item._id === productId ||
-                (ObjectId.isValid(productId) &&
-                  (item.productId?.toString() === productId ||
-                    item._id?.toString() === productId)),
-            );
-            matchingItems.push(...items);
-          }
-
-          return {
-            ...order,
-            products: matchingItems,
-            items: matchingItems, // Ensure both fields are available
-            matchingItemsCount: matchingItems.length,
-          };
-        })
-        .filter((order) => order.matchingItemsCount > 0); // Only include orders with matching items
-
-      console.log(
-        `Filtered to ${filteredOrders.length} orders with matching product items`,
-      );
-
-      return NextResponse.json({
-        orders: filteredOrders,
-        total: filteredOrders.length,
-      });
-    } else if (farmerId || farmerEmail) {
-      // Get orders for farmer - orders containing their products
-      console.log(
-        "Fetching orders for farmer - farmerId:",
-        farmerId,
-        "farmerEmail:",
-        farmerEmail,
-      );
-
-      const farmerSearchCriteria = [];
+    // Optimized farmer filtering for better Atlas performance
+    if (farmerId || farmerEmail) {
+      const farmerConditions = [];
 
       if (farmerId) {
-        farmerSearchCriteria.push(
-          { farmerIds: farmerId },
-          { farmerIds: farmerId.toString() },
+        farmerConditions.push(
           { "items.farmerId": farmerId },
-          { "items.farmerId": farmerId.toString() },
+          { "items.farmer.id": farmerId },
+          { "items.farmer._id": farmerId },
+          { farmerIds: farmerId },
         );
-
-        if (ObjectId.isValid(farmerId)) {
-          farmerSearchCriteria.push(
-            { farmerIds: new ObjectId(farmerId) },
-            { "items.farmerId": new ObjectId(farmerId) },
-          );
-        }
       }
 
       if (farmerEmail) {
-        farmerSearchCriteria.push(
-          { farmerEmails: farmerEmail },
+        farmerConditions.push(
           { "items.farmerEmail": farmerEmail },
+          { "items.farmer.email": farmerEmail },
+          { farmerEmails: farmerEmail },
         );
       }
 
-      const orders = await db
-        .collection("orders")
-        .find({ $or: farmerSearchCriteria })
-        .sort({ createdAt: -1 })
-        .toArray();
-
-      console.log("Farmer orders found:", orders.length);
-
-      // Filter items in each order to only show items from this farmer
-      const filteredOrders = orders.map((order) => ({
-        ...order,
-        items: order.items.filter((item) => {
-          // Helper function to check if item belongs to this farmer
-          const itemBelongsToFarmer = () => {
-            // If we have farmerId, check against it
-            if (farmerId) {
-              // Direct string comparison
-              if (
-                item.farmerId === farmerId ||
-                item.farmerId === farmerId.toString()
-              ) {
-                return true;
-              }
-
-              // ObjectId comparison if farmerId is valid ObjectId
-              if (
-                ObjectId.isValid(farmerId) &&
-                item.farmerId?.toString() === farmerId
-              ) {
-                return true;
-              }
-
-              // Check if farmerId is stored as email (legacy orders)
-              if (farmerEmail && item.farmerId === farmerEmail) {
-                return true;
-              }
-            }
-
-            // If we have farmerEmail, check against farmerEmail field or farmerId field
-            if (farmerEmail) {
-              if (
-                item.farmerEmail === farmerEmail ||
-                item.farmerId === farmerEmail
-              ) {
-                return true;
-              }
-            }
-
-            return false;
-          };
-
-          return itemBelongsToFarmer();
-        }),
-        // Recalculate totals for farmer's items only
-        farmerSubtotal: order.items
-          .filter((item) => {
-            // Use the same logic for subtotal calculation
-            if (farmerId) {
-              // Direct string comparison
-              if (
-                item.farmerId === farmerId ||
-                item.farmerId === farmerId.toString()
-              ) {
-                return true;
-              }
-
-              // ObjectId comparison if farmerId is valid ObjectId
-              if (
-                ObjectId.isValid(farmerId) &&
-                item.farmerId?.toString() === farmerId
-              ) {
-                return true;
-              }
-
-              // Check if farmerId is stored as email (legacy orders)
-              if (farmerEmail && item.farmerId === farmerEmail) {
-                return true;
-              }
-            }
-
-            // If we have farmerEmail, check against farmerEmail field or farmerId field
-            if (farmerEmail) {
-              if (
-                item.farmerEmail === farmerEmail ||
-                item.farmerId === farmerEmail
-              ) {
-                return true;
-              }
-            }
-
-            return false;
-          })
-          .reduce((sum, item) => sum + item.price * item.quantity, 0),
-      }));
-
-      console.log(`Found ${orders.length} total orders for farmer`);
-
-      // Log each order before filtering
-      orders.forEach((order, index) => {
-        console.log(`Order ${index + 1} (${order._id}):`, {
-          totalItems: order.items?.length || 0,
-          itemsFarmers:
-            order.items?.map((item) => ({
-              name: item.name || item.productName,
-              farmerId: item.farmerId,
-              farmerEmail: item.farmerEmail,
-            })) || [],
-          status: order.status,
-        });
-      });
-
-      console.log(
-        `Filtered orders (with farmer items):`,
-        filteredOrders.filter((order) => order.items.length > 0).length,
-      );
-
-      // Log why orders are being filtered out
-      filteredOrders.forEach((order, index) => {
-        if (order.items.length === 0) {
-          console.log(
-            `Order ${order._id} filtered out - no matching items for farmer`,
-          );
-        } else {
-          console.log(
-            `Order ${order._id} kept - has ${order.items.length} matching items`,
-          );
-        }
-      });
-
-      console.log(
-        `Sample filtered order:`,
-        filteredOrders.find((order) => order.items.length > 0),
-      );
-
-      return NextResponse.json({
-        orders: filteredOrders.filter((order) => order.items.length > 0),
-        message: `Found ${filteredOrders.filter((order) => order.items.length > 0).length} orders for farmer`,
-      });
-    } else {
-      // Get orders for customer
-      console.log("Fetching orders for customer - userId:", userId);
-
-      const customerSearchCriteria = { userId: userId };
-
-      // Try different ID formats
-      if (ObjectId.isValid(userId)) {
-        customerSearchCriteria.$or = [
-          { userId: userId },
-          { userId: new ObjectId(userId) },
-        ];
-        delete customerSearchCriteria.userId;
-      }
-
-      const orders = await db
-        .collection("orders")
-        .find(customerSearchCriteria)
-        .sort({ createdAt: -1 })
-        .toArray();
-
-      console.log("Customer orders found:", orders.length);
-
-      return NextResponse.json({
-        orders,
-        message: `Found ${orders.length} orders for customer`,
-      });
+      query.$or = farmerConditions;
     }
+
+    // Optimized projection - reduce data transfer
+    const projection = {
+      _id: 1,
+      userId: 1,
+      status: 1,
+      total: 1,
+      farmerSubtotal: 1,
+      shippingAddress: 1,
+      paymentMethod: 1,
+      createdAt: 1,
+      updatedAt: 1,
+      // Include essential item fields only
+      "items._id": 1,
+      "items.productId": 1,
+      "items.name": 1,
+      "items.price": 1,
+      "items.quantity": 1,
+      "items.subtotal": 1,
+      "items.farmerId": 1,
+      "items.farmerEmail": 1,
+      "items.farmerName": 1,
+      "items.farmer": 1,
+      // Exclude heavy fields like detailed product data, full user info, etc.
+    };
+
+    // Use aggregation pipeline for better Atlas performance
+    const pipeline = [
+      { $match: query },
+      { $project: projection },
+      { $sort: { createdAt: -1 } },
+    ];
+
+    // Add pagination
+    if (limit < 1000) {
+      pipeline.push({ $skip: (page - 1) * limit }, { $limit: limit });
+    }
+
+    // Execute optimized query
+    const startTime = Date.now();
+    const [orders, totalCount] = await Promise.all([
+      cachedOrdersCollection.aggregate(pipeline).toArray(),
+      // Only count if we need pagination
+      limit < 1000
+        ? cachedOrdersCollection.countDocuments(query)
+        : Promise.resolve(orders.length),
+    ]);
+
+    const queryTime = Date.now() - startTime;
+    console.log(
+      `Atlas orders query executed in ${queryTime}ms for ${orders.length} orders`,
+    );
+
+    // Build response
+    const response = {
+      orders,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+        hasNext: page * limit < totalCount,
+        hasPrev: page > 1,
+      },
+      meta: {
+        queryTime,
+        cached: false,
+      },
+    };
+
+    // Cache the response
+    setCachedResponse(cacheKey, response);
+
+    return NextResponse.json(response);
   } catch (error) {
-    console.error("Orders API error:", error);
+    console.error("Orders API Error:", error);
     return NextResponse.json(
-      { error: "Internal server error", details: error.message },
+      {
+        error: "Failed to fetch orders",
+        details: error.message,
+        orders: [],
+        pagination: {
+          page: 1,
+          limit: 50,
+          total: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false,
+        },
+      },
       { status: 500 },
     );
   }
@@ -334,43 +303,65 @@ export async function POST(request) {
   try {
     const orderData = await request.json();
 
-    console.log("Creating new order:", orderData);
-
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
-    // Check and update stock for each item (without transactions)
-    for (const item of orderData.items) {
-      const productId = item.productId;
-      const orderQuantity = item.quantity;
+    // Initialize indexes for optimal performance
+    await initializeOrderIndexes(db);
 
-      // Get current product
-      const product = await db
-        .collection("products")
-        .findOne({ _id: new ObjectId(productId) });
+    // Optimize stock validation using aggregation pipeline
+    const productIds = orderData.items.map(
+      (item) => new ObjectId(item.productId),
+    );
+
+    const stockValidationPipeline = [
+      { $match: { _id: { $in: productIds } } },
+      {
+        $project: {
+          _id: 1,
+          stock: 1,
+          name: 1,
+        },
+      },
+    ];
+
+    const products = await db
+      .collection("products")
+      .aggregate(stockValidationPipeline)
+      .toArray();
+
+    // Create lookup map for faster validation
+    const productMap = new Map(products.map((p) => [p._id.toString(), p]));
+
+    // Validate stock availability
+    const stockUpdates = [];
+    for (const item of orderData.items) {
+      const product = productMap.get(item.productId);
 
       if (!product) {
         throw new Error(`Product ${item.name} not found`);
       }
 
-      // Check if sufficient stock is available
-      if (product.stock < orderQuantity) {
+      if (product.stock < item.quantity) {
         throw new Error(
-          `Insufficient stock for ${item.name}. Available: ${product.stock}, Requested: ${orderQuantity}`,
+          `Insufficient stock for ${item.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
         );
       }
 
-      // Update product stock
-      const newStock = product.stock - orderQuantity;
-      await db.collection("products").updateOne(
-        { _id: new ObjectId(productId) },
-        {
-          $set: {
-            stock: newStock,
-            updatedAt: new Date(),
+      stockUpdates.push({
+        updateOne: {
+          filter: { _id: new ObjectId(item.productId) },
+          update: {
+            $inc: { stock: -item.quantity },
+            $set: { updatedAt: new Date() },
           },
         },
-      );
+      });
+    }
+
+    // Perform bulk stock updates for better performance
+    if (stockUpdates.length > 0) {
+      await db.collection("products").bulkWrite(stockUpdates);
     }
 
     // Add timestamps to order
@@ -383,9 +374,6 @@ export async function POST(request) {
     // Create the order
     const result = await db.collection("orders").insertOne(newOrder);
 
-    console.log("Order created with ID:", result.insertedId);
-
-    // Return success response
     return NextResponse.json({
       message: "Order created successfully",
       orderId: result.insertedId,

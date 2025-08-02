@@ -1,57 +1,72 @@
-import {useState} from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const useProductData = (productId) => {
-    const [product, setProduct] = useState(null);
-    const [farmer, setFarmer] = useState(null);
-    const [farmerProducts, setFarmerProducts] = useState([]);
-    const [responseType, setResponseType] = useState(null);
-    const [relatedProducts, setRelatedProducts] = useState([]);
-    const [loading, setLoading] = useState(true);
+  const [product, setProduct] = useState(null);
+  const [farmer, setFarmer] = useState(null);
+  const [farmerProducts, setFarmerProducts] = useState([]);
+  const [responseType, setResponseType] = useState(null);
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    const fetchProductDetails = async () => {
-        if (!productId) return;
+  const fetchProductDetails = useCallback(async () => {
+    if (!productId) {
+      setLoading(false);
+      return;
+    }
 
-        try {
-            const response = await fetch(`/api/products/${productId}`);
+    setLoading(true);
+    setError(null);
 
-            if (response.ok) {
-                const data = await response.json();
+    try {
+      const response = await fetch(`/api/products/${productId}`);
 
-                if (data.type === "farmer") {
-                    setResponseType("farmer");
-                    setFarmer(data.farmer);
-                    setFarmerProducts(data.products || []);
-                    setRelatedProducts([]);
-                    setProduct(null);
-                } else {
-                    setResponseType("product");
-                    setProduct(data.product);
-                    setRelatedProducts(data.relatedProducts);
-                    setFarmer(null);
-                    setFarmerProducts([]);
-                }
-            } else {
-                console.error("API Response Error:", response.status, response.statusText);
-                const errorData = await response.text();
-                console.error("Error Response Body:", errorData);
-            }
-        } catch (error) {
-            console.error("Error fetching details:", error);
-        } finally {
-            setLoading(false);
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.type === "farmer") {
+          setResponseType("farmer");
+          setFarmer(data.farmer);
+          setFarmerProducts(data.products || []);
+          setRelatedProducts([]);
+          setProduct(null);
+        } else {
+          setResponseType("product");
+          setProduct(data.product);
+          setRelatedProducts(data.relatedProducts || []);
+          setFarmer(null);
+          setFarmerProducts([]);
         }
-    };
+      } else {
+        const errorData = await response.json();
+        const errorMessage =
+          errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+        console.error("API Response Error:", errorMessage);
+        setError(errorMessage);
+      }
+    } catch (error) {
+      console.error("Error fetching details:", error);
+      setError("Failed to fetch product details. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [productId]);
 
-    return {
-        product,
-        farmer,
-        farmerProducts,
-        responseType,
-        relatedProducts,
-        loading,
-        fetchProductDetails,
-        setProduct
-    };
+  // Automatically fetch when productId changes
+  useEffect(() => {
+    fetchProductDetails();
+  }, [fetchProductDetails]);
+
+  return {
+    product,
+    farmer,
+    farmerProducts,
+    responseType,
+    relatedProducts,
+    loading,
+    error,
+    fetchProductDetails,
+  };
 };
 
 export default useProductData;
