@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
+import { apiService } from "@/lib/api-service";
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -14,6 +15,7 @@ export default function Home() {
   const [categoryData, setCategoryData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [error, setError] = useState(null);
   const router = useRouter();
 
   const categoryOptions = [
@@ -26,70 +28,57 @@ export default function Home() {
     "Herbs",
   ];
 
-  useEffect(() => {
-    fetchFeaturedProducts();
-    fetchCategories();
-    fetchCategoryData();
-  }, []);
+  // Optimized data fetching with caching
+  const fetchHomeData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-  const fetchFeaturedProducts = async () => {
     try {
-      // First try to get products with highest purchase count
-      const response = await fetch("/api/products?sortBy=purchases&limit=8");
-      if (response.ok) {
-        const data = await response.json();
-        // If no products have purchases, get most recent products
-        if (
-          data.products.length === 0 ||
-          !data.products.some((p) => p.purchaseCount > 0)
-        ) {
-          const recentResponse = await fetch(
-            "/api/products?sortBy=newest&limit=8",
-          );
-          if (recentResponse.ok) {
-            const recentData = await recentResponse.json();
-            setFeaturedProducts(recentData.products);
-          }
-        } else {
-          setFeaturedProducts(data.products);
-        }
+      // Fetch all home page data in parallel using cached API service
+      const [featuredData, categoriesData] = await Promise.all([
+        // Get featured products with smaller limit for home page
+        apiService.getProducts({
+          sortBy: "popular",
+          limit: 8,
+        }),
+        // Get categories data
+        apiService.getCategories(),
+      ]);
+
+      // Set featured products
+      const products = featuredData.products || [];
+      if (products.length === 0 || !products.some((p) => p.purchaseCount > 0)) {
+        // Fallback to newest products if no popular ones
+        const newestData = await apiService.getProducts({
+          sortBy: "newest",
+          limit: 8,
+        });
+        setFeaturedProducts(newestData.products || []);
+      } else {
+        setFeaturedProducts(products);
       }
+
+      // Set categories
+      setCategoryData(categoriesData.categories || []);
+
+      // Extract unique categories from products for search
+      const uniqueCategories = [
+        ...new Set(products.map((p) => p.category).filter(Boolean)),
+      ];
+      setCategories(uniqueCategories);
     } catch (error) {
-      console.error("Error fetching featured products:", error);
+      console.error("Error fetching home data:", error);
+      setError("Failed to load home page data");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const response = await fetch("/api/products");
-      if (response.ok) {
-        const data = await response.json();
-        // Get unique categories from products
-        const uniqueCategories = [
-          ...new Set(data.products.map((p) => p.category)),
-        ];
-        setCategories(uniqueCategories);
-      }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    }
-  };
-
-  const fetchCategoryData = async () => {
-    try {
-      const response = await fetch("/api/categories");
-      if (response.ok) {
-        const data = await response.json();
-        setCategoryData(data.categories);
-      }
-    } catch (error) {
-      console.error("Error fetching category data:", error);
-    } finally {
       setCategoriesLoading(false);
     }
-  };
+  }, []);
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchHomeData();
+  }, [fetchHomeData]);
 
   const handleSearch = () => {
     const params = new URLSearchParams();

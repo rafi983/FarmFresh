@@ -11,8 +11,24 @@ export default function Success() {
   const { data: session } = useSession();
   const orderId = searchParams.get("orderId");
 
-  const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Initialize with a placeholder order to show success immediately
+  const [order, setOrder] = useState({
+    orderNumber: orderId || "LOADING...",
+    createdAt: new Date().toISOString(),
+    paymentMethod: "Processing...",
+    status: "confirmed",
+    deliveryAddress: {
+      name: "Loading...",
+      address: "Fetching address details...",
+      city: "",
+      phone: "",
+    },
+    items: [],
+    subtotal: 0,
+    deliveryFee: 0,
+    serviceFee: 0,
+    total: 0,
+  });
 
   useEffect(() => {
     if (orderId) {
@@ -24,18 +40,18 @@ export default function Success() {
 
   const fetchOrderDetails = async () => {
     try {
-      const response = await fetch(`/api/orders?orderId=${orderId}`);
+      // Use the individual order API endpoint instead of query parameter
+      const response = await fetch(`/api/orders/${orderId}`);
       if (response.ok) {
         const data = await response.json();
         setOrder(data.order);
       } else {
-        router.push("/");
+        console.error("Failed to fetch order details");
+        // Keep the placeholder data if API fails
       }
     } catch (error) {
       console.error("Error fetching order details:", error);
-      router.push("/");
-    } finally {
-      setLoading(false);
+      // Keep the placeholder data if there's an error
     }
   };
 
@@ -177,19 +193,6 @@ export default function Success() {
       alert("Order number copied to clipboard!");
     });
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <i className="fas fa-spinner fa-spin text-4xl text-primary-600 mb-4"></i>
-          <p className="text-gray-600 dark:text-gray-400">
-            Loading order details...
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   if (!order) {
     return (

@@ -6,6 +6,113 @@ import {
   enhanceProductsWithRatings,
 } from "@/lib/reviewUtils";
 
+// Calculate performance metrics for a product
+async function calculateProductPerformanceOptimized(db, productId) {
+  try {
+    console.log(`Calculating performance metrics for product: ${productId}`);
+
+    // Handle different productId formats (string, ObjectId)
+    const productIdVariants = [
+      productId,
+      productId.toString(),
+      ...(ObjectId.isValid(productId) ? [new ObjectId(productId)] : []),
+    ];
+
+    // First, let's get orders and reviews separately for better debugging
+    const ordersQuery = {
+      "items.productId": { $in: productIdVariants },
+      status: {
+        $in: ["completed", "delivered", "confirmed", "shipped", "pending"],
+      },
+    };
+
+    console.log("Orders query:", JSON.stringify(ordersQuery));
+
+    // Calculate sales metrics from orders
+    const salesPipeline = [
+      { $match: ordersQuery },
+      { $unwind: "$items" },
+      {
+        $match: {
+          "items.productId": { $in: productIdVariants },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalSales: { $sum: "$items.quantity" },
+          totalRevenue: {
+            $sum: {
+              $multiply: [
+                { $toDouble: "$items.price" },
+                { $toInt: "$items.quantity" },
+              ],
+            },
+          },
+          totalOrders: { $sum: 1 },
+          orderValues: {
+            $push: {
+              $multiply: [
+                { $toDouble: "$items.price" },
+                { $toInt: "$items.quantity" },
+              ],
+            },
+          },
+        },
+      },
+    ];
+
+    // Calculate review metrics
+    const reviewsPipeline = [
+      {
+        $match: {
+          productId: { $in: productIdVariants },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalReviews: { $sum: 1 },
+          averageRating: { $avg: "$rating" },
+        },
+      },
+    ];
+
+    const [salesResult, reviewsResult] = await Promise.all([
+      db.collection("orders").aggregate(salesPipeline).toArray(),
+      db.collection("reviews").aggregate(reviewsPipeline).toArray(),
+    ]);
+
+    const salesData = salesResult[0] || {};
+    const reviewsData = reviewsResult[0] || {};
+
+    const performanceMetrics = {
+      totalSales: salesData.totalSales || 0,
+      totalRevenue: salesData.totalRevenue || 0,
+      totalOrders: salesData.totalOrders || 0,
+      averageOrderValue:
+        salesData.totalOrders > 0
+          ? salesData.totalRevenue / salesData.totalOrders
+          : 0,
+      totalReviews: reviewsData.totalReviews || 0,
+      averageRating: reviewsData.averageRating || 0,
+    };
+
+    console.log(`Performance metrics for ${productId}:`, performanceMetrics);
+    return performanceMetrics;
+  } catch (error) {
+    console.error("Error calculating performance metrics:", error);
+    return {
+      totalSales: 0,
+      totalRevenue: 0,
+      totalOrders: 0,
+      averageOrderValue: 0,
+      totalReviews: 0,
+      averageRating: 0,
+    };
+  }
+}
+
 // Initialize indexes for better performance on product details queries
 async function initializeProductDetailIndexes(db) {
   try {
@@ -256,145 +363,6 @@ function combineProductImages(product) {
   }
 
   return [...new Set(imageArray.filter((img) => img && img.trim()))];
-}
-
-// Optimized performance calculation using aggregation pipeline
-async function calculateProductPerformanceOptimized(db, productId) {
-  try {
-    const productIdQuery = ObjectId.isValid(productId)
-      ? new ObjectId(productId)
-      : productId;
-
-    // Sales metrics pipeline
-    const salesPipeline = [
-      {
-        $match: {
-          status: { $in: ["completed", "delivered", "shipped"] },
-          "items.productId": {
-            $in: [productId, productIdQuery, productId.toString()],
-          },
-        },
-      },
-      { $unwind: "$items" },
-      {
-        $match: {
-          "items.productId": {
-            $in: [productId, productIdQuery, productId.toString()],
-          },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalSales: { $sum: "$items.quantity" },
-          totalRevenue: {
-            $sum: { $multiply: ["$items.quantity", "$items.price"] },
-          },
-          totalOrders: { $sum: 1 },
-        },
-      },
-    ];
-
-    // Reviews metrics pipeline
-    const reviewsPipeline = [
-      {
-        $match: {
-          productId: { $in: [productId, productIdQuery, productId.toString()] },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalReviews: { $sum: 1 },
-          averageRating: { $avg: "$rating" },
-          ratingDistribution: {
-            $push: "$rating",
-          },
-        },
-      },
-      {
-        $addFields: {
-          ratingCounts: {
-            5: {
-              $size: {
-                $filter: {
-                  input: "$ratingDistribution",
-                  cond: { $eq: ["$$this", 5] },
-                },
-              },
-            },
-            4: {
-              $size: {
-                $filter: {
-                  input: "$ratingDistribution",
-                  cond: { $eq: ["$$this", 4] },
-                },
-              },
-            },
-            3: {
-              $size: {
-                $filter: {
-                  input: "$ratingDistribution",
-                  cond: { $eq: ["$$this", 3] },
-                },
-              },
-            },
-            2: {
-              $size: {
-                $filter: {
-                  input: "$ratingDistribution",
-                  cond: { $eq: ["$$this", 2] },
-                },
-              },
-            },
-            1: {
-              $size: {
-                $filter: {
-                  input: "$ratingDistribution",
-                  cond: { $eq: ["$$this", 1] },
-                },
-              },
-            },
-          },
-        },
-      },
-    ];
-
-    const [salesData, reviewsData] = await Promise.all([
-      db.collection("orders").aggregate(salesPipeline).toArray(),
-      db.collection("reviews").aggregate(reviewsPipeline).toArray(),
-    ]);
-
-    const sales = salesData[0] || {
-      totalSales: 0,
-      totalRevenue: 0,
-      totalOrders: 0,
-    };
-    const reviews = reviewsData[0] || {
-      totalReviews: 0,
-      averageRating: 0,
-      ratingCounts: {},
-    };
-
-    return {
-      totalSales: sales.totalSales,
-      totalRevenue: sales.totalRevenue,
-      totalOrders: sales.totalOrders,
-      totalReviews: reviews.totalReviews,
-      averageRating: Number((reviews.averageRating || 0).toFixed(1)),
-      ratingDistribution: reviews.ratingCounts || {},
-    };
-  } catch (error) {
-    console.error("Error calculating performance metrics:", error);
-    return {
-      totalSales: 0,
-      totalRevenue: 0,
-      totalOrders: 0,
-      totalReviews: 0,
-      averageRating: 0,
-      ratingDistribution: {},
-    };
-  }
 }
 
 // PUT - Update a product

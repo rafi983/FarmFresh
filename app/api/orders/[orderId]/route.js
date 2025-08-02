@@ -237,6 +237,17 @@ export async function PATCH(request, { params }) {
       );
     }
 
+    // Clear cache in main orders route to ensure fresh data
+    try {
+      // Import the cache clearing function from main orders route
+      const ordersModule = await import("../route.js");
+      if (ordersModule.clearOrdersCache) {
+        ordersModule.clearOrdersCache();
+      }
+    } catch (error) {
+      console.log("Could not clear orders cache:", error.message);
+    }
+
     // Use aggregation to get the updated order with proper field formatting
     const updatedOrderPipeline = [
       { $match: { _id: new ObjectId(orderId) } },

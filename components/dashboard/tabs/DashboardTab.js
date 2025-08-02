@@ -100,12 +100,36 @@ export default function DashboardTab({
 
     // Recent orders
     orders.slice(0, 5).forEach((order) => {
+      // Extract customer name from various possible fields
+      let customerName =
+        order.customerName ||
+        order.customerInfo?.name ||
+        order.shippingAddress?.name ||
+        order.billingAddress?.name;
+
+      // If no name found but we have userId, format it better
+      if (!customerName && order.userId) {
+        // Check if userId looks like a MongoDB ObjectId (24 hex characters)
+        if (order.userId.match(/^[0-9a-fA-F]{24}$/)) {
+          customerName = `Customer ${order.userId.slice(-6).toUpperCase()}`;
+        } else {
+          customerName = order.userId;
+        }
+      }
+
+      // Final fallback
+      if (!customerName) {
+        customerName = "Anonymous Customer";
+      }
+
       activities.push({
         type: "order",
         icon: "fas fa-shopping-cart",
         color: "text-green-600",
-        title: `New order from ${order.customerName}`,
-        description: `${order.items?.length || 0} items • ${formatPrice(order.total || 0)}`,
+        title: `New order from ${customerName}`,
+        description: `${order.items?.length || 0} items • ${formatPrice(
+          order.total || 0,
+        )}`,
         time: order.createdAt,
         status: order.status,
       });

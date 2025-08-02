@@ -105,6 +105,12 @@ let cachedOrdersCollection = null;
 const responseCache = new Map();
 const CACHE_TTL = 3 * 60 * 1000;
 
+// Export cache clearing function for use by individual order updates
+export function clearOrdersCache() {
+  responseCache.clear();
+  console.log("Orders cache cleared");
+}
+
 // Generate cache key for request
 function generateCacheKey(searchParams) {
   const params = {};
@@ -156,6 +162,7 @@ export async function GET(request) {
     const userId = searchParams.get("userId");
     const farmerId = searchParams.get("farmerId");
     const farmerEmail = searchParams.get("farmerEmail");
+    const productId = searchParams.get("productId"); // Add productId parameter
     const status = searchParams.get("status");
     const limit = parseInt(searchParams.get("limit")) || 50;
     const page = parseInt(searchParams.get("page")) || 1;
@@ -179,6 +186,11 @@ export async function GET(request) {
 
     if (status) {
       query.status = status;
+    }
+
+    // Add productId filtering - only show orders containing this specific product
+    if (productId) {
+      query["items.productId"] = productId;
     }
 
     // Optimized farmer filtering for better Atlas performance
@@ -209,6 +221,10 @@ export async function GET(request) {
     const projection = {
       _id: 1,
       userId: 1,
+      customerName: 1,
+      customerEmail: 1,
+      customerPhone: 1,
+      customerInfo: 1,
       status: 1,
       total: 1,
       farmerSubtotal: 1,
@@ -216,10 +232,11 @@ export async function GET(request) {
       paymentMethod: 1,
       createdAt: 1,
       updatedAt: 1,
-      // Include essential item fields only
+      // Include essential item fields including images
       "items._id": 1,
       "items.productId": 1,
       "items.name": 1,
+      "items.productName": 1,
       "items.price": 1,
       "items.quantity": 1,
       "items.subtotal": 1,
@@ -227,7 +244,9 @@ export async function GET(request) {
       "items.farmerEmail": 1,
       "items.farmerName": 1,
       "items.farmer": 1,
-      // Exclude heavy fields like detailed product data, full user info, etc.
+      "items.image": 1, // Include item image
+      "items.productImage": 1, // Include product image
+      "items.images": 1, // Include images array
     };
 
     // Use aggregation pipeline for better Atlas performance
@@ -321,6 +340,10 @@ export async function POST(request) {
           _id: 1,
           stock: 1,
           name: 1,
+          image: 1, // Include main product image
+          images: 1, // Include product images array
+          price: 1, // Include current price
+          farmer: 1, // Include farmer info
         },
       },
     ];
@@ -364,15 +387,68 @@ export async function POST(request) {
       await db.collection("products").bulkWrite(stockUpdates);
     }
 
-    // Add timestamps to order
+    // Enrich order items with product data including images
+    const enrichedItems = orderData.items.map((item) => {
+      const product = productMap.get(item.productId);
+      return {
+        ...item,
+        // Add product images to order item
+        image: product?.image || item.image,
+        productImage: product?.image || product?.images?.[0],
+        images: product?.images || [],
+        // Store current product name in case it changes later
+        productName: item.productName || item.name || product?.name,
+        // Store farmer info
+        farmerName: item.farmerName || product?.farmer?.name || "Local Farmer",
+        farmerEmail: item.farmerEmail || product?.farmer?.email,
+        farmerId: item.farmerId || product?.farmer?.id || product?.farmerId,
+      };
+    });
+
+    // Enrich order data with customer information
+    let customerInfo = {};
+    if (orderData.userId) {
+      try {
+        const user = await db.collection("users").findOne({
+          $or: [
+            { _id: new ObjectId(orderData.userId) },
+            { _id: orderData.userId },
+            { email: orderData.userId },
+          ],
+        });
+
+        if (user) {
+          customerInfo = {
+            customerName:
+              user.name || user.username || user.email || "Customer",
+            customerEmail: user.email,
+            customerPhone: user.phone,
+            customerInfo: {
+              name: user.name || user.username || "Customer",
+              email: user.email,
+              phone: user.phone,
+            },
+          };
+        }
+      } catch (error) {
+        console.log("Could not fetch user details:", error.message);
+      }
+    }
+
+    // Add timestamps and customer info to order
     const newOrder = {
       ...orderData,
+      ...customerInfo,
+      items: enrichedItems, // Use enriched items
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
     // Create the order
     const result = await db.collection("orders").insertOne(newOrder);
+
+    // Clear cache after creating new order to ensure fresh data
+    responseCache.clear();
 
     return NextResponse.json({
       message: "Order created successfully",

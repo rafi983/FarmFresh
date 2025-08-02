@@ -293,6 +293,14 @@ export default function Payment() {
         }, 1000),
       );
 
+      // Add a final step for redirection
+      await new Promise((resolve) =>
+        setTimeout(() => {
+          setPaymentProcessingStep(5);
+          resolve();
+        }, 800),
+      );
+
       const userId =
         session.user.userId ||
         session.user.id ||
@@ -375,23 +383,22 @@ export default function Payment() {
         const orderId = data.orderId || data.order?._id;
 
         if (orderId) {
-          try {
-            await fetch(`/api/cart?userId=${encodeURIComponent(userId)}`, {
-              method: "DELETE",
-            });
-          } catch (cartError) {
-            console.error("Error clearing cart:", cartError);
-          }
-
           setRedirectingToSuccess(true);
 
-          // Redirect immediately to prevent any flash of cart page
-          router.push(`/success?orderId=${orderId}`);
+          // Immediately redirect to success page BEFORE clearing cart
+          window.location.href = `/success?orderId=${orderId}`;
 
-          // Clear the cart in the background after redirect starts
-          setTimeout(() => {
-            clearCartAfterPayment();
-          }, 50);
+          // Clear cart in the background after redirect has started
+          setTimeout(async () => {
+            try {
+              await fetch(`/api/cart?userId=${encodeURIComponent(userId)}`, {
+                method: "DELETE",
+              });
+              clearCartAfterPayment();
+            } catch (cartError) {
+              console.error("Error clearing cart:", cartError);
+            }
+          }, 100);
         } else {
           addNotification(
             "Order created successfully! Redirecting...",
@@ -532,12 +539,14 @@ export default function Payment() {
                 {paymentProcessingStep === 2 && "Contacting payment gateway..."}
                 {paymentProcessingStep === 3 && "Securing transaction..."}
                 {paymentProcessingStep === 4 && "Finalizing order..."}
+                {paymentProcessingStep === 5 &&
+                  "Redirecting to success page..."}
               </p>
             </div>
 
             {/* Processing Steps */}
             <div className="flex justify-center space-x-2 mb-4">
-              {[1, 2, 3, 4].map((step) => (
+              {[1, 2, 3, 4, 5].map((step) => (
                 <div
                   key={step}
                   className={`w-3 h-3 rounded-full ${

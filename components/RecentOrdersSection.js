@@ -154,58 +154,78 @@ export default function RecentOrdersSection({
                 {/* Order Items */}
                 <div className="bg-white/70 dark:bg-gray-800/70 rounded-lg p-4 mb-4 backdrop-blur-sm">
                   <div className="space-y-3">
-                    {orderItems.slice(0, 2).map((item, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-lg overflow-hidden shadow-sm">
-                            <Image
-                              src={
-                                item.image ||
-                                item.productImage ||
-                                product.image ||
-                                product.images?.[0] ||
-                                "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=40&h=40&fit=crop"
-                              }
-                              alt={item.name || item.productName || "Product"}
-                              width={40}
-                              height={40}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.src =
-                                  "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=40&h=40&fit=crop";
-                              }}
-                            />
+                    {orderItems
+                      .filter(
+                        (item) =>
+                          !product ||
+                          item.productId === product._id ||
+                          item.productId === product.id,
+                      )
+                      .slice(0, 2)
+                      .map((item, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-lg overflow-hidden shadow-sm">
+                              <Image
+                                src={
+                                  item.image ||
+                                  item.productImage ||
+                                  (product &&
+                                    (product.image || product.images?.[0])) ||
+                                  "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=40&h=40&fit=crop"
+                                }
+                                alt={item.name || item.productName || "Product"}
+                                width={40}
+                                height={40}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.src =
+                                    "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=40&h=40&fit=crop";
+                                }}
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                                {item.name || item.productName || "Product"}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                <span className="font-medium">
+                                  {item.quantity || 1}
+                                </span>{" "}
+                                ×
+                                <span className="font-bold text-green-600 ml-1">
+                                  ৳{parseFloat(item.price || 0).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                              {item.name || item.productName || "Product"}
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              <span className="font-medium">
-                                {item.quantity || 1}
-                              </span>{" "}
-                              ×
-                              <span className="font-bold text-green-600 ml-1">
-                                ৳{parseFloat(item.price || 0).toFixed(2)}
-                              </span>
-                            </div>
+                          <div className="text-sm font-bold text-gray-900 dark:text-white">
+                            ৳
+                            {(
+                              parseFloat(item.price || 0) *
+                              parseInt(item.quantity || 1)
+                            ).toFixed(2)}
                           </div>
                         </div>
-                        <div className="text-sm font-bold text-gray-900 dark:text-white">
-                          ৳
-                          {(
-                            parseFloat(item.price || 0) *
-                            parseInt(item.quantity || 1)
-                          ).toFixed(2)}
-                        </div>
-                      </div>
-                    ))}
-                    {orderItems.length > 2 && (
+                      ))}
+                    {orderItems.filter(
+                      (item) =>
+                        !product ||
+                        item.productId === product._id ||
+                        item.productId === product.id,
+                    ).length > 2 && (
                       <div className="text-xs text-center text-gray-500 dark:text-gray-400 py-2 border-t border-gray-200 dark:border-gray-600">
-                        +{orderItems.length - 2} more items
+                        +
+                        {orderItems.filter(
+                          (item) =>
+                            !product ||
+                            item.productId === product._id ||
+                            item.productId === product.id,
+                        ).length - 2}{" "}
+                        more items
                       </div>
                     )}
                   </div>

@@ -933,10 +933,17 @@ export default function Bookings() {
                               <img
                                 src={
                                   item.image ||
+                                  item.productImage ||
+                                  item.product?.image ||
+                                  item.product?.images?.[0] ||
                                   "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=60&h=60&fit=crop"
                                 }
-                                alt={item.productName}
+                                alt={item.productName || item.name || "Product"}
                                 className="w-16 h-16 rounded-lg object-cover border-2 border-white dark:border-gray-600 shadow-sm"
+                                onError={(e) => {
+                                  e.target.src =
+                                    "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=60&h=60&fit=crop";
+                                }}
                               />
                               <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
                                 {item.quantity}
@@ -1253,6 +1260,9 @@ export default function Bookings() {
                         <img
                           src={
                             item.image ||
+                            item.productImage ||
+                            item.product?.image ||
+                            item.product?.images?.[0] ||
                             "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=60&h=60&fit=crop"
                           }
                           alt={item.productName}
