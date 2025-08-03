@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 import { enhanceProductsWithRatings } from "@/lib/reviewUtils";
 
 // Track if indexes have been initialized to avoid repeated calls
@@ -189,12 +190,62 @@ export async function GET(request) {
     if (farmerId || farmerEmail) {
       query.$or = [];
       if (farmerId) {
+        // First, try to get farmer info to match by name for hardcoded farmers
+        let farmerName = null;
+        let farmerFarmName = null;
+
+        try {
+          // Try to get farmer data to extract name for name-based matching
+          const farmersCollection = cachedDb.collection("farmers");
+          let farmer = null;
+
+          // Check if it's an ObjectId
+          if (farmerId.match(/^[0-9a-fA-F]{24}$/)) {
+            farmer = await farmersCollection.findOne({
+              _id: new ObjectId(farmerId),
+            });
+          } else {
+            // Check in farmers array for hardcoded farmers
+            const farmersDoc = await farmersCollection.findOne({
+              "farmers._id": farmerId,
+            });
+            if (farmersDoc && farmersDoc.farmers) {
+              farmer = farmersDoc.farmers.find((f) => f._id === farmerId);
+            }
+          }
+
+          if (farmer) {
+            farmerName = farmer.name;
+            farmerFarmName = farmer.farmName;
+          }
+        } catch (error) {
+          console.log("Could not fetch farmer for name-based matching:", error);
+        }
+
         query.$or.push(
           { farmerId: farmerId },
           { farmerId: { $eq: farmerId } },
           { "farmer.id": farmerId },
           { "farmer._id": farmerId },
         );
+
+        // Add name-based matching for hardcoded farmers
+        if (farmerName) {
+          query.$or.push(
+            { "farmer.name": farmerName },
+            { "farmer.name": { $regex: new RegExp(`^${farmerName}$`, "i") } },
+          );
+        }
+        if (farmerFarmName) {
+          query.$or.push(
+            { "farmer.farmName": farmerFarmName },
+            {
+              "farmer.farmName": {
+                $regex: new RegExp(`^${farmerFarmName}$`, "i"),
+              },
+            },
+          );
+        }
       }
       if (farmerEmail) {
         query.$or.push(

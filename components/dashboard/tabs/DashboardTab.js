@@ -4,25 +4,15 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-// Import components
-import StatCard from "../StatCard";
-import OrderCard from "../OrderCard";
-
 export default function DashboardTab({
-  session,
-  analytics,
   orders,
   products,
   formatPrice,
   formatDate,
   handleRefresh,
-  refreshing,
-  loading,
-  error,
   updateBulkProductsInCache, // Add this prop to receive the bulk update function
 }) {
   const router = useRouter();
-  const [expandedSection, setExpandedSection] = useState(null);
   const [bulkUpdateModal, setBulkUpdateModal] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [bulkAction, setBulkAction] = useState("");
@@ -98,7 +88,10 @@ export default function DashboardTab({
 
       // Use the new API service method for bulk update with automatic cache clearing
       const { apiService } = await import("@/lib/api-service");
-      const result = await apiService.bulkUpdateProducts(selectedProducts, updateData);
+      const result = await apiService.bulkUpdateProducts(
+        selectedProducts,
+        updateData,
+      );
 
       if (result.success) {
         alert(`Successfully updated ${result.updatedCount} products!`);
