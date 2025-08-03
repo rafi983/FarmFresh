@@ -126,6 +126,75 @@ export async function POST(request) {
       );
     }
 
+    // If user is a farmer, also add them to the farmers collection
+    if (userType === "farmer") {
+      try {
+        const farmersCollection = db.collection("farmers");
+
+        // Create farmer document for the farmers collection
+        const farmerData = {
+          _id: result.insertedId, // Use same ID as user
+          name: `${firstName} ${lastName}`,
+          email: email,
+          phone: phone,
+          location: address, // Using address as location
+          farmName: farmName,
+          specializations: Array.isArray(specialization)
+            ? specialization
+            : [specialization],
+          farmSize: farmSize ? parseFloat(farmSize) : null,
+          farmSizeUnit: farmSizeUnit || "acres",
+          bio: bio || "",
+          profilePicture: profilePicture || null,
+          rating: 0, // Default rating
+          totalReviews: 0,
+          verified: false, // Default verification status
+          joinedDate: new Date(),
+          products: [], // Will be populated when farmer adds products
+          orders: [], // Will be populated when farmer gets orders
+          availability: {
+            status: "available",
+            schedule: {
+              monday: { start: "09:00", end: "17:00", available: true },
+              tuesday: { start: "09:00", end: "17:00", available: true },
+              wednesday: { start: "09:00", end: "17:00", available: true },
+              thursday: { start: "09:00", end: "17:00", available: true },
+              friday: { start: "09:00", end: "17:00", available: true },
+              saturday: { start: "09:00", end: "15:00", available: true },
+              sunday: { start: "10:00", end: "14:00", available: false },
+            },
+          },
+          socialMedia: {
+            facebook: "",
+            instagram: "",
+            twitter: "",
+            website: "",
+          },
+          certifications: [], // Organic, GAP, etc.
+          deliveryOptions: {
+            farmPickup: true,
+            localDelivery: false,
+            shipping: false,
+            deliveryRadius: 0, // in miles/km
+          },
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        // Insert farmer document
+        await farmersCollection.insertOne(farmerData);
+
+        console.log(`Added farmer ${farmerData.name} to farmers collection`);
+      } catch (farmerError) {
+        console.error(
+          "Error adding farmer to farmers collection:",
+          farmerError,
+        );
+        // Note: We don't fail the registration if farmer collection insert fails
+        // The user is still created successfully in the users collection
+      }
+    }
+
     // Generate JWT tokens
     const userForToken = {
       id: result.insertedId,

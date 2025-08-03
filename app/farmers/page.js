@@ -6,7 +6,6 @@ import Link from "next/link";
 export default function FarmersPage() {
   const [farmers, setFarmers] = useState([]);
   const [displayedFarmers, setDisplayedFarmers] = useState([]);
-  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
@@ -19,47 +18,52 @@ export default function FarmersPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setError(null);
 
-      // Fetch both farmers and products data
-      const [farmersResponse, productsResponse] = await Promise.all([
-        fetch("/api/farmers"),
-        fetch("/api/products"),
-      ]);
+      // Only fetch farmers data, not products (to avoid cache overflow)
+      const farmersResponse = await fetch("/api/farmers", {
+        headers: {
+          "Cache-Control": "no-cache", // Bypass cache to avoid write failures
+          Pragma: "no-cache",
+        },
+      });
 
-      if (!farmersResponse.ok || !productsResponse.ok) {
-        throw new Error("Failed to fetch data");
+      if (!farmersResponse.ok) {
+        throw new Error(`Failed to fetch farmers: ${farmersResponse.status}`);
       }
 
       const farmersData = await farmersResponse.json();
-      const productsData = await productsResponse.json();
       const allFarmers = farmersData.farmers || [];
-      const allProducts = productsData.products || [];
+
+      console.log(`Fetched ${allFarmers.length} farmers`);
 
       setFarmers(allFarmers);
-      setProducts(allProducts);
       // Initially show only first 6 farmers
       setDisplayedFarmers(allFarmers.slice(0, 6));
     } catch (error) {
-      console.error("Error fetching data:", error);
-      setError("Failed to load data. Please try again later.");
+      console.error("Error fetching farmers data:", error);
+      setError("Failed to load farmers. Please try again later.");
+      setFarmers([]);
+      setDisplayedFarmers([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Calculate dynamic stats
+  // Calculate dynamic stats based on farmers data only
   const getStats = () => {
     const totalFarmers = farmers.length;
-    const totalProducts = products.length;
-    const activeProducts = products.filter((p) => p.stock > 0).length;
-    const categoriesCount = [...new Set(products.map((p) => p.category))]
-      .length;
+    const verifiedFarmers = farmers.filter((f) => f.verified).length;
+    const activeFarmers = farmers.filter(
+      (f) => f.availability?.status === "available",
+    ).length;
+    const totalLocations = new Set(farmers.map((f) => f.location)).size;
 
     return {
       totalFarmers,
-      totalProducts,
-      activeProducts,
-      categoriesCount,
+      verifiedFarmers,
+      activeFarmers,
+      totalLocations,
     };
   };
 
@@ -73,13 +77,13 @@ export default function FarmersPage() {
   };
 
   const getFarmerProductCount = (farmerId) => {
-    return products.filter(
+    return farmers.filter(
       (p) => p.farmer?.id === farmerId || p.farmerId === farmerId,
     ).length;
   };
 
   const getFarmerRating = (farmerId) => {
-    const farmerProducts = products.filter(
+    const farmerProducts = farmers.filter(
       (p) => p.farmer?.id === farmerId || p.farmerId === farmerId,
     );
     if (farmerProducts.length === 0) return 0;
@@ -304,7 +308,7 @@ export default function FarmersPage() {
                     {/* Action Buttons */}
                     <div className="flex space-x-2">
                       <Link
-                        href={`/products?farmer=${encodeURIComponent(farmer.name)}`}
+                        href={`/farmers/${farmer._id}`}
                         className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 px-4 rounded-lg text-sm font-medium text-center transition"
                       >
                         <i className="fas fa-shopping-bag mr-1"></i>
