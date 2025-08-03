@@ -396,12 +396,21 @@ export default function Bookings() {
 
   const ordersPerPage = viewMode === VIEW_MODES.LIST ? 10 : 6;
 
-  // Authentication check
+  // Authentication and role-based access check
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
+    } else if (status === "authenticated" && session?.user) {
+      // Check user role - farmers should not access customer bookings page
+      const userRole = session.user.userType || session.user.role || "customer";
+
+      if (userRole === "farmer") {
+        // Redirect farmers to their orders dashboard
+        router.push("/farmer-orders");
+        return;
+      }
     }
-  }, [status, router]);
+  }, [status, session, router]);
 
   // Initial data fetch
   useEffect(() => {
