@@ -78,6 +78,27 @@ export function useDashboardData() {
     );
   };
 
+  // Function to update specific product in cache without full refetch
+  const updateProductInCache = (productId, updatedProduct) => {
+    queryClient.setQueryData(
+      ["dashboard", userIds?.userId, userIds?.userEmail],
+      (oldData) => {
+        if (!oldData) return oldData;
+
+        const updatedProducts = oldData.products.map((product) =>
+          product._id === productId || product.id === productId
+            ? { ...product, ...updatedProduct }
+            : product,
+        );
+
+        return {
+          ...oldData,
+          products: updatedProducts,
+        };
+      },
+    );
+  };
+
   return {
     products: data?.products || [],
     orders: data?.orders || [],
@@ -89,5 +110,6 @@ export function useDashboardData() {
     refetch: refetchDashboard,
     refreshDashboard,
     updateOrderInCache,
+    updateProductInCache,
   };
 }

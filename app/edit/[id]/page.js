@@ -6,11 +6,18 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Footer from "@/components/Footer";
+import { use } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import globalCache from "@/lib/cache";
+import { sessionCache } from "@/lib/cache";
 
-export default function CreateProduct() {
+export default function EditProduct({ params }) {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { id } = use(params); // Fix Next.js 15 params warning
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [imageFiles, setImageFiles] = useState([]);
   const [formData, setFormData] = useState({
@@ -39,8 +46,58 @@ export default function CreateProduct() {
         router.push("/");
         return;
       }
+
+      // Fetch product data for editing
+      if (id) {
+        fetchProductForEdit(id);
+      }
     }
-  }, [session, status, router]);
+  }, [session, status, router, id]);
+
+  const fetchProductForEdit = async (productId) => {
+    try {
+      setInitialLoading(true);
+      const response = await fetch(`/api/products/${productId}`);
+
+      if (response.ok) {
+        const data = await response.json();
+        const product = data.product;
+
+        // Pre-populate form with existing product data
+        setFormData({
+          name: product.name || "",
+          category: product.category || "",
+          description: product.description || "",
+          price: product.price?.toString() || "",
+          stock: product.stock?.toString() || "",
+          unit: product.unit || "",
+          features: product.features || [],
+          images: product.images || (product.image ? [product.image] : []),
+          farmLocation: product.farmLocation || "",
+          harvestDate: product.harvestDate
+            ? product.harvestDate.split("T")[0]
+            : "",
+        });
+
+        // Set image previews if product has images
+        if (product.images && product.images.length > 0) {
+          setImagePreviews(product.images);
+        } else if (product.image) {
+          setImagePreviews([product.image]);
+        }
+      } else {
+        console.error("Failed to fetch product for editing");
+        alert("Failed to load product data. Redirecting to manage products.");
+        router.push("/manage");
+      }
+    } catch (error) {
+      console.error("Error fetching product for edit:", error);
+      alert("Error loading product data. Redirecting to manage products.");
+      router.push("/manage");
+    } finally {
+      setInitialLoading(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -63,16 +120,22 @@ export default function CreateProduct() {
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
 
-    // Validate number of files
-    if (files.length > 5) {
-      alert("You can upload a maximum of 5 images");
+    // Check if adding new images would exceed the limit
+    const currentImageCount = imagePreviews.length;
+    const newImageCount = files.length;
+    const totalImages = currentImageCount + newImageCount;
+
+    if (totalImages > 5) {
+      alert(
+        `You can only have a maximum of 5 images. You currently have ${currentImageCount} images. You can add ${5 - currentImageCount} more.`,
+      );
       return;
     }
 
     // Validate each file
     const validFiles = [];
-    const previews = [];
-    const base64Images = [];
+    const newPreviews = [];
+    const newBase64Images = [];
 
     files.forEach((file) => {
       // Validate file size (max 5MB)
@@ -88,26 +151,27 @@ export default function CreateProduct() {
       }
 
       validFiles.push(file);
-      previews.push(URL.createObjectURL(file));
+      newPreviews.push(URL.createObjectURL(file));
 
       // Convert image to base64 for storage
       const reader = new FileReader();
       reader.onload = (event) => {
-        base64Images.push(event.target.result);
+        newBase64Images.push(event.target.result);
 
-        // When all files are processed, update state
-        if (base64Images.length === validFiles.length) {
+        // When all files are processed, append to existing images
+        if (newBase64Images.length === validFiles.length) {
           setFormData((prev) => ({
             ...prev,
-            images: base64Images,
+            images: [...prev.images, ...newBase64Images], // Append to existing
           }));
         }
       };
       reader.readAsDataURL(file);
     });
 
-    setImageFiles(validFiles);
-    setImagePreviews(previews);
+    // Append new files and previews to existing ones
+    setImageFiles((prev) => [...prev, ...validFiles]);
+    setImagePreviews((prev) => [...prev, ...newPreviews]);
   };
 
   const removeImage = (index) => {
@@ -174,16 +238,15 @@ export default function CreateProduct() {
           name: session.user.name,
         },
         status: "active",
-        createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         // Keep backward compatibility with single image
         image: formData.images[0] || "",
       };
 
-      console.log("Creating product:", productData);
+      console.log("Updating product:", productData);
 
-      const response = await fetch("/api/products", {
-        method: "POST",
+      const response = await fetch(`/api/products/${id}`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
@@ -192,47 +255,52 @@ export default function CreateProduct() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log("Product created successfully:", result);
+        console.log("Product updated successfully:", result);
 
-        alert("Product added successfully!");
+        alert("Product updated successfully!");
 
-        // Reset form
-        setFormData({
-          name: "",
-          category: "",
-          description: "",
-          price: "",
-          stock: "",
-          unit: "",
-          features: [],
-          images: [],
-          farmLocation: "",
-          harvestDate: "",
+        // Clear ALL cache layers to ensure fresh data
+        // 1. Clear React Query cache
+        const userIds = {
+          userId: session.user.userId || session.user.id || session.user._id,
+          userEmail: session.user.email,
+        };
+
+        queryClient.invalidateQueries({
+          queryKey: ["dashboard", userIds.userId, userIds.userEmail],
         });
-        setImagePreviews([]);
-        setImageFiles([]);
+
+        // 2. Clear API service global cache
+        globalCache.clear();
+
+        // 3. Clear session cache
+        sessionCache.clear();
 
         // Redirect to manage products page
         router.push("/manage");
       } else {
         const errorData = await response.json();
-        console.error("Failed to create product:", errorData);
-        alert(`Failed to add product: ${errorData.error || "Unknown error"}`);
+        console.error("Failed to update product:", errorData);
+        alert(
+          `Failed to update product: ${errorData.error || "Unknown error"}`,
+        );
       }
     } catch (error) {
-      console.error("Error creating product:", error);
-      alert("Failed to add product. Please try again.");
+      console.error("Error updating product:", error);
+      alert("Failed to update product. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  if (status === "loading") {
+  if (status === "loading" || initialLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <i className="fas fa-spinner fa-spin text-4xl text-primary-600 mb-4"></i>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+          <p className="text-gray-600 dark:text-gray-400">
+            Loading product data...
+          </p>
         </div>
       </div>
     );
@@ -263,19 +331,19 @@ export default function CreateProduct() {
             <li>
               <i className="fas fa-chevron-right text-gray-400 text-xs"></i>
             </li>
-            <li className="text-gray-900 dark:text-white">Add Product</li>
+            <li className="text-gray-900 dark:text-white">Edit Product</li>
           </ol>
         </nav>
       </div>
 
-      {/* Add Product Form */}
+      {/* Edit Product Form */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
           {/* Header */}
           <div className="bg-primary-600 text-white px-8 py-6">
-            <h1 className="text-3xl font-bold">Add New Product</h1>
+            <h1 className="text-3xl font-bold">Edit Product</h1>
             <p className="text-primary-100 mt-2">
-              Share your fresh produce with customers
+              Update your product information
             </p>
           </div>
 
@@ -439,7 +507,7 @@ export default function CreateProduct() {
                     htmlFor="images"
                     className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                   >
-                    Upload Images (Max 5 images) *
+                    Upload Images (Max 5 images)
                   </label>
                   <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-primary-500 transition">
                     <input
@@ -454,7 +522,7 @@ export default function CreateProduct() {
                     <label htmlFor="images" className="cursor-pointer">
                       <i className="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
                       <p className="text-lg font-medium text-gray-900 dark:text-white">
-                        Click to upload images
+                        Click to upload new images
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         PNG, JPG, WebP up to 5MB each
@@ -466,7 +534,7 @@ export default function CreateProduct() {
                   {imagePreviews.length > 0 && (
                     <div className="mt-4">
                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                        Selected Images ({imagePreviews.length}/5)
+                        Current Images ({imagePreviews.length}/5)
                       </p>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         {imagePreviews.map((preview, index) => (
@@ -600,11 +668,18 @@ export default function CreateProduct() {
             </div>
 
             {/* Submit Button */}
-            <div>
+            <div className="flex space-x-4">
+              <Link
+                href="/manage"
+                className="flex-1 py-3 px-6 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-semibold text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+              >
+                <i className="fas fa-times mr-2"></i>
+                Cancel
+              </Link>
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full py-3 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition ${
+                className={`flex-1 py-3 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition ${
                   loading
                     ? "bg-gray-400 cursor-not-allowed text-white"
                     : "bg-primary-600 text-white hover:bg-primary-700"
@@ -613,12 +688,12 @@ export default function CreateProduct() {
                 {loading ? (
                   <>
                     <i className="fas fa-spinner fa-spin mr-2"></i>
-                    Adding Product...
+                    Updating Product...
                   </>
                 ) : (
                   <>
-                    <i className="fas fa-plus mr-2"></i>
-                    Add Product
+                    <i className="fas fa-save mr-2"></i>
+                    Update Product
                   </>
                 )}
               </button>
