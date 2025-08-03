@@ -260,6 +260,109 @@ const useOrderStats = (orders) => {
   }, [orders]);
 };
 
+// Enhanced loading component
+const OrdersLoadingSkeleton = () => (
+  <div className="space-y-6 animate-pulse">
+    {/* Stats Cards Loading */}
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {[...Array(4)].map((_, i) => (
+        <div
+          key={i}
+          className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg"
+        >
+          <div className="flex items-center justify-between">
+            <div className="space-y-3 flex-1">
+              <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded-lg w-20"></div>
+              <div className="h-8 bg-gray-200 dark:bg-gray-600 rounded-lg w-16"></div>
+            </div>
+            <div className="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-full"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Filters Loading */}
+    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="space-y-2">
+            <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-16"></div>
+            <div className="h-10 bg-gray-200 dark:bg-gray-600 rounded-lg"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Orders Loading */}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[...Array(6)].map((_, i) => (
+        <div
+          key={i}
+          className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg"
+        >
+          <div className="space-y-4">
+            {/* Header */}
+            <div className="flex justify-between items-start">
+              <div className="space-y-2">
+                <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-24"></div>
+                <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded w-32"></div>
+              </div>
+              <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded-full w-20"></div>
+            </div>
+
+            {/* Items */}
+            <div className="space-y-3">
+              {[...Array(2)].map((_, j) => (
+                <div key={j} className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-lg"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-gray-700">
+              <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded w-20"></div>
+              <div className="h-8 bg-gray-200 dark:bg-gray-600 rounded w-24"></div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// Enhanced initial loading screen
+const InitialLoadingScreen = () => (
+  <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="container mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="text-center mb-12">
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-green-500 to-blue-600 rounded-full mb-6 animate-bounce">
+          <i className="fas fa-shopping-bag text-3xl text-white"></i>
+        </div>
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+          Loading Your Orders
+        </h1>
+        <p className="text-lg text-gray-600 dark:text-gray-400">
+          Please wait while we fetch your order history...
+        </p>
+
+        {/* Loading progress bar */}
+        <div className="w-64 h-2 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mt-6 overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-green-500 to-blue-600 rounded-full animate-pulse"></div>
+        </div>
+      </div>
+
+      {/* Loading content */}
+      <OrdersLoadingSkeleton />
+    </div>
+  </div>
+);
+
 export default function Bookings() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -289,6 +392,7 @@ export default function Bookings() {
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(new Set());
+  const [navigationLoading, setNavigationLoading] = useState(true); // Add navigation loading state
 
   const ordersPerPage = viewMode === VIEW_MODES.LIST ? 10 : 6;
 
@@ -305,6 +409,20 @@ export default function Bookings() {
       fetchOrders();
     }
   }, [session, status, fetchOrders]);
+
+  // Handle navigation loading state
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      // Show loading for a brief moment to display skeleton when navigating
+      const timer = setTimeout(() => {
+        setNavigationLoading(false);
+      }, 800); // Adjust timing as needed
+
+      return () => clearTimeout(timer);
+    } else if (status === "loading") {
+      setNavigationLoading(true);
+    }
+  }, [status, session]);
 
   // Reset pagination when filters change
   useEffect(() => {
@@ -468,31 +586,9 @@ export default function Bookings() {
   );
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
 
-  if (status === "loading" || loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative">
-            <div className="animate-spin rounded-full h-32 w-32 border-4 border-transparent border-t-blue-600 border-r-purple-600 mx-auto mb-4"></div>
-            <div
-              className="absolute inset-0 rounded-full h-32 w-32 border-4 border-transparent border-b-pink-600 border-l-green-600 animate-spin"
-              style={{
-                animationDirection: "reverse",
-                animationDuration: "1.5s",
-              }}
-            ></div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Loading Your Orders
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400">
-              Please wait while we fetch your order history...
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+  // Show loading screen if still loading authentication, data, or navigation
+  if (status === "loading" || loading || navigationLoading) {
+    return <InitialLoadingScreen />;
   }
 
   return (

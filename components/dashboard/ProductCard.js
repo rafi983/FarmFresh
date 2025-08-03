@@ -22,132 +22,205 @@ export default function ProductCard({
 
   // Calculate stock status
   const getStockStatus = () => {
-    if (product.stock === 0) return { status: "Out of Stock", color: "red" };
-    if (product.stock <= 5) return { status: "Low Stock", color: "yellow" };
-    return { status: "In Stock", color: "green" };
+    if (product.stock === 0)
+      return {
+        status: "Out of Stock",
+        color: "red",
+        icon: "fas fa-times-circle",
+      };
+    if (product.stock <= 5)
+      return {
+        status: "Low Stock",
+        color: "yellow",
+        icon: "fas fa-exclamation-triangle",
+      };
+    return { status: "In Stock", color: "green", icon: "fas fa-check-circle" };
   };
 
   const stockInfo = getStockStatus();
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col h-full border border-gray-100 dark:border-gray-700 w-full">
+    <div className="group bg-white dark:bg-gray-800 rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden flex flex-col h-full border border-gray-100 dark:border-gray-700 w-full transform hover:-translate-y-2 hover:scale-[1.02]">
       {/* Product Image Section */}
-      <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800">
+      <div className="relative h-56 bg-gradient-to-br from-primary-50 via-gray-50 to-primary-100 dark:from-gray-700 dark:to-gray-800 overflow-hidden">
         {product.images && product.images.length > 0 ? (
           <Image
             src={product.images[0]}
             alt={product.name}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover"
+            className="object-cover group-hover:scale-110 transition-transform duration-700"
           />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <i className="fas fa-seedling text-5xl text-gray-400 dark:text-gray-500 mb-2"></i>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                No Image
+            <div className="text-center opacity-60 group-hover:opacity-80 transition-opacity duration-300">
+              <div className="w-20 h-20 bg-primary-100 dark:bg-gray-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i className="fas fa-seedling text-3xl text-primary-600 dark:text-primary-400"></i>
+              </div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                No Image Available
               </p>
             </div>
           </div>
         )}
 
-        {/* Status Badge */}
-        <div className="absolute top-3 right-3">
-          {getProductStatusBadge(product)}
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
+
+        {/* Status Badge - Top Right */}
+        <div className="absolute top-4 right-4 z-10">
+          <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full p-2 shadow-lg">
+            {getProductStatusBadge(product)}
+          </div>
         </div>
 
-        {/* Stock Status Badge */}
-        <div className="absolute top-3 left-3">
-          <span
-            className={`px-2 py-1 rounded-full text-xs font-semibold ${
+        {/* Stock Status Badge - Top Left */}
+        <div className="absolute top-4 left-4 z-10">
+          <div
+            className={`flex items-center px-3 py-2 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm ${
               stockInfo.color === "red"
-                ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                ? "bg-red-500/90 text-white"
                 : stockInfo.color === "yellow"
-                  ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                  : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                  ? "bg-yellow-500/90 text-white"
+                  : "bg-green-500/90 text-white"
             }`}
           >
+            <i className={`${stockInfo.icon} mr-1.5`}></i>
             {stockInfo.status}
+          </div>
+        </div>
+
+        {/* Category Badge - Bottom Left */}
+        <div className="absolute bottom-4 left-4">
+          <span className="px-4 py-2 bg-white/90 dark:bg-gray-800/90 text-gray-800 dark:text-gray-200 text-sm font-semibold rounded-full backdrop-blur-sm shadow-lg border border-white/20">
+            <i className="fas fa-tag mr-2 text-primary-600"></i>
+            {product.category || "Uncategorized"}
           </span>
         </div>
 
-        {/* Category Badge */}
-        <div className="absolute bottom-3 left-3">
-          <span className="px-3 py-1 bg-black/70 text-white text-xs rounded-full backdrop-blur-sm">
-            {product.category || "Uncategorized"}
-          </span>
+        {/* Price Badge - Bottom Right */}
+        <div className="absolute bottom-4 right-4">
+          <div className="bg-primary-600 text-white px-4 py-2 rounded-full shadow-lg">
+            <span className="text-lg font-bold">
+              {formatPrice(product.price)}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Product Information Section */}
-      <div className="p-4 flex-grow flex flex-col">
+      <div className="p-6 flex-grow flex flex-col">
         {/* Product Title */}
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 leading-tight">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 line-clamp-2 leading-tight group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-300">
           {product.name}
         </h3>
 
         {/* Farmer Information */}
-        <div className="flex items-center mb-3 text-sm text-gray-600 dark:text-gray-400">
-          <i className="fas fa-user-circle mr-2 text-blue-500"></i>
-          <span className="font-medium">{getFarmerName()}</span>
+        <div className="flex items-center mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+          <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center mr-3">
+            <i className="fas fa-user text-primary-600 dark:text-primary-400"></i>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+              {getFarmerName()}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Product Owner
+            </p>
+          </div>
         </div>
 
         {/* Description */}
-        <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-3 flex-grow">
+        <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-3 flex-grow leading-relaxed">
           {product.description ||
-            "Fresh and quality product from our trusted farmer. Perfect for your daily needs."}
+            "Fresh and quality product from our trusted farmer. Perfect for your daily needs and healthy lifestyle."}
         </p>
 
-        {/* Price and Stock Info */}
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <div>
-              <span className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {formatPrice(product.price)}
-              </span>
-              <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
-                per unit
-              </span>
+        {/* Stats Section */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          {/* Stock Info */}
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 p-3 rounded-xl text-center">
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              {product.stock}
             </div>
-            <div className="text-right">
-              <div className="text-lg font-semibold text-gray-700 dark:text-gray-300">
-                {product.stock}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                units left
-              </div>
+            <div className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+              Units Available
             </div>
           </div>
 
-          {/* Additional Info */}
-          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-            <span className="flex items-center">
-              <i className="fas fa-calendar-plus mr-1"></i>
-              Added {new Date(product.createdAt).toLocaleDateString()}
-            </span>
-            {product.averageRating && (
-              <span className="flex items-center">
-                <i className="fas fa-star text-yellow-400 mr-1"></i>
-                {product.averageRating.toFixed(1)}
-              </span>
+          {/* Rating */}
+          <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/30 dark:to-yellow-800/30 p-3 rounded-xl text-center">
+            {product.averageRating ? (
+              <>
+                <div className="flex items-center justify-center text-yellow-600 dark:text-yellow-400">
+                  <i className="fas fa-star mr-1"></i>
+                  <span className="text-lg font-bold">
+                    {product.averageRating.toFixed(1)}
+                  </span>
+                </div>
+                <div className="text-xs text-yellow-700 dark:text-yellow-300 font-medium">
+                  Rating
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-lg font-bold text-gray-500 dark:text-gray-400">
+                  --
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  No Rating
+                </div>
+              </>
             )}
           </div>
         </div>
+
+        {/* Additional Info */}
+        <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 mb-4 p-2 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+          <span className="flex items-center">
+            <i className="fas fa-calendar-plus mr-2 text-primary-500"></i>
+            Added {new Date(product.createdAt).toLocaleDateString()}
+          </span>
+          <span className="flex items-center">
+            <i className="fas fa-clock mr-2 text-primary-500"></i>
+            {product.unit || "unit"}
+          </span>
+        </div>
       </div>
 
-      {/* Action Buttons Section - Optimized Layout */}
-      <div className="p-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-        <div className="flex flex-col space-y-2">
-          {/* Top Row - Status and Delete */}
-          <div className="flex space-x-2">
+      {/* Enhanced Action Buttons Section */}
+      <div className="p-4 border-t border-gray-100 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-700/50">
+        <div className="flex flex-col space-y-3">
+          {/* Top Row - View and Edit */}
+          <div className="flex space-x-3">
+            <Link
+              href={`/details?id=${product._id}`}
+              className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold text-sm transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+              title="View Product Details"
+            >
+              <i className="fas fa-eye"></i>
+              <span>View Details</span>
+            </Link>
+
+            <Link
+              href={`/edit/${product._id}`}
+              className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold text-sm transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+              title="Edit Product"
+            >
+              <i className="fas fa-edit"></i>
+              <span>Edit</span>
+            </Link>
+          </div>
+
+          {/* Bottom Row - Status and Delete */}
+          <div className="flex space-x-3">
             <button
               onClick={() => handleStatusToggle(product._id, product.status)}
               disabled={actionLoading[product._id] === "status"}
-              className={`flex-1 px-3 py-2 rounded-lg font-medium text-xs transition-all duration-200 flex items-center justify-center space-x-1 ${
+              className={`flex-1 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105 ${
                 product.status === "active"
-                  ? "bg-yellow-100 hover:bg-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 dark:hover:bg-yellow-800"
-                  : "bg-green-100 hover:bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800"
+                  ? "bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-yellow-900"
+                  : "bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 text-green-900"
               }`}
               title={
                 product.status === "active"
@@ -167,7 +240,7 @@ export default function ProductCard({
                     }
                   ></i>
                   <span>
-                    {product.status === "active" ? "Pause" : "Active"}
+                    {product.status === "active" ? "Pause" : "Activate"}
                   </span>
                 </>
               )}
@@ -176,7 +249,7 @@ export default function ProductCard({
             <button
               onClick={() => handleDeleteProduct(product._id)}
               disabled={actionLoading[product._id] === "delete"}
-              className="flex-1 px-3 py-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800 font-medium text-xs transition-all duration-200 flex items-center justify-center space-x-1"
+              className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold text-sm transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
               title="Delete Product"
             >
               {actionLoading[product._id] === "delete" ? (
@@ -188,27 +261,6 @@ export default function ProductCard({
                 </>
               )}
             </button>
-          </div>
-
-          {/* Bottom Row - View and Edit */}
-          <div className="flex space-x-2">
-            <Link
-              href={`/details?id=${product._id}`}
-              className="flex-1 px-3 py-2 rounded-lg bg-green-100 hover:bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800 font-medium text-xs transition-all duration-200 flex items-center justify-center space-x-1"
-              title="View Product Details"
-            >
-              <i className="fas fa-eye"></i>
-              <span>View</span>
-            </Link>
-
-            <Link
-              href={`/edit/${product._id}`}
-              className="flex-1 px-3 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 font-medium text-xs transition-all duration-200 flex items-center justify-center space-x-1"
-              title="Edit Product"
-            >
-              <i className="fas fa-edit"></i>
-              <span>Edit</span>
-            </Link>
           </div>
         </div>
       </div>

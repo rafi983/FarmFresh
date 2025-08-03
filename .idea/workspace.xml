@@ -7,9 +7,8 @@
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/create/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/create/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hooks/useDashboardData.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useDashboardData.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/cache.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/cache.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/bookings/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/bookings/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/dashboard/ProductCard.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/dashboard/ProductCard.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -86,7 +85,7 @@
       <workItem from="1754058948309" duration="6300000" />
       <workItem from="1754116885344" duration="26157000" />
       <workItem from="1754157538193" duration="43000" />
-      <workItem from="1754203979501" duration="2041000" />
+      <workItem from="1754203979501" duration="3043000" />
     </task>
     <servers />
   </component>
