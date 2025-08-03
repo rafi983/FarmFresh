@@ -7,7 +7,7 @@ import { useFavorites } from "../contexts/FavoritesContext";
 import { useCart } from "../contexts/CartContext";
 import { signOut } from "next-auth/react";
 import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export default function Navigation() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -16,6 +16,7 @@ export default function Navigation() {
   const { cartItems, cartCount } = useCart();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   // Pages that should have simplified navigation (no search/cart)
   const simplifiedPages = [
@@ -49,9 +50,30 @@ export default function Navigation() {
   };
 
   const handleLogout = async () => {
-    await signOut({ redirect: false });
-    logout();
-    setShowUserMenu(false);
+    try {
+      // Close the user menu first
+      setShowUserMenu(false);
+
+      // Clear any existing modals or intercepted routes by going to home first
+      router.replace("/");
+
+      // Small delay to ensure navigation completes before sign out
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Sign out from NextAuth and clear context
+      await signOut({ redirect: false });
+      logout();
+
+      // Ensure we stay on home page and refresh
+      router.replace("/");
+
+      // Force a hard refresh to clear any modal states
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Even if there's an error, still redirect to home
+      window.location.href = "/";
+    }
   };
 
   return (

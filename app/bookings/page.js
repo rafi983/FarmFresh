@@ -46,6 +46,14 @@ const useOrdersData = (session, status) => {
     async (showLoading = true) => {
       if (status !== "authenticated" || !session?.user) return;
 
+      // Only allow customers to fetch orders here
+      const userType = session.user.userType || session.user.role || "customer";
+      if (userType !== "customer") {
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
       // Cancel previous request if still pending
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -57,57 +65,39 @@ const useOrdersData = (session, status) => {
         if (showLoading) setLoading(true);
         setError(null);
 
-        const userId =
-          session.user.userId ||
-          session.user.id ||
-          session.user._id ||
-          session.user.email;
-        const userRole =
-          session.user.userType || session.user.role || "customer";
-
-        let apiUrl;
-        if (userRole === "farmer") {
-          const farmerId =
-            session.user.userId || session.user.id || session.user._id;
-          const farmerEmail = session.user.email;
-
-          if (farmerId) {
-            apiUrl = `/api/orders?farmerId=${encodeURIComponent(farmerId)}`;
-          } else if (farmerEmail) {
-            apiUrl = `/api/orders?farmerEmail=${encodeURIComponent(farmerEmail)}`;
-          } else {
-            throw new Error("No farmer identifier found");
-          }
-        } else {
-          apiUrl = `/api/orders?userId=${encodeURIComponent(userId)}`;
-        }
-
-        const response = await fetch(apiUrl, {
-          signal: abortControllerRef.current.signal,
-          headers: {
-            "Cache-Control": "no-cache",
+        // Fetch ONLY customer orders (not farmer orders)
+        const response = await fetch(
+          `/api/orders?userId=${session.user.userId || session.user.id}`,
+          {
+            signal: abortControllerRef.current.signal,
+            headers: {
+              "Content-Type": "application/json",
+            },
           },
-        });
+        );
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          throw new Error(`Failed to fetch orders: ${response.status}`);
         }
 
         const data = await response.json();
 
-        // Validate response structure
-        if (!data || !Array.isArray(data.orders)) {
-          throw new Error("Invalid API response format");
-        }
+        // Filter to ensure we only get customer orders
+        const customerOrders = (data.orders || []).filter((order) => {
+          // Make sure this order belongs to the current customer
+          const orderUserId = order.userId || order.customerId;
+          const sessionUserId = session.user.userId || session.user.id;
+          return orderUserId === sessionUserId;
+        });
 
-        setOrders(data.orders);
+        setOrders(customerOrders);
       } catch (error) {
         if (error.name === "AbortError") {
           console.log("Request was cancelled");
           return;
         }
 
-        console.error("Error fetching orders:", error);
+        console.error("Error fetching customer orders:", error);
         setError(error.message || "Failed to fetch orders");
         setOrders([]);
       } finally {
@@ -1417,7 +1407,6 @@ export default function Bookings() {
           </div>
         </div>
       )}
-
       <Footer />
     </>
   );

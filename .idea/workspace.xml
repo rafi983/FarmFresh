@@ -7,13 +7,7 @@
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/products/[id]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/[id]/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/products/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/manage/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/manage/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/products/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/products/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/dashboard/tabs/DashboardTab.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/dashboard/tabs/DashboardTab.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hooks/useDashboardData.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useDashboardData.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/api-service.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/api-service.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/bookings/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/bookings/page.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -90,7 +84,7 @@
       <workItem from="1754058948309" duration="6300000" />
       <workItem from="1754116885344" duration="26157000" />
       <workItem from="1754157538193" duration="43000" />
-      <workItem from="1754203979501" duration="9529000" />
+      <workItem from="1754203979501" duration="10962000" />
     </task>
     <servers />
   </component>
