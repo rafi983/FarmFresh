@@ -71,6 +71,25 @@ export default function Products() {
   const filteredProducts = useMemo(() => {
     let filtered = [...allProducts];
 
+    // Filter: Only show products that are available for purchase
+    // More flexible filtering to handle different status values and stock levels
+    filtered = filtered.filter((product) => {
+      // Don't show deleted products
+      if (product.status === "deleted") return false;
+
+      // Don't show inactive products (if status is explicitly set to inactive)
+      if (product.status === "inactive") return false;
+
+      // Show products that have stock OR don't have stock field defined
+      // This handles cases where stock might be undefined/null in the database
+      const hasStock =
+        product.stock === undefined ||
+        product.stock === null ||
+        product.stock > 0;
+
+      return hasStock;
+    });
+
     // Apply price range checkboxes
     if (filters.selectedPriceRanges.length > 0) {
       filtered = filtered.filter((product) => {
@@ -194,31 +213,128 @@ export default function Products() {
   }, [filteredProducts, currentPage]);
 
   // Use optimized API service with caching
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const fetchProducts = useCallback(
+    async (forceRefresh = false) => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      const params = {
-        limit: 1000, // Fetch more products for client-side filtering
-      };
+      try {
+        const params = {
+          limit: 1000, // Fetch more products for client-side filtering
+        };
 
-      // Add search/category filters for server-side optimization
-      if (filters.searchTerm) params.search = filters.searchTerm;
-      if (filters.selectedCategory !== "All Categories") {
-        params.category = filters.selectedCategory;
+        // Add search/category filters for server-side optimization
+        if (filters.searchTerm) params.search = filters.searchTerm;
+        if (filters.selectedCategory !== "All Categories") {
+          params.category = filters.selectedCategory;
+        }
+
+        let data;
+        if (forceRefresh) {
+          // Use force refresh method that bypasses all caches
+          data = await apiService.forceRefreshProducts(params);
+        } else {
+          // Normal fetch with caching
+          data = await apiService.getProducts(params);
+        }
+
+        setAllProducts(data.products || []);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        setError(error.message);
+        setAllProducts([]);
+      } finally {
+        setLoading(false);
       }
+    },
+    [filters.searchTerm, filters.selectedCategory],
+  );
 
-      const data = await apiService.getProducts(params);
-      setAllProducts(data.products || []);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-      setError("Failed to load products. Please try again.");
-      setAllProducts([]);
-    } finally {
-      setLoading(false);
+  // Initial fetch and URL sync
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  // Listen for bulk update events to refresh data
+  useEffect(() => {
+    const handleBulkUpdate = (event) => {
+      console.log("Products page: Bulk update detected", event.detail);
+      // Force refresh after bulk update
+      fetchProducts(true);
+    };
+
+    const handleStatusUpdate = (event) => {
+      console.log(
+        "Products page: Product status update detected",
+        event.detail,
+      );
+      // Force refresh after individual status change
+      fetchProducts(true);
+    };
+
+    const handleStorageChange = (event) => {
+      if (event.key === "productsBulkUpdated") {
+        console.log("Products page: Bulk update detected from storage");
+        // Force refresh after bulk update from another tab
+        fetchProducts(true);
+      } else if (event.key === "productStatusUpdated") {
+        console.log(
+          "Products page: Product status update detected from storage",
+        );
+        // Force refresh after status update from another tab
+        fetchProducts(true);
+      }
+    };
+
+    // Listen for custom events from dashboard
+    window.addEventListener("productsBulkUpdated", handleBulkUpdate);
+    window.addEventListener("productStatusUpdated", handleStatusUpdate);
+
+    // Listen for localStorage changes (cross-tab communication)
+    window.addEventListener("storage", handleStorageChange);
+
+    // Check localStorage on mount in case we missed an update
+    const bulkUpdateData = localStorage.getItem("productsBulkUpdated");
+    const statusUpdateData = localStorage.getItem("productStatusUpdated");
+
+    if (bulkUpdateData) {
+      try {
+        const data = JSON.parse(bulkUpdateData);
+        // If the update was recent (within last 30 seconds), refresh
+        if (Date.now() - data.timestamp < 30000) {
+          console.log("Products page: Recent bulk update detected on mount");
+          fetchProducts(true);
+          // Clear the flag to prevent repeated refreshes
+          localStorage.removeItem("productsBulkUpdated");
+        }
+      } catch (e) {
+        // Invalid JSON, remove it
+        localStorage.removeItem("productsBulkUpdated");
+      }
     }
-  }, [filters.searchTerm, filters.selectedCategory]);
+
+    if (statusUpdateData) {
+      try {
+        const data = JSON.parse(statusUpdateData);
+        // If the update was recent (within last 30 seconds), refresh
+        if (Date.now() - data.timestamp < 30000) {
+          console.log("Products page: Recent status update detected on mount");
+          fetchProducts(true);
+          // Clear the flag to prevent repeated refreshes
+          localStorage.removeItem("productStatusUpdated");
+        }
+      } catch (e) {
+        // Invalid JSON, remove it
+        localStorage.removeItem("productStatusUpdated");
+      }
+    }
+
+    return () => {
+      window.removeEventListener("productsBulkUpdated", handleBulkUpdate);
+      window.removeEventListener("productStatusUpdated", handleStatusUpdate);
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [fetchProducts]);
 
   // Fetch available farmers using cached API
   const fetchAvailableFarmers = useCallback(async () => {
@@ -753,7 +869,7 @@ export default function Products() {
                       </div>
                     </div>
                     <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mt-2">
-                      <span>৳{filters.priceRangeSlider[0]}</span>
+                      <span>��{filters.priceRangeSlider[0]}</span>
                       <span>৳{filters.priceRangeSlider[1]}</span>
                     </div>
                   </div>

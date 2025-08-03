@@ -1,20 +1,171 @@
-// components/dashboard/tabs/DashboardTab.js
-import Link from "next/link";
+"use client";
+
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 // Import components
 import StatCard from "../StatCard";
 import OrderCard from "../OrderCard";
 
 export default function DashboardTab({
+  session,
   analytics,
   orders,
   products,
   formatPrice,
   formatDate,
-  onRefresh,
+  handleRefresh,
+  refreshing,
+  loading,
+  error,
+  updateBulkProductsInCache, // Add this prop to receive the bulk update function
 }) {
+  const router = useRouter();
   const [expandedSection, setExpandedSection] = useState(null);
+  const [bulkUpdateModal, setBulkUpdateModal] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [bulkAction, setBulkAction] = useState("");
+  const [bulkValues, setBulkValues] = useState({
+    price: "",
+    stock: "",
+    status: "",
+    category: "",
+  });
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  // Quick Farm Tools handlers
+  const handleQuickTool = (toolType) => {
+    switch (toolType) {
+      case "bulk-update":
+        setBulkUpdateModal(true);
+        break;
+      case "inventory-sync":
+        router.push("/manage?tab=products&action=inventory");
+        break;
+      case "price-optimizer":
+        router.push("/manage?tab=analytics&tool=pricing");
+        break;
+      case "harvest-planner":
+        router.push("/manage?tab=dashboard&tool=planner");
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Bulk update functionality
+  const handleBulkUpdate = async () => {
+    if (!selectedProducts.length || !bulkAction) {
+      alert("Please select products and an action to perform.");
+      return;
+    }
+
+    setBulkLoading(true);
+    try {
+      const updateData = {};
+
+      switch (bulkAction) {
+        case "price":
+          if (!bulkValues.price) {
+            alert("Please enter a price value.");
+            return;
+          }
+          updateData.price = parseFloat(bulkValues.price);
+          break;
+        case "stock":
+          if (!bulkValues.stock) {
+            alert("Please enter a stock value.");
+            return;
+          }
+          updateData.stock = parseInt(bulkValues.stock);
+          break;
+        case "status":
+          if (!bulkValues.status) {
+            alert("Please select a status.");
+            return;
+          }
+          updateData.status = bulkValues.status;
+          break;
+        case "category":
+          if (!bulkValues.category) {
+            alert("Please enter a category.");
+            return;
+          }
+          updateData.category = bulkValues.category;
+          break;
+      }
+
+      // Use the new API service method for bulk update with automatic cache clearing
+      const { apiService } = await import("@/lib/api-service");
+      const result = await apiService.bulkUpdateProducts(selectedProducts, updateData);
+
+      if (result.success) {
+        alert(`Successfully updated ${result.updatedCount} products!`);
+
+        // Update the React Query cache immediately instead of hard refresh
+        if (updateBulkProductsInCache) {
+          updateBulkProductsInCache(selectedProducts, updateData);
+        }
+
+        // Dispatch custom event to notify products page of bulk update
+        window.dispatchEvent(
+          new CustomEvent("productsBulkUpdated", {
+            detail: {
+              productIds: selectedProducts,
+              updateData: updateData,
+              timestamp: Date.now(),
+              cacheCleared: result.cacheCleared,
+            },
+          }),
+        );
+
+        // Also set localStorage flag for cross-tab communication
+        localStorage.setItem(
+          "productsBulkUpdated",
+          JSON.stringify({
+            productIds: selectedProducts,
+            updateData: updateData,
+            timestamp: Date.now(),
+            cacheCleared: result.cacheCleared,
+          }),
+        );
+
+        // Trigger page refresh to ensure latest data
+        if (handleRefresh) {
+          handleRefresh(true); // Force refresh
+        }
+
+        setBulkUpdateModal(false);
+        setSelectedProducts([]);
+        setBulkAction("");
+        setBulkValues({ price: "", stock: "", status: "", category: "" });
+      } else {
+        throw new Error(result.error || "Update failed");
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      alert(`Error updating products: ${error.message}`);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const toggleProductSelection = (productId) => {
+    setSelectedProducts((prev) =>
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId],
+    );
+  };
+
+  const selectAllProducts = () => {
+    if (selectedProducts.length === products.length) {
+      setSelectedProducts([]);
+    } else {
+      setSelectedProducts(products.map((p) => p._id));
+    }
+  };
 
   // Calculate urgent action items
   const actionItems = useMemo(() => {
@@ -368,9 +519,7 @@ export default function DashboardTab({
             </Link>
 
             <button
-              onClick={() =>
-                setExpandedSection(expandedSection === "bulk" ? null : "bulk")
-              }
+              onClick={() => setBulkUpdateModal(true)}
               className="flex flex-col items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition text-center"
             >
               <i className="fas fa-layer-group text-blue-600 dark:text-blue-400 text-2xl mb-2"></i>
@@ -390,7 +539,7 @@ export default function DashboardTab({
             </Link>
 
             <button
-              onClick={onRefresh}
+              onClick={handleRefresh}
               className="flex flex-col items-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-center"
             >
               <i className="fas fa-sync-alt text-orange-600 dark:text-orange-400 text-2xl mb-2"></i>
@@ -500,6 +649,222 @@ export default function DashboardTab({
           </div>
         </div>
       </div>
+
+      {/* Bulk Update Modal */}
+      {bulkUpdateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Bulk Update Products
+                </h3>
+                <button
+                  onClick={() => setBulkUpdateModal(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <i className="fas fa-times text-xl"></i>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 max-h-[calc(90vh-200px)] overflow-y-auto">
+              {/* Product Selection */}
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Select Products ({selectedProducts.length} selected)
+                  </h4>
+                  <button
+                    onClick={selectAllProducts}
+                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  >
+                    {selectedProducts.length === products.length
+                      ? "Deselect All"
+                      : "Select All"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-60 overflow-y-auto">
+                  {products.map((product) => (
+                    <div
+                      key={product._id}
+                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                        selectedProducts.includes(product._id)
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                          : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                      }`}
+                      onClick={() => toggleProductSelection(product._id)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedProducts.includes(product._id)}
+                          onChange={() => toggleProductSelection(product._id)}
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 dark:text-white truncate">
+                            {product.name}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Stock: {product.stock} •{" "}
+                            {formatPrice(product.price)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bulk Action Selection */}
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Choose Action
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    {
+                      value: "price",
+                      label: "Update Price",
+                      icon: "fas fa-dollar-sign",
+                    },
+                    {
+                      value: "stock",
+                      label: "Update Stock",
+                      icon: "fas fa-box",
+                    },
+                    {
+                      value: "status",
+                      label: "Update Status",
+                      icon: "fas fa-toggle-on",
+                    },
+                    {
+                      value: "category",
+                      label: "Update Category",
+                      icon: "fas fa-tags",
+                    },
+                  ].map((action) => (
+                    <button
+                      key={action.value}
+                      onClick={() => setBulkAction(action.value)}
+                      className={`p-4 border rounded-lg text-center transition-all ${
+                        bulkAction === action.value
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600"
+                          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 text-gray-700 dark:text-gray-300"
+                      }`}
+                    >
+                      <i className={`${action.icon} text-xl mb-2`}></i>
+                      <p className="text-sm font-medium">{action.label}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Input Fields Based on Selected Action */}
+              {bulkAction && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    Enter New Value
+                  </h4>
+
+                  {bulkAction === "price" && (
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Enter new price"
+                      value={bulkValues.price}
+                      onChange={(e) =>
+                        setBulkValues((prev) => ({
+                          ...prev,
+                          price: e.target.value,
+                        }))
+                      }
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    />
+                  )}
+
+                  {bulkAction === "stock" && (
+                    <input
+                      type="number"
+                      placeholder="Enter new stock quantity"
+                      value={bulkValues.stock}
+                      onChange={(e) =>
+                        setBulkValues((prev) => ({
+                          ...prev,
+                          stock: e.target.value,
+                        }))
+                      }
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    />
+                  )}
+
+                  {bulkAction === "status" && (
+                    <select
+                      value={bulkValues.status}
+                      onChange={(e) =>
+                        setBulkValues((prev) => ({
+                          ...prev,
+                          status: e.target.value,
+                        }))
+                      }
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    >
+                      <option value="">Select status</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  )}
+
+                  {bulkAction === "category" && (
+                    <input
+                      type="text"
+                      placeholder="Enter new category"
+                      value={bulkValues.category}
+                      onChange={(e) =>
+                        setBulkValues((prev) => ({
+                          ...prev,
+                          category: e.target.value,
+                        }))
+                      }
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-4">
+              <button
+                onClick={() => setBulkUpdateModal(false)}
+                className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkUpdate}
+                disabled={
+                  !selectedProducts.length || !bulkAction || bulkLoading
+                }
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+              >
+                {bulkLoading ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-check mr-2"></i>
+                    Update Products
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

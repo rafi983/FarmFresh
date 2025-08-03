@@ -12,6 +12,9 @@ let cachedCollection = null;
 const responseCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000;
 
+// Export the response cache for access by bulk-update route
+export { responseCache };
+
 // Initialize indexes optimized for MongoDB Atlas performance
 async function initializeProductIndexes(db) {
   // Only initialize once per application lifecycle
@@ -99,8 +102,8 @@ function setCachedResponse(cacheKey, data) {
     timestamp: Date.now(),
   });
 
-  // Clean up expired entries if cache gets too large
-  if (responseCache.size > 100) {
+  // Clear cache if it gets too large to prevent memory issues
+  if (responseCache.size > 50) {
     const now = Date.now();
     for (const [key, value] of responseCache.entries()) {
       if (now - value.timestamp >= CACHE_TTL) {
@@ -118,7 +121,11 @@ export async function GET(request) {
     const cacheKey = generateCacheKey(searchParams);
     const cachedResponse = getCachedResponse(cacheKey);
     if (cachedResponse) {
-      return NextResponse.json(cachedResponse);
+      const response = NextResponse.json(cachedResponse);
+      // Add cache headers to indicate this is cached data
+      response.headers.set("X-Cache", "HIT");
+      response.headers.set("Cache-Control", "public, max-age=300"); // 5 minutes
+      return response;
     }
 
     const search = searchParams.get("search");
@@ -155,6 +162,13 @@ export async function GET(request) {
 
     // Build optimized query for Atlas
     const query = { status: { $ne: "deleted" } };
+
+    // For public access (non-farmer requests), exclude inactive products
+    // Only farmers should see their inactive products in their dashboard
+    if (!farmerId && !farmerEmail) {
+      // This is a public request - exclude inactive products
+      query.status = { $nin: ["deleted", "inactive"] };
+    }
 
     // Add search filter using text index for better performance
     if (search) {
@@ -320,13 +334,21 @@ export async function GET(request) {
           queryTime,
           cached: false,
         },
+        timestamp: new Date().toISOString(), // Add timestamp for debugging
       },
     };
 
     // Cache the response
     setCachedResponse(cacheKey, responseData);
 
-    return NextResponse.json(responseData);
+    const response = NextResponse.json(responseData);
+
+    // Add cache headers
+    response.headers.set("X-Cache", "MISS");
+    response.headers.set("Cache-Control", "public, max-age=300"); // 5 minutes
+    response.headers.set("X-Generated-At", new Date().toISOString());
+
+    return response;
   } catch (error) {
     console.error("Error fetching products:", error);
     return NextResponse.json(
@@ -342,6 +364,7 @@ export async function GET(request) {
           hasNext: false,
           hasPrev: false,
         },
+        timestamp: new Date().toISOString(),
       },
       { status: 500 },
     );

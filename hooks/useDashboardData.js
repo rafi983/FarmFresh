@@ -99,6 +99,33 @@ export function useDashboardData() {
     );
   };
 
+  // Function to bulk update multiple products in cache without full refetch
+  const updateBulkProductsInCache = (productIds, updateData) => {
+    queryClient.setQueryData(
+      ["dashboard", userIds?.userId, userIds?.userEmail],
+      (oldData) => {
+        if (!oldData) return oldData;
+
+        const updatedProducts = oldData.products.map((product) => {
+          const productId = product._id || product.id;
+          if (productIds.includes(productId)) {
+            return {
+              ...product,
+              ...updateData,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return product;
+        });
+
+        return {
+          ...oldData,
+          products: updatedProducts,
+        };
+      },
+    );
+  };
+
   return {
     products: data?.products || [],
     orders: data?.orders || [],
@@ -111,5 +138,6 @@ export function useDashboardData() {
     refreshDashboard,
     updateOrderInCache,
     updateProductInCache,
+    updateBulkProductsInCache,
   };
 }

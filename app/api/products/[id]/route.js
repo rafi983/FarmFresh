@@ -164,6 +164,8 @@ export async function GET(request, { params }) {
             { "farmer.id": id },
             { "farmer._id": id },
           ],
+          // Exclude deleted and inactive products from public access
+          status: { $nin: ["deleted", "inactive"] },
         },
       },
       {
@@ -235,6 +237,8 @@ export async function GET(request, { params }) {
                 ? [{ "products._id": new ObjectId(id) }]
                 : []),
             ],
+            // Also exclude inactive and deleted products from nested search
+            "products.status": { $nin: ["deleted", "inactive"] },
           },
         },
         { $replaceRoot: { newRoot: "$products" } },
@@ -384,7 +388,18 @@ export async function PUT(request, { params }) {
     delete updateData._id;
 
     // Add updated timestamp
-    updateData.updatedAt = new Date().toISOString();
+    updateData.updatedAt = new Date();
+
+    // Validate status if it's being updated
+    if (
+      updateData.status &&
+      !["active", "inactive", "deleted"].includes(updateData.status)
+    ) {
+      return NextResponse.json(
+        { error: "Invalid status. Must be 'active', 'inactive', or 'deleted'" },
+        { status: 400 },
+      );
+    }
 
     const result = await db
       .collection("products")
@@ -394,19 +409,27 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    if (result.modifiedCount === 0) {
+      return NextResponse.json(
+        { error: "No changes were made to the product" },
+        { status: 400 },
+      );
+    }
+
     // Fetch the updated product to return
     const updatedProduct = await db
       .collection("products")
       .findOne({ _id: new ObjectId(id) });
 
     return NextResponse.json({
+      success: true,
       message: "Product updated successfully",
       product: updatedProduct,
     });
   } catch (error) {
     console.error("Error updating product:", error);
     return NextResponse.json(
-      { error: "Failed to update product" },
+      { error: "Failed to update product", message: error.message },
       { status: 500 },
     );
   }

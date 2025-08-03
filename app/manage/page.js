@@ -57,6 +57,7 @@ export default function FarmerDashboard() {
     isRefetching,
     refetch: refetchDashboard,
     refreshDashboard,
+    updateBulkProductsInCache,
   } = useDashboardData();
 
   // UI state
@@ -290,7 +291,11 @@ export default function FarmerDashboard() {
       try {
         const response = await fetch(`/api/products/${productId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
           body: JSON.stringify({ status: newStatus }),
         });
 
@@ -304,6 +309,31 @@ export default function FarmerDashboard() {
         if (!result.success) {
           throw new Error(result.error || `Failed to ${actionText} product`);
         }
+
+        // Clear all product-related caches using the API service
+        const { apiService } = await import("@/lib/api-service");
+        apiService.clearProductsCache();
+
+        // Dispatch custom event to notify products page of status change
+        window.dispatchEvent(
+          new CustomEvent("productStatusUpdated", {
+            detail: {
+              productId: productId,
+              newStatus: newStatus,
+              timestamp: Date.now(),
+            },
+          }),
+        );
+
+        // Also set localStorage flag for cross-tab communication
+        localStorage.setItem(
+          "productStatusUpdated",
+          JSON.stringify({
+            productId: productId,
+            newStatus: newStatus,
+            timestamp: Date.now(),
+          }),
+        );
 
         await refetchDashboard();
 
@@ -450,6 +480,7 @@ export default function FarmerDashboard() {
     formatDate,
     loading: isLoading,
     error,
+    updateBulkProductsInCache,
   };
 
   const productProps = {
