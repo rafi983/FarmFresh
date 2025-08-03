@@ -213,6 +213,7 @@ export async function GET(request) {
       category: 1,
       averageRating: 1,
       totalReviews: 1,
+      reviews: 1, // Include reviews array for rating calculation
       featured: 1,
       status: 1,
       createdAt: 1,
@@ -225,7 +226,8 @@ export async function GET(request) {
       isOrganic: 1,
       isFresh: 1,
       purchaseCount: 1,
-      // Exclude heavy fields like detailed descriptions, reviews array, etc.
+      unit: 1, // Add unit field for product cards
+      // Exclude heavy fields like detailed descriptions, etc.
     };
 
     // Build sort options for better Atlas performance
@@ -287,14 +289,14 @@ export async function GET(request) {
       `Atlas query executed in ${queryTime}ms for ${products.length} products`,
     );
 
-    // Enhance with ratings only if needed (for detailed views)
-    const enhancedProducts =
-      search || limit <= 50
-        ? await enhanceProductsWithRatings(products, cachedDb)
-        : products; // Skip rating enhancement for large datasets
+    // Enhance with ratings and review counts from the products collection
+    const enhancedProducts = await enhanceProductsWithRatings(
+      products,
+      cachedDb,
+    );
 
-    // Build response
-    const response = {
+    // Prepare response data
+    const responseData = {
       products: enhancedProducts,
       pagination: {
         page,
@@ -305,21 +307,32 @@ export async function GET(request) {
         hasPrev: page > 1,
       },
       meta: {
-        queryTime,
-        cached: false,
+        query: {
+          search,
+          category,
+          featured,
+          sortBy,
+          minPrice,
+          maxPrice,
+          minRating,
+        },
+        performance: {
+          queryTime,
+          cached: false,
+        },
       },
     };
 
     // Cache the response
-    setCachedResponse(cacheKey, response);
+    setCachedResponse(cacheKey, responseData);
 
-    return NextResponse.json(response);
+    return NextResponse.json(responseData);
   } catch (error) {
-    console.error("Products API Error:", error);
+    console.error("Error fetching products:", error);
     return NextResponse.json(
       {
         error: "Failed to fetch products",
-        details: error.message,
+        message: error.message,
         products: [],
         pagination: {
           page: 1,
@@ -337,28 +350,32 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const productData = await request.json();
-
+    const body = await request.json();
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
-    // Clear cache when new product is added
-    responseCache.clear();
+    // Initialize indexes for the first POST operation
+    await initializeProductIndexes(db);
 
     const result = await db.collection("products").insertOne({
-      ...productData,
+      ...body,
       createdAt: new Date(),
       updatedAt: new Date(),
+      status: "active",
+      averageRating: 0,
+      totalReviews: 0,
+      reviewCount: 0,
+      purchaseCount: 0,
     });
 
-    return NextResponse.json(
-      { message: "Product created successfully", id: result.insertedId },
-      { status: 201 },
-    );
+    return NextResponse.json({
+      success: true,
+      productId: result.insertedId,
+    });
   } catch (error) {
     console.error("Error creating product:", error);
     return NextResponse.json(
-      { error: "Failed to create product" },
+      { error: "Failed to create product", message: error.message },
       { status: 500 },
     );
   }
