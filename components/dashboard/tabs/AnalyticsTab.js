@@ -44,51 +44,71 @@ export default function AnalyticsTab({
       (order) => order.status !== "cancelled" && order.status !== "returned",
     );
 
-    return products.reduce((acc, product) => {
+    // First, group products by category
+    const categorizedProducts = products.reduce((acc, product) => {
       const category = product.category || "Other";
       if (!acc[category]) {
-        acc[category] = {
-          count: 0,
-          active: 0,
-          revenue: 0,
-          avgPrice: 0,
-          totalStock: 0,
-        };
+        acc[category] = [];
       }
-      acc[category].count++;
-      acc[category].totalStock += product.stock || 0;
-      if (product.status !== "inactive" && product.stock > 0) {
-        acc[category].active++;
-      }
-
-      const categoryRevenue = validOrders.reduce((sum, order) => {
-        const categoryOrderItems =
-          order.items?.filter(
-            (item) =>
-              (item.product?._id === product._id ||
-                item.productId === product._id) &&
-              (item.product?.category === category ||
-                product.category === category),
-          ) || [];
-
-        return (
-          sum +
-          categoryOrderItems.reduce(
-            (itemSum, item) => itemSum + item.price * item.quantity,
-            0,
-          )
-        );
-      }, 0);
-
-      acc[category].revenue = categoryRevenue;
-      acc[category].avgPrice =
-        acc[category].count > 0
-          ? products
-              .filter((p) => p.category === category)
-              .reduce((sum, p) => sum + (p.price || 0), 0) / acc[category].count
-          : 0;
+      acc[category].push(product);
       return acc;
     }, {});
+
+    // Calculate stats for each category
+    return Object.entries(categorizedProducts).reduce(
+      (acc, [category, categoryProducts]) => {
+        // Calculate basic product stats
+        const count = categoryProducts.length;
+        const active = categoryProducts.filter(
+          (p) => p.status !== "inactive" && p.stock > 0,
+        ).length;
+        const totalStock = categoryProducts.reduce(
+          (sum, p) => sum + (p.stock || 0),
+          0,
+        );
+
+        // Calculate simple average price to match Top Categories display
+        const avgPrice =
+          count > 0
+            ? categoryProducts.reduce((sum, p) => sum + (p.price || 0), 0) /
+              count
+            : 0;
+
+        // Calculate revenue for this category from actual orders
+        const categoryRevenue = validOrders.reduce((sum, order) => {
+          if (!order.items) return sum;
+
+          const categoryOrderItems = order.items.filter((item) => {
+            // Check if this order item belongs to any product in this category
+            return categoryProducts.some(
+              (product) =>
+                item.product?._id === product._id ||
+                item.productId === product._id,
+            );
+          });
+
+          return (
+            sum +
+            categoryOrderItems.reduce(
+              (itemSum, item) =>
+                itemSum + (item.price || 0) * (item.quantity || 0),
+              0,
+            )
+          );
+        }, 0);
+
+        acc[category] = {
+          count,
+          active,
+          revenue: categoryRevenue,
+          avgPrice,
+          totalStock,
+        };
+
+        return acc;
+      },
+      {},
+    );
   }, [products, orders]);
 
   // Calculate last 30 days performance with more data points
@@ -190,29 +210,45 @@ export default function AnalyticsTab({
   // Radar chart data for category performance
   const categoryRadarData = useMemo(() => {
     const categories = Object.keys(categoryStats);
+
+    // If no categories, return empty chart
+    if (categories.length === 0) {
+      return {
+        labels: [
+          "Product Count",
+          "Revenue ($)",
+          "Active Products",
+          "Avg Price ($)",
+          "Total Stock",
+        ],
+        datasets: [],
+      };
+    }
+
+    // Calculate actual maximums for scaling (use actual values, not normalized)
+    const allStats = Object.values(categoryStats);
+
+    // Find reasonable scale maximums based on actual data
     const maxValues = {
-      count: Math.max(...Object.values(categoryStats).map((s) => s.count), 1),
-      revenue: Math.max(
-        ...Object.values(categoryStats).map((s) => s.revenue),
-        1,
-      ),
-      active: Math.max(...Object.values(categoryStats).map((s) => s.active), 1),
-      avgPrice: Math.max(
-        ...Object.values(categoryStats).map((s) => s.avgPrice),
-        1,
-      ),
-      totalStock: Math.max(
-        ...Object.values(categoryStats).map((s) => s.totalStock),
-        1,
-      ),
+      count: Math.max(...allStats.map((s) => s.count), 1),
+      revenue: Math.max(...allStats.map((s) => s.revenue), 1),
+      active: Math.max(...allStats.map((s) => s.active), 1),
+      avgPrice: Math.max(...allStats.map((s) => s.avgPrice), 1),
+      totalStock: Math.max(...allStats.map((s) => s.totalStock), 1),
+    };
+
+    // Use a scale that makes sense for comparison
+    const getScaledValue = (value, maxValue, targetMax = 100) => {
+      if (maxValue === 0) return 0;
+      return Math.min((value / maxValue) * targetMax, targetMax);
     };
 
     return {
       labels: [
         "Product Count",
-        "Revenue",
+        "Revenue ($)",
         "Active Products",
-        "Avg Price",
+        "Avg Price ($)",
         "Total Stock",
       ],
       datasets: categories.slice(0, 5).map((category, index) => {
@@ -232,18 +268,28 @@ export default function AnalyticsTab({
           "rgba(153, 102, 255, 1)",
         ];
 
+        // Use actual values scaled proportionally
+        const scaledData = [
+          getScaledValue(stats.count, maxValues.count),
+          getScaledValue(stats.revenue, maxValues.revenue),
+          getScaledValue(stats.active, maxValues.active),
+          getScaledValue(stats.avgPrice, maxValues.avgPrice),
+          getScaledValue(stats.totalStock, maxValues.totalStock),
+        ];
+
+        // Create accurate label with actual values
+        const labelText = `${category} (${stats.count} products, $${stats.revenue.toFixed(2)} revenue, ${stats.totalStock} stock)`;
+
         return {
-          label: category,
-          data: [
-            (stats.count / maxValues.count) * 100,
-            (stats.revenue / maxValues.revenue) * 100,
-            (stats.active / maxValues.active) * 100,
-            (stats.avgPrice / maxValues.avgPrice) * 100,
-            (stats.totalStock / maxValues.totalStock) * 100,
-          ],
+          label: labelText,
+          data: scaledData,
           backgroundColor: colors[index % colors.length],
           borderColor: borderColors[index % borderColors.length],
           borderWidth: 2,
+          pointBackgroundColor: borderColors[index % borderColors.length],
+          pointBorderColor: "#fff",
+          pointHoverBackgroundColor: "#fff",
+          pointHoverBorderColor: borderColors[index % borderColors.length],
         };
       }),
     };
@@ -461,6 +507,33 @@ export default function AnalyticsTab({
           },
         },
       },
+      tooltip: {
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        titleColor: "#fff",
+        bodyColor: "#fff",
+        borderColor: "rgba(255, 255, 255, 0.1)",
+        borderWidth: 1,
+        callbacks: {
+          label: function (context) {
+            const datasetLabel = context.dataset.label;
+            const categoryName = datasetLabel.split(" (")[0];
+            const stats = categoryStats[categoryName];
+            const pointIndex = context.dataIndex;
+
+            if (!stats) return context.formattedValue;
+
+            const labels = [
+              `Products: ${stats.count}`,
+              `Revenue: ${formatPrice(stats.revenue)}`,
+              `Active: ${stats.active}`,
+              `Avg Price: ${formatPrice(stats.avgPrice)}`,
+              `Stock: ${stats.totalStock}`,
+            ];
+
+            return labels[pointIndex] || context.formattedValue;
+          },
+        },
+      },
     },
     scales: {
       r: {
@@ -479,6 +552,9 @@ export default function AnalyticsTab({
         ticks: {
           color: "rgba(156, 163, 175, 0.8)",
           backdropColor: "transparent",
+          stepSize: 20,
+          min: 0,
+          max: 100,
         },
       },
     },
@@ -510,6 +586,78 @@ export default function AnalyticsTab({
       },
     },
   };
+
+  // Calculate actual performance metrics
+  const performanceMetrics = useMemo(() => {
+    const validOrders = orders.filter(
+      (order) => order.status !== "cancelled" && order.status !== "returned",
+    );
+
+    // Calculate conversion rate (delivered orders / total orders)
+    const conversionRate =
+      orders.length > 0
+        ? (
+            (orders.filter((o) => o.status === "delivered").length /
+              orders.length) *
+            100
+          ).toFixed(1)
+        : 0;
+
+    // Calculate revenue growth (compare last 30 days with previous 30 days)
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sixtyDaysAgo = new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+    const recentRevenue = validOrders
+      .filter((order) => new Date(order.createdAt) >= thirtyDaysAgo)
+      .reduce(
+        (sum, order) => sum + (order.farmerSubtotal || order.total || 0),
+        0,
+      );
+
+    const previousRevenue = validOrders
+      .filter((order) => {
+        const orderDate = new Date(order.createdAt);
+        return orderDate >= sixtyDaysAgo && orderDate < thirtyDaysAgo;
+      })
+      .reduce(
+        (sum, order) => sum + (order.farmerSubtotal || order.total || 0),
+        0,
+      );
+
+    let revenueGrowth = 0;
+    if (previousRevenue > 0 && recentRevenue > 0) {
+      revenueGrowth = (
+        ((recentRevenue - previousRevenue) / previousRevenue) *
+        100
+      ).toFixed(1);
+    } else if (recentRevenue > 0 && previousRevenue === 0) {
+      revenueGrowth = 100; // 100% growth when starting from 0
+    }
+
+    // Calculate customer retention (customers who made repeat orders)
+    const uniqueCustomers = [
+      ...new Set(validOrders.map((order) => order.userId)),
+    ];
+    const repeatCustomers = uniqueCustomers.filter((customerId) => {
+      const customerOrders = validOrders.filter(
+        (order) => order.userId === customerId,
+      );
+      return customerOrders.length > 1;
+    });
+
+    const customerRetention =
+      uniqueCustomers.length > 0
+        ? ((repeatCustomers.length / uniqueCustomers.length) * 100).toFixed(1)
+        : 0;
+
+    return {
+      conversionRate,
+      revenueGrowth,
+      customerRetention,
+      hasActivity: validOrders.length > 0 || products.length > 0,
+    };
+  }, [orders, products]);
 
   return (
     <div className="space-y-8">
@@ -681,14 +829,7 @@ export default function AnalyticsTab({
                 Conversion Rate
               </p>
               <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                {orders.length > 0
-                  ? (
-                      (orders.filter((o) => o.status === "delivered").length /
-                        orders.length) *
-                      100
-                    ).toFixed(1)
-                  : 0}
-                %
+                {performanceMetrics.conversionRate}%
               </p>
             </div>
             <div className="p-4 bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900 dark:to-green-800 rounded-lg">
@@ -696,7 +837,7 @@ export default function AnalyticsTab({
                 Revenue Growth
               </p>
               <p className="text-2xl font-bold text-green-900 dark:text-green-100">
-                +{Math.floor(Math.random() * 25 + 5)}%
+                +{performanceMetrics.revenueGrowth}%
               </p>
             </div>
             <div className="p-4 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900 dark:to-purple-800 rounded-lg">
@@ -704,7 +845,7 @@ export default function AnalyticsTab({
                 Customer Retention
               </p>
               <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-                {Math.floor(Math.random() * 20 + 70)}%
+                {performanceMetrics.customerRetention}%
               </p>
             </div>
           </div>

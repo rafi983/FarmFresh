@@ -57,6 +57,7 @@ export default function FarmerDashboard() {
     isRefetching,
     refetch: refetchDashboard,
     refreshDashboard,
+    updateProductInCache,
     updateBulkProductsInCache,
   } = useDashboardData();
 
@@ -275,10 +276,28 @@ export default function FarmerDashboard() {
   // Product management functions
   const handleStatusToggle = useCallback(
     async (productId, currentStatus) => {
+      console.log("handleStatusToggle called with:", {
+        productId,
+        currentStatus,
+        type: typeof currentStatus,
+      });
+
+      // Normalize the current status to lowercase for comparison
+      const normalizedCurrentStatus = currentStatus?.toLowerCase();
+      const normalizedActiveStatus = PRODUCT_STATUS.ACTIVE.toLowerCase();
+
       const newStatus =
-        currentStatus === PRODUCT_STATUS.ACTIVE
+        normalizedCurrentStatus === normalizedActiveStatus
           ? PRODUCT_STATUS.INACTIVE
           : PRODUCT_STATUS.ACTIVE;
+
+      console.log("Status toggle:", {
+        currentStatus,
+        normalizedCurrentStatus,
+        newStatus,
+        comparison: normalizedCurrentStatus === normalizedActiveStatus,
+      });
+
       const actionText =
         newStatus === PRODUCT_STATUS.ACTIVE ? "activate" : "deactivate";
 
@@ -289,30 +308,25 @@ export default function FarmerDashboard() {
       setActionLoading((prev) => ({ ...prev, [productId]: "status" }));
 
       try {
-        const response = await fetch(`/api/products/${productId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "no-cache",
-            Pragma: "no-cache",
-          },
-          body: JSON.stringify({ status: newStatus }),
-        });
+        console.log("Sending status update:", { productId, status: newStatus });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `Failed to ${actionText} product`);
-        }
+        // Use the same API service pattern as bulk update for consistency
+        const { apiService } = await import("@/lib/api-service");
+        const result = await apiService.bulkUpdateProducts(
+          [productId], // Single product as array
+          { status: newStatus },
+        );
 
-        const result = await response.json();
+        console.log("API response:", result);
 
         if (!result.success) {
           throw new Error(result.error || `Failed to ${actionText} product`);
         }
 
-        // Clear all product-related caches using the API service
-        const { apiService } = await import("@/lib/api-service");
-        apiService.clearProductsCache();
+        // Update the React Query cache using the same pattern as bulk update
+        if (updateBulkProductsInCache) {
+          updateBulkProductsInCache([productId], { status: newStatus });
+        }
 
         // Dispatch custom event to notify products page of status change
         window.dispatchEvent(
@@ -335,8 +349,6 @@ export default function FarmerDashboard() {
           }),
         );
 
-        await refetchDashboard();
-
         const successMsg =
           newStatus === PRODUCT_STATUS.ACTIVE
             ? "Product activated successfully!"
@@ -350,7 +362,7 @@ export default function FarmerDashboard() {
         setActionLoading((prev) => ({ ...prev, [productId]: null }));
       }
     },
-    [refetchDashboard],
+    [updateBulkProductsInCache],
   );
 
   const handleDeleteProduct = useCallback(

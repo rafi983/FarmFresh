@@ -146,6 +146,9 @@ async function initializeProductDetailIndexes(db) {
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
+    const url = new URL(request.url);
+    const isDashboardContext = url.searchParams.get("dashboard") === "true";
+    const farmerId = url.searchParams.get("farmerId");
 
     const client = await clientPromise;
     const db = client.db("farmfresh");
@@ -154,24 +157,25 @@ export async function GET(request, { params }) {
     await initializeProductDetailIndexes(db);
 
     // Build efficient aggregation pipeline to find the product
-    const productPipeline = [
-      {
-        $match: {
-          $or: [
-            { _id: id },
-            ...(ObjectId.isValid(id) ? [{ _id: new ObjectId(id) }] : []),
-            { farmerId: id },
-            { "farmer.id": id },
-            { "farmer._id": id },
-          ],
-          // Exclude deleted and inactive products from public access
-          status: { $nin: ["deleted", "inactive"] },
-        },
-      },
-      {
-        $limit: 1,
-      },
-    ];
+    const matchConditions = {
+      $or: [
+        { _id: id },
+        ...(ObjectId.isValid(id) ? [{ _id: new ObjectId(id) }] : []),
+        { farmerId: id },
+        { "farmer.id": id },
+        { "farmer._id": id },
+      ],
+    };
+
+    // Only exclude inactive products for public views, not for dashboard/farmer context
+    if (!isDashboardContext && !farmerId) {
+      matchConditions.status = { $nin: ["deleted", "inactive"] };
+    } else {
+      // For dashboard context, only exclude deleted products
+      matchConditions.status = { $ne: "deleted" };
+    }
+
+    const productPipeline = [{ $match: matchConditions }, { $limit: 1 }];
 
     const [targetProduct] = await db
       .collection("products")
@@ -180,8 +184,17 @@ export async function GET(request, { params }) {
 
     // If it's a farmer ID, return farmer details with optimized query
     if (targetProduct && targetProduct.farmerId === id) {
+      const farmerMatchConditions = { farmerId: id };
+
+      // For dashboard context, show all products including inactive ones
+      if (!isDashboardContext && !farmerId) {
+        farmerMatchConditions.status = { $nin: ["deleted", "inactive"] };
+      } else {
+        farmerMatchConditions.status = { $ne: "deleted" };
+      }
+
       const farmerProductsPipeline = [
-        { $match: { farmerId: id } },
+        { $match: farmerMatchConditions },
         {
           $project: {
             _id: 1,
@@ -191,6 +204,7 @@ export async function GET(request, { params }) {
             images: 1,
             category: 1,
             stock: 1,
+            status: 1,
             farmer: 1,
             isOrganic: 1,
             isFresh: 1,

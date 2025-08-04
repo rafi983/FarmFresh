@@ -164,9 +164,12 @@ export async function GET(request) {
     // Build optimized query for Atlas
     const query = { status: { $ne: "deleted" } };
 
+    // Check if this is a dashboard context request
+    const isDashboardContext = searchParams.get("dashboard") === "true";
+
     // For public access (non-farmer requests), exclude inactive products
     // Only farmers should see their inactive products in their dashboard
-    if (!farmerId && !farmerEmail) {
+    if (!farmerId && !farmerEmail && !isDashboardContext) {
       // This is a public request - exclude inactive products
       query.status = { $nin: ["deleted", "inactive"] };
     }

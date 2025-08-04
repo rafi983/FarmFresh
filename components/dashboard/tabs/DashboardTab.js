@@ -94,7 +94,9 @@ export default function DashboardTab({
       );
 
       if (result.success) {
-        alert(`Successfully updated ${result.updatedCount} products!`);
+        alert(
+          `Successfully updated ${result.data.updatedCount || 1} products!`,
+        );
 
         // Update the React Query cache immediately instead of hard refresh
         if (updateBulkProductsInCache) {
