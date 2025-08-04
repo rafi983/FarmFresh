@@ -6,58 +6,13253 @@ import Link from "next/link";
 import Footer from "@/components/Footer";
 import { debounce } from "@/utils/debounce";
 import { useOrderStatusUpdate } from "@/hooks/useOrderStatusUpdate";
-import { useFarmerOrders } from "@/hooks/useFarmerOrders";
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
 
-export default function FarmerOrders() {
-  const { data: session, status } = useSession();
-  const { updateOrderStatus, updating } = useOrderStatusUpdate();
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+                  onChange={handleStatusChange}
+    // Apply search filter with improved regex
+        }
 
-  // Use React Query hook for orders data
-  const {
-    orders,
-    isLoading: loading,
-    error,
-    isRefetching: refreshing,
-    refetch: refetchOrders,
-    refreshOrders,
-  } = useFarmerOrders();
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
 
-  // Local UI state
-  const [statusFilter, setStatusFilter] = useState("All Orders");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedOrders, setSelectedOrders] = useState([]);
-  const [viewMode, setViewMode] = useState("detailed");
-  const [sortBy, setSortBy] = useState("newest");
-  const [dateRange, setDateRange] = useState({ start: "", end: "" });
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [autoRefresh, setAutoRefresh] = useState(false);
+        console.error("Error fetching orders:", error);
 
-  const ordersPerPage = viewMode === "compact" ? 20 : 10;
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
 
-  // Enhanced notification system
-  const addNotification = useCallback((message, type = "info") => {
-    const id = Date.now() + Math.random();
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  // Enhanced CSV conversion with better data handling
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  const MAX_RETRY_ATTEMPTS = 3;
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  // Performance optimizations
+  const [requestInProgress, setRequestInProgress] = useState(false);
+
+  const intervalRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const cacheRef = useRef(new Map());
+
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+                  onChange={handleStatusChange}
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+    // Apply search filter with improved regex
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+  const [orders, setOrders] = useState([]);
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+  const intervalRef = useRef(null);
+  // Performance optimizations
+  const [requestInProgress, setRequestInProgress] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Enhanced state for new features
+  // Performance optimizations
+  const [requestInProgress, setRequestInProgress] = useState(false);
+
+  const intervalRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const cacheRef = useRef(new Map());
+
+
+  const intervalRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const cacheRef = useRef(new Map());
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+  // Enhanced CSV conversion with better data handling
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+                  onChange={handleStatusChange}
+    // Apply search filter with improved regex
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  // Enhanced CSV conversion with better data handling
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  const MAX_RETRY_ATTEMPTS = 3;
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  // Performance optimizations
+  const [requestInProgress, setRequestInProgress] = useState(false);
+
+  const intervalRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const cacheRef = useRef(new Map());
+
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+                  onChange={handleStatusChange}
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+    // Apply search filter with improved regex
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+  }, []);
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+  // Enhanced CSV conversion with better data handling
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+  }, []);
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+      "Customer Email",
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+    // Apply search filter with improved regex
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+                  onChange={handleStatusChange}
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+  // Enhanced CSV conversion with better data handling
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+                  onChange={handleStatusChange}
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+    // Apply search filter with improved regex
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+  const cacheRef = useRef(new Map());
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  const MAX_RETRY_ATTEMPTS = 3;
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+  }, []);
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  const RETRY_DELAY = 1000; // 1 second
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+  // Enhanced CSV conversion with better data handling
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+  const [orders, setOrders] = useState([]);
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+  const cacheRef = useRef(new Map());
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+  const intervalRef = useRef(null);
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+  // Enhanced CSV conversion with better data handling
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+                  onChange={handleStatusChange}
+    // Apply search filter with improved regex
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  // Enhanced CSV conversion with better data handling
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  const MAX_RETRY_ATTEMPTS = 3;
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  // Performance optimizations
+  const [requestInProgress, setRequestInProgress] = useState(false);
+
+  const intervalRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const cacheRef = useRef(new Map());
+
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+                  onChange={handleStatusChange}
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+    // Apply search filter with improved regex
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+  }, []);
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+      return null;
+    },
+    [CACHE_DURATION],
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+  // Enhanced CSV conversion with better data handling
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+      "Customer Email",
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+    // Apply search filter with improved regex
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+                  onChange={handleStatusChange}
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+  // Enhanced CSV conversion with better data handling
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+                  onChange={handleStatusChange}
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+    // Apply search filter with improved regex
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+  const abortControllerRef = useRef(null);
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+  }, []);
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+  }, []);
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+  // Enhanced CSV conversion with better data handling
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+  }, []);
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+    [CACHE_DURATION],
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+      "Customer Email",
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+    // Apply search filter with improved regex
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+                  onChange={handleStatusChange}
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+  // Enhanced CSV conversion with better data handling
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+                  onChange={handleStatusChange}
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+    // Apply search filter with improved regex
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+  const cacheRef = useRef(new Map());
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+  // Enhanced CSV conversion with better data handling
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+                  onChange={handleStatusChange}
+    // Apply search filter with improved regex
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  // Enhanced CSV conversion with better data handling
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  const MAX_RETRY_ATTEMPTS = 3;
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  // Performance optimizations
+  const [requestInProgress, setRequestInProgress] = useState(false);
+
+  const intervalRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const cacheRef = useRef(new Map());
+
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+                  onChange={handleStatusChange}
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+    // Apply search filter with improved regex
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+  const [orders, setOrders] = useState([]);
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+  const intervalRef = useRef(null);
+  // Performance optimizations
+  const [requestInProgress, setRequestInProgress] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Enhanced state for new features
+  // Performance optimizations
+  const [requestInProgress, setRequestInProgress] = useState(false);
+
+  const intervalRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const cacheRef = useRef(new Map());
+
+
+  const intervalRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const cacheRef = useRef(new Map());
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+  // Enhanced CSV conversion with better data handling
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+                  onChange={handleStatusChange}
+    // Apply search filter with improved regex
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  // Enhanced CSV conversion with better data handling
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  const MAX_RETRY_ATTEMPTS = 3;
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  // Performance optimizations
+  const [requestInProgress, setRequestInProgress] = useState(false);
+
+  const intervalRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const cacheRef = useRef(new Map());
+
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+                  onChange={handleStatusChange}
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+    // Apply search filter with improved regex
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+  }, []);
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+  // Enhanced CSV conversion with better data handling
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+  }, []);
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+      "Customer Email",
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+    // Apply search filter with improved regex
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+                  onChange={handleStatusChange}
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+  // Enhanced CSV conversion with better data handling
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+                  onChange={handleStatusChange}
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+    // Apply search filter with improved regex
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+  const cacheRef = useRef(new Map());
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+
     const notification = { id, message, type, timestamp: new Date() };
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
 
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+      "Customer Email",
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+    // Apply search filter with improved regex
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+                  onChange={handleStatusChange}
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+  // Enhanced CSV conversion with better data handling
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+                  onChange={handleStatusChange}
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+    // Apply search filter with improved regex
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+  }, []);
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
     setNotifications((prev) => [notification, ...prev.slice(0, 4)]);
 
     setTimeout(() => {
       setNotifications((prev) => prev.filter((n) => n.id !== id));
     }, 5000);
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
   }, []);
 
-  // Optimized debounced search
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+  // Enhanced CSV conversion with better data handling
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  const MAX_RETRY_ATTEMPTS = 3;
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRY_ATTEMPTS = 3;
+  const RETRY_DELAY = 1000; // 1 second
+  // Performance optimizations
+  const [requestInProgress, setRequestInProgress] = useState(false);
+
+  const intervalRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const cacheRef = useRef(new Map());
+
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+      "Customer Email",
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+      );
+
+      // Clear cache to force refresh
+  // Optimized search handler
+
+        results.forEach((result) => {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+  // Enhanced refresh with better UX
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+                  onChange={handleStatusChange}
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+    // Apply search filter with improved regex
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
+  }, []);
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  );
+
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
   const debouncedSearch = useMemo(
     () =>
       debounce((searchValue) => {
         setSearchTerm(searchValue);
       }, 300),
-    [],
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+  // Enhanced CSV conversion with better data handling
   );
 
-  // Enhanced file download
+  const setCachedData = useCallback(
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+      });
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+      "Customer Email",
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced file download with better error handling
+  );
+
+  // Optimized cache management
+  const getCacheKey = useCallback((userId, userEmail) => {
+    return `farmer-orders-${userId || userEmail}`;
+  }, []);
+
+  const getCachedData = useCallback(
+    (cacheKey) => {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.data;
+      }
+      return null;
+    },
+    [CACHE_DURATION],
+  );
+
+  // Enhanced CSV conversion with better data handling
+    (cacheKey, data) => {
+      cacheRef.current.set(cacheKey, {
+        data,
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+    // Apply sorting with improved performance
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+                  onChange={handleStatusChange}
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+  // Initial fetch
+  useEffect(() => {
+    if (session?.user && !requestInProgress) {
+  }, [memoizedFilteredOrders]);
+    }
+  // Auto-refresh functionality with better management
+
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
+  // Optimized search handler
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+  // Enhanced refresh with better UX
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
+
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+          addNotification(
+      let successCount = 0;
+      let errorCount = 0;
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
+      // Clean up old cache entries
+      for (const [key, value] of cacheRef.current.entries()) {
+        if (Date.now() - value.timestamp > CACHE_DURATION) {
+          cacheRef.current.delete(key);
+        }
+      }
+    },
+    [CACHE_DURATION],
+  );
+    // Apply search filter with improved regex
+  // Enhanced file download with better error handling
   const downloadFile = useCallback(
     (content, filename, mimeType) => {
       try {
@@ -79,7 +13274,7 @@ export default function FarmerOrders() {
     [addNotification],
   );
 
-  // Enhanced CSV conversion
+  // Enhanced CSV conversion with better data handling
   const convertToCSV = useCallback((data) => {
     const headers = [
       "Order ID",
@@ -115,8 +13310,122 @@ export default function FarmerOrders() {
       .join("\n");
   }, []);
 
-  // Memoized filtered orders
-  const filteredOrders = useMemo(() => {
+  // Enhanced fetch function with retry logic
+  const fetchOrdersWithRetry = useCallback(
+    async (showLoading = true, retryAttempt = 0) => {
+      if (!session?.user || requestInProgress) return;
+
+      try {
+        if (showLoading) setLoading(true);
+        setRequestInProgress(true);
+
+        const userId =
+          session.user.userId || session.user.id || session.user._id;
+        const userEmail = session.user.email;
+        const cacheKey = getCacheKey(userId, userEmail);
+
+        // Check cache first
+        if (!showLoading && retryAttempt === 0) {
+          const cachedData = getCachedData(cacheKey);
+          if (cachedData) {
+            setOrders(cachedData);
+            setRequestInProgress(false);
+            return;
+          }
+        }
+
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const params = new URLSearchParams();
+        if (userId) params.append("farmerId", userId);
+        if (userEmail) params.append("farmerEmail", userEmail);
+
+        const response = await fetch(`/api/orders?${params.toString()}`, {
+          cache: "no-store",
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        });
+
+        if (!response.ok) {
+          const error = new Error(
+            `HTTP ${response.status}: ${response.statusText}`,
+          );
+          console.error("Response error:", error);
+          throw error;
+        }
+
+        const data = await response.json();
+        const ordersData = data.orders || [];
+
+        // Check for new orders for notifications (only if not initial load)
+        if (
+          !showLoading &&
+          orders.length > 0 &&
+          ordersData.length > orders.length
+        ) {
+          const newOrdersCount = ordersData.length - orders.length;
+          addNotification(
+            `${newOrdersCount} new order(s) received!`,
+            "success",
+          );
+        }
+
+        setOrders(ordersData);
+        setCachedData(cacheKey, ordersData);
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return; // Request was cancelled, don't treat as error
+        }
+
+        console.error("Error fetching orders:", error);
+
+        // Retry logic
+        if (retryAttempt < MAX_RETRY_ATTEMPTS) {
+          addNotification(
+            `Retrying to fetch orders... (${retryAttempt + 1}/${MAX_RETRY_ATTEMPTS})`,
+            "warning",
+          );
+
+          setTimeout(
+            () => {
+              fetchOrdersWithRetry(showLoading, retryAttempt + 1);
+            },
+            RETRY_DELAY * Math.pow(2, retryAttempt),
+          ); // Exponential backoff
+
+          return;
+        }
+
+        setOrders([]);
+        addNotification("Failed to fetch orders. Please try again.", "error");
+      } finally {
+        if (showLoading) setLoading(false);
+        setRequestInProgress(false);
+      }
+    },
+    [
+      session,
+      orders.length,
+      getCacheKey,
+      getCachedData,
+      setCachedData,
+      requestInProgress,
+      addNotification,
+      MAX_RETRY_ATTEMPTS,
+      RETRY_DELAY,
+    ],
+  );
+
+  // Memoized filtered orders with performance optimization
+  const memoizedFilteredOrders = useMemo(() => {
     let filtered = [...orders];
 
     // Apply status filter
@@ -126,7 +13435,7 @@ export default function FarmerOrders() {
       );
     }
 
-    // Apply search filter
+    // Apply search filter with improved regex
     if (searchTerm.trim()) {
       const searchRegex = new RegExp(
         searchTerm.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
@@ -158,13 +13467,13 @@ export default function FarmerOrders() {
     }
     if (dateRange.end) {
       const endDate = new Date(dateRange.end);
-      endDate.setHours(23, 59, 59, 999);
+      endDate.setHours(23, 59, 59, 999); // Include entire end date
       filtered = filtered.filter(
         (order) => new Date(order.createdAt) <= endDate,
       );
     }
 
-    // Apply sorting
+    // Apply sorting with improved performance
     filtered.sort((a, b) => {
       switch (sortBy) {
         case "newest":
@@ -193,21 +13502,142 @@ export default function FarmerOrders() {
     return filtered;
   }, [orders, statusFilter, searchTerm, dateRange, sortBy]);
 
-  // Reset page when filters change
+  // Initial fetch
   useEffect(() => {
+    if (session?.user && !requestInProgress) {
+      fetchOrdersWithRetry();
+    }
+  }, [session?.user]); // Removed fetchOrdersWithRetry dependency
+
+  // Update filtered orders when memoized value changes
+  useEffect(() => {
+    setFilteredOrders(memoizedFilteredOrders);
     setCurrentPage(1);
-  }, [filteredOrders]);
+  }, [memoizedFilteredOrders]);
 
-  // Auto-refresh functionality
+  // Auto-refresh functionality with better management
   useEffect(() => {
-    if (!autoRefresh) return;
+    if (autoRefresh && !loading && !requestInProgress) {
+      intervalRef.current = setInterval(() => {
+        fetchOrdersWithRetry(false);
+      }, 30000); // Refresh every 30 seconds
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading, requestInProgress]); // Removed fetchOrdersWithRetry dependency
 
-    const interval = setInterval(() => {
-      refreshOrders();
-    }, 30000); // 30 seconds
+  // Optimized bulk operations with better error handling
+  const handleBulkStatusUpdate = async (newStatus) => {
+    if (selectedOrders.length === 0) {
+      addNotification("Please select orders to update", "warning");
+      return;
+    }
 
-    return () => clearInterval(interval);
-  }, [autoRefresh, refreshOrders]);
+    if (
+      !confirm(
+        `Are you sure you want to mark ${selectedOrders.length} orders as ${newStatus}?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setRequestInProgress(true);
+
+      // Process in batches for better performance
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < selectedOrders.length; i += batchSize) {
+        batches.push(selectedOrders.slice(i, i + batchSize));
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const batch of batches) {
+        const updatePromises = batch.map(async (orderId) => {
+          try {
+            const response = await fetch(`/api/orders/${orderId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+              },
+              body: JSON.stringify({
+                status: newStatus,
+                statusHistory: {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: session.user.email || session.user.name,
+                },
+              }),
+            });
+
+            if (!response.ok) {
+              const error = new Error(`Failed to update order ${orderId}`);
+              console.error("Bulk update error:", error);
+              throw error;
+            }
+
+            return { success: true, orderId };
+          } catch (error) {
+            console.error(`Error updating order ${orderId}:`, error);
+            return { success: false, orderId, error: error.message };
+          }
+        });
+
+        const results = await Promise.allSettled(updatePromises);
+
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value.success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        });
+      }
+
+      if (successCount > 0) {
+        // Update local state optimistically
+        setOrders((prev) =>
+          prev.map((order) =>
+            selectedOrders.includes(order._id)
+              ? { ...order, status: newStatus }
+              : order,
+          ),
+        );
+        setSelectedOrders([]);
+
+        // Clear cache to force refresh
+        cacheRef.current.clear();
+      }
+
+      if (errorCount === 0) {
+        addNotification(
+          `${successCount} orders updated successfully!`,
+          "success",
+        );
+      } else {
+        addNotification(
+          `${successCount} orders updated, ${errorCount} failed`,
+          "warning",
+        );
+      }
+    } catch (error) {
+      console.error("Bulk update error:", error);
+      addNotification("Failed to update orders", "error");
+    } finally {
+      setRequestInProgress(false);
+    }
+  };
 
   // Enhanced single order status update using the hook
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
@@ -217,7 +13647,7 @@ export default function FarmerOrders() {
       shipped:
         "mark this order as shipped? This will notify the customer that their order is on the way.",
       delivered:
-        "mark this order as delivered? This will complete the order and notify the customer.",
+                  onChange={handleStatusChange}
       cancelled:
         "cancel this order? This action cannot be undone and will notify the customer.",
     };
@@ -230,7 +13660,8 @@ export default function FarmerOrders() {
     }
 
     try {
-      await updateOrderStatus(orderId, newStatus, {
+      // Use the hook for updating status with real-time broadcasting
+      const result = await updateOrderStatus(orderId, newStatus, {
         estimatedDeliveryDate:
           newStatus === "shipped"
             ? (() => {
@@ -240,6 +13671,34 @@ export default function FarmerOrders() {
               })()
             : undefined,
       });
+
+      // Optimistic update of local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId
+            ? {
+                ...order,
+                status: newStatus,
+                estimatedDeliveryDate:
+                  result.order?.estimatedDeliveryDate ||
+                  order.estimatedDeliveryDate,
+                statusHistory: result.order?.statusHistory || [
+                  ...(Array.isArray(order.statusHistory)
+                    ? order.statusHistory
+                    : []),
+                  {
+                    status: newStatus,
+                    timestamp: new Date().toISOString(),
+                    updatedBy: session.user.email || session.user.name,
+                  },
+                ],
+              }
+            : order,
+        ),
+      );
+
+      // Clear cache to force refresh
+      cacheRef.current.clear();
 
       const successMessages = {
         confirmed: "Order confirmed! Dashboard updated automatically.",
@@ -262,19 +13721,27 @@ export default function FarmerOrders() {
     }
   };
 
-  // Enhanced refresh handler
+  // Enhanced refresh with better UX
   const handleRefresh = async () => {
-    await refetchOrders();
+    setRefreshing(true);
+    cacheRef.current.clear(); // Clear cache to force fresh data
+    await fetchOrdersWithRetry(false);
+    setRefreshing(false);
     addNotification("Orders refreshed successfully!", "success");
   };
 
-  // Search handler
+  // Optimized search handler
   const handleSearchChange = (e) => {
     const value = e.target.value;
     debouncedSearch(value);
   };
 
-  // Export functionality
+  // Enhanced status filter handler
+  const handleStatusChange = (e) => {
+    setStatusFilter(e.target.value);
+  };
+
+  // Optimized export functionality with better performance
   const exportOrders = useCallback(
     (format) => {
       const dataToExport =
@@ -788,7 +14255,7 @@ export default function FarmerOrders() {
                 </label>
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={handleStatusChange}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 >
                   <option value="All Orders">All Orders</option>

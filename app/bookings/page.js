@@ -5,6 +5,8 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Footer from "@/components/Footer";
+import ReorderModal from "@/components/ReorderModal";
+import { useReorder } from "@/hooks/useReorder";
 
 // Constants for better maintainability
 const ORDER_STATUSES = {
@@ -357,6 +359,17 @@ export default function Bookings() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
+  // Enhanced reorder functionality
+  const {
+    loading: reorderLoading,
+    validationResult,
+    showReorderModal,
+    validateReorder,
+    proceedWithAvailableItems,
+    cancelReorder,
+    setShowReorderModal,
+  } = useReorder();
+
   // Custom hooks
   const { orders, loading, error, fetchOrders } = useOrdersData(
     session,
@@ -482,18 +495,24 @@ export default function Bookings() {
     [fetchOrders],
   );
 
+  // Enhanced reorder handler
   const handleReorder = useCallback(
-    (order) => {
-      // Store order items in session storage for reorder functionality
+    async (order) => {
       try {
-        sessionStorage.setItem("reorderItems", JSON.stringify(order.items));
-        router.push("/products?reorder=true");
+        const userId = session?.user?.userId || session?.user?.id;
+        if (!userId) {
+          alert("Please log in to reorder items");
+          return;
+        }
+
+        // Use the enhanced reorder validation
+        await validateReorder(order._id, userId);
       } catch (error) {
-        console.error("Failed to store reorder data:", error);
-        router.push("/products");
+        console.error("Error validating reorder:", error);
+        alert("Error processing reorder. Please try again.");
       }
     },
-    [router],
+    [session, validateReorder],
   );
 
   // Add PDF receipt generation function
@@ -1726,6 +1745,18 @@ export default function Bookings() {
           </div>
         </div>
       )}
+
+      {/* Enhanced Reorder Modal */}
+      {showReorderModal && validationResult && (
+        <ReorderModal
+          isOpen={showReorderModal}
+          onClose={cancelReorder}
+          validationResult={validationResult}
+          onProceedWithAvailable={proceedWithAvailableItems}
+          loading={reorderLoading}
+        />
+      )}
+
       <Footer />
     </>
   );
