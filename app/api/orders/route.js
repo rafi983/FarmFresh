@@ -227,8 +227,12 @@ export async function GET(request) {
       customerInfo: 1,
       status: 1,
       total: 1,
+      subtotal: 1,
+      deliveryFee: 1,
+      serviceFee: 1,
       farmerSubtotal: 1,
       shippingAddress: 1,
+      deliveryAddress: 1, // Add delivery address
       paymentMethod: 1,
       createdAt: 1,
       updatedAt: 1,

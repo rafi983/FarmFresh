@@ -496,6 +496,319 @@ export default function Bookings() {
     [router],
   );
 
+  // Add PDF receipt generation function
+  const handleDownloadReceipt = useCallback(async (order) => {
+    try {
+      const orderNumber =
+        order?.orderNumber ||
+        order?._id?.slice(-8)?.toUpperCase() ||
+        `ORDER-${Date.now()}`;
+
+      // Generate PDF receipt using jsPDF
+      await generateReceiptPDF(order, orderNumber);
+
+      // Show success message
+      alert("Receipt PDF downloaded successfully!");
+    } catch (error) {
+      console.error("Error downloading receipt:", error);
+      alert("Error generating receipt. Please try again.");
+    }
+  }, []);
+
+  const generateReceiptPDF = async (order, orderNumber) => {
+    try {
+      // Dynamic import for client-side only
+      const { jsPDF } = await import("jspdf");
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
+      let yPosition = 20;
+
+      // Helper function for price formatting
+      const formatReceiptPrice = (price) => {
+        return new Intl.NumberFormat("en-BD", {
+          style: "currency",
+          currency: "BDT",
+          minimumFractionDigits: 0,
+        }).format(price || 0);
+      };
+
+      // Extract customer info from order - handle different field structures
+      const customerInfo = {
+        name:
+          order.customerName ||
+          order.customerInfo?.name ||
+          order.deliveryAddress?.name ||
+          order.shippingAddress?.name ||
+          "Valued Customer",
+        address:
+          order.deliveryAddress?.address ||
+          order.shippingAddress?.address ||
+          order.customerInfo?.address ||
+          "N/A",
+        city:
+          order.deliveryAddress?.city ||
+          order.shippingAddress?.city ||
+          order.customerInfo?.city ||
+          "N/A",
+        phone:
+          order.deliveryAddress?.phone ||
+          order.customerPhone ||
+          order.customerInfo?.phone ||
+          order.shippingAddress?.phone ||
+          "N/A",
+        email:
+          order.customerEmail ||
+          order.customerInfo?.email ||
+          order.user?.email ||
+          "N/A",
+      };
+
+      // Header - Receipt Title
+      doc.setFontSize(24);
+      doc.setTextColor(34, 197, 94); // Green color
+      doc.text("🌱 FarmFresh", 20, yPosition);
+
+      yPosition += 8;
+      doc.setFontSize(14);
+      doc.setTextColor(102, 102, 102);
+      doc.text("Payment Receipt", 20, yPosition);
+
+      yPosition += 6;
+      doc.setFontSize(10);
+      doc.text("Thank you for your purchase!", 20, yPosition);
+
+      // Receipt number and date - right aligned
+      doc.setFontSize(20);
+      doc.setTextColor(0, 0, 0);
+      doc.text("RECEIPT", pageWidth - 20, 20, { align: "right" });
+
+      doc.setFontSize(10);
+      doc.setTextColor(102, 102, 102);
+      doc.text(`Receipt #: ${orderNumber}`, pageWidth - 20, 30, {
+        align: "right",
+      });
+      doc.text(
+        `Date: ${new Date(order.createdAt || Date.now()).toLocaleDateString("en-GB")}`,
+        pageWidth - 20,
+        36,
+        { align: "right" },
+      );
+      doc.text(
+        `Time: ${new Date(order.createdAt || Date.now()).toLocaleTimeString("en-GB")}`,
+        pageWidth - 20,
+        42,
+        { align: "right" },
+      );
+
+      // Line separator
+      yPosition = 50;
+      doc.setDrawColor(34, 197, 94);
+      doc.setLineWidth(1);
+      doc.line(20, yPosition, pageWidth - 20, yPosition);
+
+      yPosition += 15;
+
+      // Customer Information (only in PDF, not shown in UI)
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text("Customer Information:", 20, yPosition);
+      yPosition += 8;
+
+      doc.setFontSize(10);
+      doc.setTextColor(102, 102, 102);
+      doc.text(`Name: ${customerInfo.name}`, 20, yPosition);
+      yPosition += 5;
+      doc.text(`Email: ${customerInfo.email}`, 20, yPosition);
+      yPosition += 5;
+      doc.text(`Phone: ${customerInfo.phone}`, 20, yPosition);
+      yPosition += 5;
+      doc.text(`Delivery Address: ${customerInfo.address}`, 20, yPosition);
+      yPosition += 5;
+      doc.text(`City: ${customerInfo.city}`, 20, yPosition);
+
+      yPosition += 15;
+
+      // Order Information
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text("Order Information:", 20, yPosition);
+      yPosition += 8;
+
+      doc.setFontSize(10);
+      doc.setTextColor(102, 102, 102);
+      doc.text(`Order Number: ${orderNumber}`, 20, yPosition);
+      yPosition += 5;
+      doc.text(
+        `Payment Method: ${order.paymentMethod || "Credit Card"}`,
+        20,
+        yPosition,
+      );
+      yPosition += 5;
+      doc.text(`Status: ${order.status || "delivered"}`, 20, yPosition);
+      yPosition += 5;
+      doc.text(
+        `Order Date: ${new Date(order.createdAt || Date.now()).toLocaleDateString("en-GB")}`,
+        20,
+        yPosition,
+      );
+
+      yPosition += 15;
+
+      // Items section header
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text("Items Purchased:", 20, yPosition);
+      yPosition += 10;
+
+      // Items table
+      const items = order.items || [];
+      let itemTotal = 0;
+
+      items.forEach((item, index) => {
+        const itemSubtotal = (item.price || 0) * (item.quantity || 1);
+        itemTotal += itemSubtotal;
+
+        // Item name and farmer
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 0);
+        doc.text(
+          `${item.productName || item.name || "Product"}`,
+          25,
+          yPosition,
+        );
+
+        // Quantity and price - right aligned
+        doc.text(
+          `${item.quantity || 1} x ${formatReceiptPrice(item.price || 0)}`,
+          pageWidth - 20,
+          yPosition,
+          { align: "right" },
+        );
+        yPosition += 5;
+
+        // Farmer name - smaller text
+        doc.setFontSize(8);
+        doc.setTextColor(102, 102, 102);
+        doc.text(
+          `by ${item.farmerName || item.farmer?.name || "Local Farmer"}`,
+          30,
+          yPosition,
+        );
+
+        // Item total - right aligned
+        doc.setFontSize(9);
+        doc.setTextColor(0, 0, 0);
+        doc.text(formatReceiptPrice(itemSubtotal), pageWidth - 20, yPosition, {
+          align: "right",
+        });
+
+        yPosition += 8;
+      });
+
+      // Separator line
+      yPosition += 5;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(20, yPosition, pageWidth - 20, yPosition);
+      yPosition += 10;
+
+      // Totals section
+      const rightAlignX = pageWidth - 20;
+      const labelX = pageWidth - 70;
+
+      doc.setFontSize(10);
+      doc.setTextColor(102, 102, 102);
+
+      // Subtotal
+      doc.text("Subtotal:", labelX, yPosition);
+      doc.text(
+        formatReceiptPrice(order.subtotal || order.farmerSubtotal || itemTotal),
+        rightAlignX,
+        yPosition,
+        { align: "right" },
+      );
+      yPosition += 6;
+
+      // Delivery fee
+      doc.text("Delivery Fee:", labelX, yPosition);
+      doc.text(
+        formatReceiptPrice(order.deliveryFee || 0),
+        rightAlignX,
+        yPosition,
+        { align: "right" },
+      );
+      yPosition += 6;
+
+      // Service fee
+      doc.text("Service Fee:", labelX, yPosition);
+      doc.text(
+        formatReceiptPrice(order.serviceFee || 0),
+        rightAlignX,
+        yPosition,
+        { align: "right" },
+      );
+      yPosition += 8;
+
+      // Total - highlighted
+      doc.setDrawColor(34, 197, 94);
+      doc.line(labelX - 5, yPosition, rightAlignX, yPosition);
+      yPosition += 8;
+
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont(undefined, "bold");
+      doc.text("TOTAL PAID:", labelX, yPosition);
+      doc.text(formatReceiptPrice(order.total || 0), rightAlignX, yPosition, {
+        align: "right",
+      });
+
+      yPosition += 15;
+
+      // Payment confirmation
+      doc.setFont(undefined, "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(34, 197, 94);
+      doc.text("✓ Payment Confirmed", 20, yPosition);
+      doc.setTextColor(102, 102, 102);
+      doc.text(
+        `Transaction completed on ${new Date(order.createdAt || Date.now()).toLocaleDateString("en-GB")}`,
+        20,
+        yPosition + 5,
+      );
+
+      yPosition += 20;
+
+      // Footer message
+      doc.setFontSize(9);
+      doc.setTextColor(102, 102, 102);
+      const footerText =
+        "Thank you for supporting local farmers! This receipt serves as proof of purchase.";
+      const footerLines = doc.splitTextToSize(footerText, pageWidth - 40);
+      doc.text(footerLines, 20, yPosition);
+
+      yPosition += 15;
+      doc.setFontSize(8);
+      doc.text(
+        "FarmFresh - Local Farmer Booking Platform",
+        pageWidth / 2,
+        yPosition,
+        { align: "center" },
+      );
+      doc.text(
+        "For support: support@farmfresh.com | +880-1234-567890",
+        pageWidth / 2,
+        yPosition + 5,
+        { align: "center" },
+      );
+
+      // Save the PDF
+      doc.save(`receipt-${orderNumber}.pdf`);
+    } catch (error) {
+      console.error("Error generating receipt PDF:", error);
+      throw error;
+    }
+  };
+
   // Utility functions
   const formatPrice = useCallback((price) => {
     const numericPrice =
@@ -1136,7 +1449,10 @@ export default function Bookings() {
 
                         {order.status === "delivered" && (
                           <>
-                            <button className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg">
+                            <button
+                              onClick={() => handleDownloadReceipt(order)}
+                              className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg"
+                            >
                               <i className="fas fa-download mr-2"></i>
                               Receipt
                             </button>
@@ -1397,7 +1713,10 @@ export default function Bookings() {
                   Close
                 </button>
                 {selectedOrder.status === "delivered" && (
-                  <button className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all duration-200">
+                  <button
+                    onClick={() => handleDownloadReceipt(selectedOrder)}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all duration-200"
+                  >
                     <i className="fas fa-download mr-2"></i>
                     Download Receipt
                   </button>

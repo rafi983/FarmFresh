@@ -65,24 +65,27 @@ export default function Success() {
 
   const downloadInvoice = async () => {
     try {
+      // Get the order number safely with fallback
+      const orderNumber =
+        order?.orderNumber || order?._id || orderId || `ORDER-${Date.now()}`;
+
       const response = await fetch(`/api/orders/${orderId}/invoice`, {
         method: "GET",
         headers: {
-          "Content-Type": "application/pdf",
+          Accept: "application/json",
         },
       });
 
       if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `invoice-${order.orderNumber}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
+        const { invoiceData } = await response.json();
+
+        // Generate PDF using jsPDF
+        await generatePDFInvoice(invoiceData, orderNumber);
+
+        // Show success message
+        alert("Invoice PDF downloaded successfully!");
       } else {
+        console.error("Invoice API failed, using fallback");
         // Fallback: Generate simple invoice using browser print
         generateSimpleInvoice();
       }
@@ -92,13 +95,268 @@ export default function Success() {
     }
   };
 
+  const generatePDFInvoice = async (invoiceData, orderNumber) => {
+    try {
+      // Dynamic import for client-side only
+      const { jsPDF } = await import("jspdf");
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+      let yPosition = 20;
+
+      // Helper function to add text with automatic line breaks
+      const addWrappedText = (text, x, y, maxWidth, fontSize = 10) => {
+        doc.setFontSize(fontSize);
+        const lines = doc.splitTextToSize(text, maxWidth);
+        doc.text(lines, x, y);
+        return y + lines.length * fontSize * 0.5;
+      };
+
+      // Header - Company Logo and Info
+      doc.setFontSize(24);
+      doc.setTextColor(34, 197, 94); // Green color
+      doc.text("🌱 FarmFresh", 20, yPosition);
+
+      yPosition += 8;
+      doc.setFontSize(12);
+      doc.setTextColor(102, 102, 102);
+      doc.text("Connecting You with Local Farmers", 20, yPosition);
+
+      yPosition += 15;
+      doc.setFontSize(20);
+      doc.setTextColor(0, 0, 0);
+      doc.text("INVOICE", pageWidth / 2, yPosition, { align: "center" });
+
+      // Line separator
+      yPosition += 10;
+      doc.setDrawColor(34, 197, 94);
+      doc.setLineWidth(2);
+      doc.line(20, yPosition, pageWidth - 20, yPosition);
+
+      yPosition += 15;
+
+      // Company Information
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text("FarmFresh Ltd.", 20, yPosition);
+      yPosition += 6;
+      doc.setFontSize(10);
+      doc.setTextColor(102, 102, 102);
+      doc.text(invoiceData.company.address, 20, yPosition);
+      yPosition += 5;
+      doc.text(invoiceData.company.city, 20, yPosition);
+      yPosition += 5;
+      doc.text(`Phone: ${invoiceData.company.phone}`, 20, yPosition);
+      yPosition += 5;
+      doc.text(`Email: ${invoiceData.company.email}`, 20, yPosition);
+
+      yPosition += 15;
+
+      // Order Information - Two columns
+      const leftColumnX = 20;
+      const rightColumnX = pageWidth / 2 + 10;
+
+      // Left column - Delivery Address
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text("📍 Delivery Address", leftColumnX, yPosition);
+      yPosition += 8;
+      doc.setFontSize(10);
+      doc.setTextColor(102, 102, 102);
+      doc.text(
+        invoiceData.order.deliveryAddress?.name || "N/A",
+        leftColumnX,
+        yPosition,
+      );
+      yPosition += 5;
+      doc.text(
+        invoiceData.order.deliveryAddress?.address || "N/A",
+        leftColumnX,
+        yPosition,
+      );
+      yPosition += 5;
+      doc.text(
+        invoiceData.order.deliveryAddress?.city || "N/A",
+        leftColumnX,
+        yPosition,
+      );
+      yPosition += 5;
+      doc.text(
+        `Phone: ${invoiceData.order.deliveryAddress?.phone || "N/A"}`,
+        leftColumnX,
+        yPosition,
+      );
+
+      // Right column - Order Information
+      let rightYPosition = yPosition - 23;
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text("📋 Order Information", rightColumnX, rightYPosition);
+      rightYPosition += 8;
+      doc.setFontSize(10);
+      doc.setTextColor(102, 102, 102);
+      doc.text(`Order #: ${orderNumber}`, rightColumnX, rightYPosition);
+      rightYPosition += 5;
+      doc.text(
+        `Date: ${new Date(
+          invoiceData.order.createdAt || Date.now(),
+        ).toLocaleDateString("en-GB")}`,
+        rightColumnX,
+        rightYPosition,
+      );
+      rightYPosition += 5;
+      doc.text(
+        `Payment: ${invoiceData.order.paymentMethod || "Credit Card"}`,
+        rightColumnX,
+        rightYPosition,
+      );
+      rightYPosition += 5;
+      doc.text(
+        `Status: ${invoiceData.order.status || "confirmed"}`,
+        rightColumnX,
+        rightYPosition,
+      );
+
+      yPosition += 20;
+
+      // Items Table Header
+      yPosition += 10;
+      doc.setFillColor(34, 197, 94);
+      doc.rect(20, yPosition - 5, pageWidth - 40, 10, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10);
+      doc.text("Product", 25, yPosition);
+      doc.text("Farmer", 80, yPosition);
+      doc.text("Qty", 120, yPosition);
+      doc.text("Unit Price", 140, yPosition);
+      doc.text("Total", 170, yPosition);
+
+      yPosition += 10;
+
+      // Items Table Body
+      doc.setTextColor(0, 0, 0);
+      const items = invoiceData.order.items || [];
+
+      items.forEach((item, index) => {
+        if (yPosition > pageHeight - 40) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        // Alternate row colors
+        if (index % 2 === 0) {
+          doc.setFillColor(248, 249, 250);
+          doc.rect(20, yPosition - 5, pageWidth - 40, 8, "F");
+        }
+
+        doc.setTextColor(0, 0, 0);
+        doc.text(item.productName || item.name || "Product", 25, yPosition);
+        doc.text(
+          item.farmerName || item.farmer?.name || "Local Farmer",
+          80,
+          yPosition,
+        );
+        doc.text(String(item.quantity || 1), 120, yPosition);
+        doc.text(formatPrice(item.price || 0), 140, yPosition);
+        doc.text(
+          formatPrice((item.price || 0) * (item.quantity || 1)),
+          170,
+          yPosition,
+        );
+
+        yPosition += 8;
+      });
+
+      // Total Section
+      yPosition += 10;
+      const totalsX = pageWidth - 80;
+
+      doc.setDrawColor(200, 200, 200);
+      doc.line(totalsX - 20, yPosition, pageWidth - 20, yPosition);
+      yPosition += 8;
+
+      doc.setFontSize(10);
+      doc.text("Subtotal:", totalsX - 20, yPosition);
+      doc.text(
+        formatPrice(invoiceData.order.subtotal || 0),
+        totalsX + 20,
+        yPosition,
+      );
+      yPosition += 6;
+
+      doc.text("Delivery Fee:", totalsX - 20, yPosition);
+      doc.text(
+        formatPrice(invoiceData.order.deliveryFee || 0),
+        totalsX + 20,
+        yPosition,
+      );
+      yPosition += 6;
+
+      doc.text("Service Fee:", totalsX - 20, yPosition);
+      doc.text(
+        formatPrice(invoiceData.order.serviceFee || 0),
+        totalsX + 20,
+        yPosition,
+      );
+      yPosition += 8;
+
+      // Total line
+      doc.setDrawColor(34, 197, 94);
+      doc.setLineWidth(1);
+      doc.line(totalsX - 20, yPosition, pageWidth - 20, yPosition);
+      yPosition += 8;
+
+      doc.setFontSize(12);
+      doc.setFont(undefined, "bold");
+      doc.text("Total Amount:", totalsX - 20, yPosition);
+      doc.text(
+        formatPrice(invoiceData.order.total || 0),
+        totalsX + 20,
+        yPosition,
+      );
+
+      // Footer
+      yPosition += 20;
+      doc.setFont(undefined, "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(102, 102, 102);
+      const footerText =
+        "Thank you for choosing FarmFresh! Supporting local farmers, delivering fresh produce to your doorstep.";
+      addWrappedText(footerText, 20, yPosition, pageWidth - 40, 10);
+
+      yPosition += 15;
+      doc.setFontSize(8);
+      doc.text(
+        "This is a computer-generated invoice. No signature required.",
+        pageWidth / 2,
+        yPosition,
+        {
+          align: "center",
+        },
+      );
+
+      // Save the PDF
+      doc.save(`invoice-${orderNumber}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      // Fallback to simple invoice
+      generateSimpleInvoice();
+    }
+  };
+
   const generateSimpleInvoice = () => {
+    // Get the order number safely with fallback
+    const orderNumber =
+      order?.orderNumber || order?._id || orderId || `ORDER-${Date.now()}`;
+
     const invoiceWindow = window.open("", "_blank");
     const invoiceContent = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Invoice - ${order.orderNumber}</title>
+          <title>Invoice - ${orderNumber}</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 20px; }
             .header { text-align: center; margin-bottom: 30px; }

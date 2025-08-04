@@ -7,8 +7,12 @@
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/farmers/[id]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/farmers/[id]/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/farmers/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/farmers/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/orders/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/bookings/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/bookings/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/review/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/review/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/success/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/success/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -87,7 +91,7 @@
       <workItem from="1754157538193" duration="43000" />
       <workItem from="1754203979501" duration="28420000" />
       <workItem from="1754289030686" duration="70000" />
-      <workItem from="1754289114775" duration="12899000" />
+      <workItem from="1754289114775" duration="16405000" />
     </task>
     <servers />
   </component>
