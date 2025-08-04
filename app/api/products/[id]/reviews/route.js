@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { clearProductsCache } from "../../route.js";
 
 // Cache to track if indexes have been initialized
 let indexesInitialized = false;
@@ -337,58 +338,139 @@ export async function POST(request, { params }) {
     // Initialize indexes for optimal performance
     await initializeReviewIndexes(db);
 
-    // Use aggregation pipeline to check purchase and existing review in parallel
-    const verificationPipeline = [
-      {
-        $facet: {
-          hasPurchased: [
-            {
-              $match: {
-                userId,
-                "items.productId": id,
-                status: { $in: ["delivered", "confirmed", "pending"] },
-              },
-            },
-            { $limit: 1 },
-            { $count: "count" },
-          ],
-          existingReview: [
-            {
-              $match: {
-                productId: id,
-                userId,
-              },
-            },
-            { $limit: 1 },
-            { $count: "count" },
-          ],
-        },
-      },
-    ];
+    // Check if user has purchased this product with more flexible matching
+    const ordersCollection = db.collection("orders");
 
-    const [verification] = await db
-      .collection("orders")
-      .aggregate([{ $match: { userId } }, ...verificationPipeline])
-      .toArray();
-
-    // Also check reviews collection for existing review
-    const existingReviewCheck = await db.collection("reviews").findOne({
-      productId: id,
+    console.log("Starting purchase verification for:", {
       userId,
+      productId: id,
     });
 
-    const hasPurchased = verification?.hasPurchased?.[0]?.count > 0;
-    const hasExistingReview =
-      verification?.existingReview?.[0]?.count > 0 || !!existingReviewCheck;
+    // Build flexible query to check purchase history - Include all valid statuses
+    const userIdConditions = [{ userId: userId }]; // Direct string match (for email-based userIds)
 
-    if (!hasPurchased) {
+    // Only add ObjectId condition if userId is a valid ObjectId format
+    try {
+      if (ObjectId.isValid(userId)) {
+        userIdConditions.push({ userId: new ObjectId(userId) }); // ObjectId match (for ObjectId-based userIds)
+      }
+    } catch (error) {
+      console.log("UserId is not a valid ObjectId format:", userId);
+    }
+
+    const purchaseQuery = {
+      $and: [
+        {
+          $or: userIdConditions,
+        },
+        {
+          "items.productId": { $in: [id, new ObjectId(id)] }, // Match both string and ObjectId formats
+        },
+        {
+          status: { $in: ["delivered"] }, // Only delivered orders are eligible for reviews
+        },
+      ],
+    };
+
+    // Debug: Check all orders for this user first
+    const allUserOrdersConditions = [{ userId: userId }]; // Direct string match
+
+    // Only add ObjectId condition if userId is a valid ObjectId format
+    try {
+      if (ObjectId.isValid(userId)) {
+        allUserOrdersConditions.push({ userId: new ObjectId(userId) }); // ObjectId match
+      }
+    } catch (error) {
+      console.log(
+        "UserId is not a valid ObjectId format for all orders query:",
+        userId,
+      );
+    }
+
+    const allUserOrders = await ordersCollection
+      .find({
+        $or: allUserOrdersConditions,
+      })
+      .toArray();
+
+    console.log("All user orders found:", allUserOrders.length);
+    console.log(
+      "User orders details:",
+      allUserOrders.map((order) => ({
+        orderId: order._id,
+        userId: order.userId,
+        status: order.status,
+        itemCount: order.items?.length || 0,
+        items:
+          order.items?.map((item) => ({
+            productId: item.productId || item.id || item.product?._id,
+            name: item.name,
+          })) || [],
+      })),
+    );
+
+    const purchaseCheck = await ordersCollection.findOne(purchaseQuery);
+
+    console.log("Purchase check result:", {
+      found: !!purchaseCheck,
+      orderId: purchaseCheck?._id,
+      orderStatus: purchaseCheck?.status,
+      orderItems:
+        purchaseCheck?.items?.map((item) => ({
+          productId: item.productId || item.id || item.product?._id,
+          name: item.name,
+        })) || [],
+    });
+
+    // Also check reviews collection for existing review with flexible matching
+    const existingReviewQuery = {
+      $and: [
+        {
+          $or: [{ productId: id }, { productId: new ObjectId(id) }],
+        },
+        {
+          $or: [{ userId: userId }, { userId: new ObjectId(userId) }],
+        },
+      ],
+    };
+
+    const existingReviewCheck = await db
+      .collection("reviews")
+      .findOne(existingReviewQuery);
+
+    console.log("Purchase verification:", {
+      userId,
+      productId: id,
+      hasPurchased: !!purchaseCheck,
+      hasExistingReview: !!existingReviewCheck,
+      totalUserOrders: allUserOrders.length,
+      deliveredOrders: allUserOrders.filter((o) => o.status === "delivered")
+        .length,
+      confirmedOrders: allUserOrders.filter((o) => o.status === "confirmed")
+        .length,
+    });
+
+    // Re-enable purchase verification with improved logic
+    if (!purchaseCheck) {
       return NextResponse.json(
-        { error: "You can only review products you have purchased" },
+        {
+          error:
+            "You can only review products you have purchased and received (delivered orders only)",
+          debug: {
+            userId,
+            productId: id,
+            totalOrders: allUserOrders.length,
+            validOrders: allUserOrders.filter((o) => o.status === "delivered")
+              .length,
+            orderStatuses: allUserOrders.map((o) => o.status),
+            searchCriteria: "Only 'delivered' orders are eligible for reviews",
+          },
+        },
         { status: 403 },
       );
     }
 
-    if (hasExistingReview) {
+    if (existingReviewCheck) {
       return NextResponse.json(
         { error: "You have already reviewed this product" },
         { status: 409 },
@@ -458,6 +540,9 @@ export async function POST(request, { params }) {
           },
         },
       );
+
+      // Clear the products API cache for updated product
+      clearProductsCache(id);
 
       return NextResponse.json({
         success: true,

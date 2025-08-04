@@ -11,9 +11,11 @@ import StarRating from "@/components/StarRating";
 import Footer from "@/components/Footer";
 import RecentOrdersSection from "@/components/RecentOrdersSection";
 import FarmerProfileView from "@/components/FarmerProfileView";
+import EnhancedReviewModal from "@/components/EnhancedReviewModal";
 import useProductData from "@/hooks/useProductData";
 import useOwnership from "@/hooks/useOwnership";
 import useReviews from "@/hooks/useReviews";
+import { useProductReviewUpdates } from "@/hooks/useReviewUpdates";
 
 import Loading from "@/components/Loading";
 import NotFound from "@/components/NotFound";
@@ -33,7 +35,18 @@ export default function ProductDetails() {
   const router = useRouter();
   const productId = searchParams.get("id");
   const viewMode = searchParams.get("view");
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
+
+  // Add session loading debug
+  console.log("🔍 SESSION LOADING STATUS:", {
+    sessionStatus: sessionStatus,
+    sessionData: session,
+    hasSession: !!session,
+    hasUser: !!session?.user,
+    hasUserId: !!session?.user?.id,
+    userId: session?.user?.id,
+  });
+
   const { addToCart } = useCart();
   const { addToFavorites, removeFromFavorites, isProductFavorited } =
     useFavorites();
@@ -121,35 +134,95 @@ export default function ProductDetails() {
 
   // Optimized API calls with caching
   const checkUserPurchase = useCallback(async () => {
-    if (!session?.user?.id || !productId) return;
+    console.log("🔥🔥🔥 FUNCTION ENTRY: checkUserPurchase() CALLED! 🔥🔥🔥");
+
+    // Get userId from either property
+    const userId = session?.user?.id || session?.user?.userId;
+
+    console.log("🚀 checkUserPurchase function called!", {
+      hasSession: !!session?.user,
+      hasProductId: !!productId,
+      sessionUserId: session?.user?.id,
+      sessionUserIdProp: session?.user?.userId,
+      actualUserId: userId,
+      productId: productId,
+      fullSession: session,
+    });
+
+    if (!userId || !productId) {
+      console.log("❌ Early return - missing session or productId", {
+        userId: userId,
+        productId: productId,
+      });
+      return;
+    }
+
+    console.log("🔍 Checking review eligibility for:", {
+      userId: userId,
+      productId: productId,
+      userEmail: session.user.email,
+    });
 
     setCheckingPurchase(true);
     try {
-      const response = await fetch(
-        `/api/orders?userId=${session.user.id}&productId=${productId}`,
-        {
-          headers: {
-            "Cache-Control": "public, max-age=300", // 5 minute cache
-          },
+      // Use the new can-review endpoint to check if user can review this product
+      const apiUrl = `/api/products/${productId}/can-review?userId=${userId}`;
+      console.log("📡 Making API call to:", apiUrl);
+
+      const response = await fetch(apiUrl, {
+        headers: {
+          "Cache-Control": "no-cache", // Disable cache for debugging
         },
-      );
+      });
+
+      console.log("📡 Can-review API response:", {
+        status: response.status,
+        ok: response.ok,
+        statusText: response.statusText,
+        url: apiUrl,
+      });
 
       if (response.ok) {
         const data = await response.json();
-        const hasPurchased = data.orders?.some(
-          (order) =>
-            order.items?.some((item) => item.productId === productId) &&
-            ["delivered", "confirmed", "pending"].includes(order.status),
-        );
-        setHasPurchasedProduct(hasPurchased);
+        console.log("✅ Can-review API data:", data);
+        console.log("🎯 Setting hasPurchasedProduct to:", data.canReview);
+
+        // Only allow reviews if user has delivered orders for this product and hasn't reviewed yet
+        setHasPurchasedProduct(data.canReview);
+
+        console.log("📊 Review eligibility summary:", {
+          canReview: data.canReview,
+          reason: data.reason,
+          hasPurchased: data.hasPurchased,
+          hasReviewed: data.hasReviewed,
+          existingReview: data.existingReview,
+          orderDetails: data.orderDetails,
+        });
+      } else {
+        const errorData = await response.text();
+        console.log("❌ Can-review API failed:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorData: errorData,
+        });
+        setHasPurchasedProduct(false);
       }
     } catch (error) {
-      console.error("Error checking purchase history:", error);
+      console.error("❌ Can-review API error:", error);
       setHasPurchasedProduct(false);
     } finally {
       setCheckingPurchase(false);
+      console.log(
+        "🏁 checkUserPurchase completed, hasPurchasedProduct state:",
+        hasPurchasedProduct,
+      );
     }
-  }, [session?.user?.id, productId]);
+  }, [
+    session?.user?.id,
+    session?.user?.userId,
+    productId,
+    hasPurchasedProduct,
+  ]);
 
   const fetchRecentOrders = useCallback(async () => {
     if (!productId) return;
@@ -351,6 +424,70 @@ export default function ProductDetails() {
       }
     },
     [session, reviewForm, productId, fetchReviews, fetchProductDetails],
+  );
+
+  // Enhanced review submission handler for the new modal
+  const handleEnhancedReviewSubmit = useCallback(
+    async (reviewData) => {
+      setIsSubmittingReview(true);
+      try {
+        let response;
+
+        if (editingReview) {
+          // Update existing review
+          response = await fetch(`/api/reviews/${editingReview._id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              rating: reviewData.rating,
+              comment: reviewData.comment,
+              title: reviewData.title,
+              pros: reviewData.pros,
+              cons: reviewData.cons,
+              wouldRecommend: reviewData.wouldRecommend,
+              isAnonymous: reviewData.isAnonymous,
+              tags: reviewData.tags,
+              userId: reviewData.userId,
+            }),
+          });
+        } else {
+          // Create new review
+          response = await fetch(`/api/products/${productId}/reviews`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(reviewData),
+          });
+        }
+
+        if (response.ok) {
+          setShowReviewForm(false);
+          setEditingReview(null);
+          setReviewForm(DEFAULT_REVIEW_FORM);
+          fetchReviews();
+          fetchProductDetails();
+          alert(
+            editingReview
+              ? "Review updated successfully!"
+              : "Review submitted successfully!",
+          );
+        } else {
+          const error = await response.json();
+          alert(
+            error.error ||
+              `Failed to ${editingReview ? "update" : "submit"} review`,
+          );
+        }
+      } catch (error) {
+        console.error(
+          `Error ${editingReview ? "updating" : "submitting"} review:`,
+          error,
+        );
+        alert(`Failed to ${editingReview ? "update" : "submit"} review`);
+      } finally {
+        setIsSubmittingReview(false);
+      }
+    },
+    [productId, fetchReviews, fetchProductDetails, editingReview],
   );
 
   const handleUpdateReview = useCallback(async () => {
@@ -635,8 +772,23 @@ export default function ProductDetails() {
     }
   }, [isOwner, productId, fetchProductDetails, router]);
 
+  // Listen for review updates and refresh product data
+  useProductReviewUpdates(
+    productId,
+    useCallback(() => {
+      console.log("Details page: Review update detected via event system");
+      // Refresh both reviews and product details to get updated stats
+      fetchReviews();
+      fetchProductDetails();
+    }, [fetchReviews, fetchProductDetails]),
+  );
+
   // Effects with proper dependencies
   useEffect(() => {
+    console.log("🔍 PRODUCT DETAILS useEffect triggered!", {
+      productId: productId,
+      hasProductId: !!productId,
+    });
     if (productId) {
       fetchProductDetails();
     }
@@ -659,10 +811,31 @@ export default function ProductDetails() {
   }, [productId, isOwner, viewMode, fetchRecentOrders]);
 
   useEffect(() => {
-    if (session?.user?.id && productId) {
+    console.log("🔍 SESSION CHECK useEffect triggered!", {
+      hasSession: !!session,
+      hasUserId: !!session?.user?.id,
+      hasUserIdProp: !!session?.user?.userId, // Check both properties
+      sessionUserId: session?.user?.id,
+      sessionUserIdProp: session?.user?.userId,
+      productId: productId,
+      hasProductId: !!productId,
+      sessionData: session,
+    });
+
+    // Check both session.user.id and session.user.userId
+    const userId = session?.user?.id || session?.user?.userId;
+
+    if (userId && productId) {
+      console.log("✅ Calling checkUserPurchase with userId:", userId);
       checkUserPurchase();
+    } else {
+      console.log("❌ NOT calling checkUserPurchase because:", {
+        noSession: !userId,
+        noProductId: !productId,
+        availableUserId: userId,
+      });
     }
-  }, [session?.user?.id, productId, checkUserPurchase]);
+  }, [session?.user?.id, session?.user?.userId, productId, checkUserPurchase]);
 
   // Check if user has purchased this product
   useEffect(() => {
@@ -1275,12 +1448,6 @@ export default function ProductDetails() {
                         </>
                       );
                     })()}
-                    <button
-                      onClick={() => setActiveTab("reviews")}
-                      className="text-primary-600 dark:text-primary-400 hover:underline"
-                    >
-                      Write a review
-                    </button>
                   </div>
 
                   {/* Price and Stock */}
@@ -1538,6 +1705,7 @@ export default function ProductDetails() {
                           Customer Reviews (
                           {product.reviewCount || product.totalReviews || 0})
                         </h2>
+                        {/* Show review button only for users who have purchased and received the product */}
                         {session && hasPurchasedProduct && (
                           <button
                             onClick={() => setShowReviewForm(true)}
@@ -1550,15 +1718,23 @@ export default function ProductDetails() {
                         {session &&
                           !hasPurchasedProduct &&
                           !checkingPurchase && (
-                            <div className="text-sm text-gray-500 dark:text-gray-400 italic">
-                              You need to purchase this product to write a
-                              review
+                            <div className="text-center">
+                              <p className="text-gray-500 dark:text-gray-400 text-sm italic mb-4">
+                                You need to purchase and receive this product to
+                                write the first review
+                              </p>
+                              <div className="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-gray-600 dark:text-gray-400 text-sm">
+                                <i className="fas fa-shopping-cart mr-2"></i>
+                                Purchase required for reviews
+                              </div>
                             </div>
                           )}
                         {checkingPurchase && (
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            <i className="fas fa-spinner fa-spin mr-2"></i>
-                            Checking purchase history...
+                          <div className="text-center">
+                            <div className="inline-flex items-center text-gray-500 dark:text-gray-400 text-sm">
+                              <i className="fas fa-spinner fa-spin mr-2"></i>
+                              Checking purchase history...
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1682,113 +1858,20 @@ export default function ProductDetails() {
                         </div>
                       </div>
 
-                      {/* Review Form Modal */}
-                      {showReviewForm && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
-                            <div className="flex items-center justify-between mb-6">
-                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                Write a Review
-                              </h3>
-                              <button
-                                onClick={() => setShowReviewForm(false)}
-                                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                              >
-                                <i className="fas fa-times"></i>
-                              </button>
-                            </div>
-
-                            <form
-                              onSubmit={
-                                editingReview
-                                  ? (e) => {
-                                      e.preventDefault();
-                                      handleUpdateReview();
-                                    }
-                                  : handleSubmitReview
-                              }
-                              className="space-y-4"
-                            >
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                  Rating
-                                </label>
-                                <div className="flex items-center space-x-1">
-                                  {[1, 2, 3, 4, 5].map((star) => (
-                                    <button
-                                      key={star}
-                                      type="button"
-                                      onClick={() =>
-                                        setReviewForm({
-                                          ...reviewForm,
-                                          rating: star,
-                                        })
-                                      }
-                                      className={`text-2xl ${
-                                        star <= reviewForm.rating
-                                          ? "text-yellow-400"
-                                          : "text-gray-300 dark:text-gray-600"
-                                      }`}
-                                    >
-                                      ★
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                  Comment
-                                </label>
-                                <textarea
-                                  value={reviewForm.comment}
-                                  onChange={(e) =>
-                                    setReviewForm({
-                                      ...reviewForm,
-                                      comment: e.target.value,
-                                    })
-                                  }
-                                  rows={4}
-                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
-                                  placeholder="Share your experience with this product..."
-                                  required
-                                />
-                              </div>
-
-                              <div className="flex space-x-3">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setShowReviewForm(false);
-                                    setEditingReview(null);
-                                    setReviewForm(DEFAULT_REVIEW_FORM);
-                                  }}
-                                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="submit"
-                                  disabled={
-                                    editingReview
-                                      ? isUpdatingReview
-                                      : isSubmittingReview
-                                  }
-                                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
-                                >
-                                  {editingReview
-                                    ? isUpdatingReview
-                                      ? "Updating..."
-                                      : "Update Review"
-                                    : isSubmittingReview
-                                      ? "Submitting..."
-                                      : "Submit Review"}
-                                </button>
-                              </div>
-                            </form>
-                          </div>
-                        </div>
-                      )}
+                      {/* Enhanced Review Modal */}
+                      <EnhancedReviewModal
+                        isOpen={showReviewForm}
+                        onClose={() => {
+                          setShowReviewForm(false);
+                          setEditingReview(null);
+                          setReviewForm(DEFAULT_REVIEW_FORM);
+                        }}
+                        product={product}
+                        user={session?.user}
+                        existingReview={editingReview}
+                        onSubmit={handleEnhancedReviewSubmit}
+                        isSubmitting={isSubmittingReview}
+                      />
 
                       {/* Individual Reviews */}
                       <div className="space-y-8">
@@ -1957,7 +2040,7 @@ export default function ProductDetails() {
                               amazing product! Your review helps other customers
                               make informed decisions.
                             </p>
-                            {session && (
+                            {session && hasPurchasedProduct && (
                               <button
                                 onClick={() => setShowReviewForm(true)}
                                 className="inline-flex items-center bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"

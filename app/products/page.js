@@ -6,6 +6,7 @@ import ProductCard from "@/components/ProductCard";
 import Footer from "@/components/Footer";
 import { debounce } from "@/utils/debounce";
 import { apiService } from "@/lib/api-service";
+import { useProductListReviewUpdates } from "@/hooks/useReviewUpdates";
 
 // Move constants outside component to prevent recreations
 const CATEGORY_OPTIONS = [
@@ -255,6 +256,15 @@ export default function Products() {
     fetchProducts();
   }, [fetchProducts]);
 
+  // Listen for review updates and refresh products data
+  useProductListReviewUpdates(
+    useCallback(() => {
+      console.log("Products page: Review update detected via event system");
+      // Force refresh to get updated review stats
+      fetchProducts(true);
+    }, [fetchProducts]),
+  );
+
   // Listen for bulk update events to refresh data
   useEffect(() => {
     const handleBulkUpdate = (event) => {
@@ -272,6 +282,12 @@ export default function Products() {
       fetchProducts(true);
     };
 
+    const handleReviewUpdate = (event) => {
+      console.log("Products page: Review update detected", event.detail);
+      // Force refresh after review update to show updated ratings
+      fetchProducts(true);
+    };
+
     const handleStorageChange = (event) => {
       if (event.key === "productsBulkUpdated") {
         console.log("Products page: Bulk update detected from storage");
@@ -283,12 +299,17 @@ export default function Products() {
         );
         // Force refresh after status update from another tab
         fetchProducts(true);
+      } else if (event.key === "reviewUpdated") {
+        console.log("Products page: Review update detected from storage");
+        // Force refresh after review update from another tab
+        fetchProducts(true);
       }
     };
 
-    // Listen for custom events from dashboard
+    // Listen for custom events from dashboard and details page
     window.addEventListener("productsBulkUpdated", handleBulkUpdate);
     window.addEventListener("productStatusUpdated", handleStatusUpdate);
+    window.addEventListener("reviewUpdated", handleReviewUpdate);
 
     // Listen for localStorage changes (cross-tab communication)
     window.addEventListener("storage", handleStorageChange);
@@ -296,6 +317,7 @@ export default function Products() {
     // Check localStorage on mount in case we missed an update
     const bulkUpdateData = localStorage.getItem("productsBulkUpdated");
     const statusUpdateData = localStorage.getItem("productStatusUpdated");
+    const reviewUpdateData = localStorage.getItem("reviewUpdated");
 
     if (bulkUpdateData) {
       try {
@@ -329,9 +351,26 @@ export default function Products() {
       }
     }
 
+    if (reviewUpdateData) {
+      try {
+        const data = JSON.parse(reviewUpdateData);
+        // If the update was recent (within last 30 seconds), refresh
+        if (Date.now() - data.timestamp < 30000) {
+          console.log("Products page: Recent review update detected on mount");
+          fetchProducts(true);
+          // Clear the flag to prevent repeated refreshes
+          localStorage.removeItem("reviewUpdated");
+        }
+      } catch (e) {
+        // Invalid JSON, remove it
+        localStorage.removeItem("reviewUpdated");
+      }
+    }
+
     return () => {
       window.removeEventListener("productsBulkUpdated", handleBulkUpdate);
       window.removeEventListener("productStatusUpdated", handleStatusUpdate);
+      window.removeEventListener("reviewUpdated", handleReviewUpdate);
       window.removeEventListener("storage", handleStorageChange);
     };
   }, [fetchProducts]);

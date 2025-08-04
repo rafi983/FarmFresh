@@ -82,7 +82,17 @@ async function initializeReviewOperationIndexes(db) {
 export async function PUT(request, { params }) {
   try {
     const { reviewId } = params;
-    const { rating, comment, userId } = await request.json();
+    const {
+      rating,
+      comment,
+      title,
+      pros,
+      cons,
+      wouldRecommend,
+      isAnonymous,
+      tags,
+      userId,
+    } = await request.json();
 
     if (!rating || !comment || !userId) {
       return NextResponse.json(
@@ -135,17 +145,26 @@ export async function PUT(request, { params }) {
       );
     }
 
+    // Prepare update data - only include fields that are provided
+    const updateData = {
+      rating: parseInt(rating),
+      comment,
+      updatedAt: new Date(),
+    };
+
+    // Add optional fields if they exist
+    if (title !== undefined) updateData.title = title;
+    if (pros !== undefined) updateData.pros = pros;
+    if (cons !== undefined) updateData.cons = cons;
+    if (wouldRecommend !== undefined)
+      updateData.wouldRecommend = wouldRecommend;
+    if (isAnonymous !== undefined) updateData.isAnonymous = isAnonymous;
+    if (tags !== undefined) updateData.tags = tags;
+
     // Update review with optimized operation
-    const updateResult = await db.collection("reviews").updateOne(
-      { _id: new ObjectId(reviewId) },
-      {
-        $set: {
-          rating: parseInt(rating),
-          comment,
-          updatedAt: new Date(),
-        },
-      },
-    );
+    const updateResult = await db
+      .collection("reviews")
+      .updateOne({ _id: new ObjectId(reviewId) }, { $set: updateData });
 
     if (updateResult.matchedCount === 0) {
       return NextResponse.json(

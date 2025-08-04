@@ -7,6 +7,7 @@ import Link from "next/link";
 import Footer from "@/components/Footer";
 import ReorderModal from "@/components/ReorderModal";
 import { useReorder } from "@/hooks/useReorder";
+import { sessionCache } from "@/lib/cache";
 
 // Constants for better maintainability
 const ORDER_STATUSES = {
@@ -45,7 +46,7 @@ const useOrdersData = (session, status) => {
   const abortControllerRef = useRef(null);
 
   const fetchOrders = useCallback(
-    async (showLoading = true) => {
+    async (showLoading = true, forceRefresh = false) => {
       if (status !== "authenticated" || !session?.user) return;
 
       // Only allow customers to fetch orders here
@@ -54,6 +55,20 @@ const useOrdersData = (session, status) => {
         setOrders([]);
         setLoading(false);
         return;
+      }
+
+      const userId = session.user.userId || session.user.id;
+      const cacheKey = `orders_${userId}`;
+
+      // Check cache first (unless force refresh)
+      if (!forceRefresh) {
+        const cachedOrders = sessionCache.get(cacheKey);
+        if (cachedOrders) {
+          console.log("Loading orders from cache");
+          setOrders(cachedOrders);
+          setLoading(false);
+          return;
+        }
       }
 
       // Cancel previous request if still pending
@@ -67,16 +82,14 @@ const useOrdersData = (session, status) => {
         if (showLoading) setLoading(true);
         setError(null);
 
+        console.log("Fetching orders from API");
         // Fetch ONLY customer orders (not farmer orders)
-        const response = await fetch(
-          `/api/orders?userId=${session.user.userId || session.user.id}`,
-          {
-            signal: abortControllerRef.current.signal,
-            headers: {
-              "Content-Type": "application/json",
-            },
+        const response = await fetch(`/api/orders?userId=${userId}`, {
+          signal: abortControllerRef.current.signal,
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
+        });
 
         if (!response.ok) {
           throw new Error(`Failed to fetch orders: ${response.status}`);
@@ -93,6 +106,9 @@ const useOrdersData = (session, status) => {
         });
 
         setOrders(customerOrders);
+        // Cache the orders for 5 minutes
+        sessionCache.set(cacheKey, customerOrders, 5 * 60 * 1000);
+        console.log("Orders cached for 5 minutes");
       } catch (error) {
         if (error.name === "AbortError") {
           console.log("Request was cancelled");
@@ -109,6 +125,17 @@ const useOrdersData = (session, status) => {
     [session, status],
   );
 
+  // Return refresh function for manual cache invalidation
+  const refreshOrders = useCallback(() => {
+    const userId = session?.user?.userId || session?.user?.id;
+    if (userId) {
+      const cacheKey = `orders_${userId}`;
+      sessionCache.delete(cacheKey);
+      console.log("Orders cache invalidated");
+      fetchOrders(true, true);
+    }
+  }, [session, fetchOrders]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -118,7 +145,7 @@ const useOrdersData = (session, status) => {
     };
   }, []);
 
-  return { orders, loading, error, fetchOrders };
+  return { orders, loading, error, fetchOrders, refreshOrders };
 };
 
 const useOrderFilters = (orders) => {
@@ -371,7 +398,7 @@ export default function Bookings() {
   } = useReorder();
 
   // Custom hooks
-  const { orders, loading, error, fetchOrders } = useOrdersData(
+  const { orders, loading, error, fetchOrders, refreshOrders } = useOrdersData(
     session,
     status,
   );

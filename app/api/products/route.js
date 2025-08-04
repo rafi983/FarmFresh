@@ -16,6 +16,12 @@ const CACHE_TTL = 5 * 60 * 1000;
 // Export the response cache for access by bulk-update route
 export { responseCache };
 
+// Function to clear cache when reviews are updated
+export function clearProductsCache() {
+  responseCache.clear();
+  console.log("Products cache cleared due to review update");
+}
+
 // Initialize indexes optimized for MongoDB Atlas performance
 async function initializeProductIndexes(db) {
   // Only initialize once per application lifecycle

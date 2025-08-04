@@ -7,8 +7,15 @@
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/products/[id]/reviews/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/[id]/reviews/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/products/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/reviews/[reviewId]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/reviews/[reviewId]/route.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/bookings/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/bookings/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/farmer-orders/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmer-orders/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/details/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/details/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/products/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/products/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/StarRating.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/StarRating.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useReviews.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useReviews.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/reviewUtils.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/reviewUtils.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -88,7 +95,8 @@
       <workItem from="1754203979501" duration="28420000" />
       <workItem from="1754289030686" duration="70000" />
       <workItem from="1754289114775" duration="19558000" />
-      <workItem from="1754321975133" duration="634000" />
+      <workItem from="1754321975133" duration="8739000" />
+      <workItem from="1754332517898" duration="3315000" />
     </task>
     <servers />
   </component>
