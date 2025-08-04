@@ -988,7 +988,7 @@ export default function FarmerPage() {
                                   {/* Avatar Section */}
                                   <div className="flex-shrink-0">
                                     <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg group-hover:rotate-12 transition-transform duration-500">
-                                      {(review.userName || "A")
+                                      {(review.reviewer || "A")
                                         .charAt(0)
                                         .toUpperCase()}
                                     </div>
@@ -1015,7 +1015,7 @@ export default function FarmerPage() {
                                   <div className="flex-1">
                                     <div className="mb-4">
                                       <h4 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                                        {review.userName ||
+                                        {review.reviewer ||
                                           "Anonymous Customer"}
                                       </h4>
                                       <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
@@ -1063,13 +1063,13 @@ export default function FarmerPage() {
                                 <div className="flex items-center justify-between mb-6">
                                   <div className="flex items-center space-x-4">
                                     <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-lg">
-                                      {(review.userName || "A")
+                                      {(review.reviewer || "A")
                                         .charAt(0)
                                         .toUpperCase()}
                                     </div>
                                     <div>
                                       <h4 className="text-xl font-bold text-gray-900 dark:text-white">
-                                        {review.userName ||
+                                        {review.reviewer ||
                                           "Anonymous Customer"}
                                       </h4>
                                       <p className="text-emerald-600 dark:text-emerald-400 font-medium">
@@ -1121,7 +1121,8 @@ export default function FarmerPage() {
                               key={index}
                               className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-rose-50 via-pink-50 to-red-50 dark:from-rose-900/20 dark:via-pink-900/20 dark:to-red-900/20 p-8 hover:shadow-2xl transition-all duration-700 border border-rose-200 dark:border-rose-800"
                             >
-                              <div className="absolute -top-10 -right-10 w-32 h-32 bg-rose-100 dark:bg-rose-800/30 rounded-full opacity-30 group-hover:scale-150 transition-transform duration-700"></div>
+                              <div className="absolute inset-0 bg-gradient-to-br from-rose-400/5 to-pink-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                              <div className="absolute top-4 right-4 w-20 h-20 bg-rose-100 dark:bg-rose-800/30 rounded-full opacity-20 group-hover:scale-150 transition-transform duration-700"></div>
 
                               <div className="relative z-10">
                                 <div className="text-center mb-6">
@@ -1129,7 +1130,7 @@ export default function FarmerPage() {
                                     <i className="fas fa-heart text-white text-2xl"></i>
                                   </div>
                                   <h4 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                                    {review.userName || "Happy Customer"}
+                                    {review.reviewer || "Happy Customer"}
                                   </h4>
                                   <div className="flex justify-center space-x-1 mb-3">
                                     {[...Array(5)].map((_, i) => (
@@ -1179,7 +1180,7 @@ export default function FarmerPage() {
                                 <div className="flex items-start space-x-6">
                                   <div className="flex-shrink-0">
                                     <div className="w-18 h-18 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-2xl font-bold shadow-lg">
-                                      {(review.userName || "A")
+                                      {(review.reviewer || "A")
                                         .charAt(0)
                                         .toUpperCase()}
                                     </div>
@@ -1189,7 +1190,7 @@ export default function FarmerPage() {
                                     <div className="flex items-center justify-between mb-4">
                                       <div>
                                         <h4 className="text-xl font-bold mb-1">
-                                          {review.userName || "Valued Customer"}
+                                          {review.reviewer || "Valued Customer"}
                                         </h4>
                                         <div className="flex items-center space-x-1">
                                           {[...Array(5)].map((_, i) => (
@@ -1243,13 +1244,13 @@ export default function FarmerPage() {
                               <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center space-x-3">
                                   <div className="w-12 h-12 bg-gradient-to-br from-gray-400 to-slate-500 rounded-lg flex items-center justify-center text-white font-bold">
-                                    {(review.userName || "A")
+                                    {(review.reviewer || "A")
                                       .charAt(0)
                                       .toUpperCase()}
                                   </div>
                                   <div>
                                     <h4 className="font-semibold text-gray-900 dark:text-white">
-                                      {review.userName || "Anonymous Customer"}
+                                      {review.reviewer || "Anonymous Customer"}
                                     </h4>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">
                                       {review.productName}
