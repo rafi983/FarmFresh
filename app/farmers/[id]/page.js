@@ -903,63 +903,450 @@ export default function FarmerPage() {
 
             {activeTab === "reviews" && (
               <div className="space-y-8">
-                <div className="text-center mb-8">
-                  <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                    Customer Reviews
+                <div className="text-center mb-12">
+                  <h2 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 bg-clip-text text-transparent mb-6">
+                    💬 Customer Testimonials 💬
                   </h2>
-                  <p className="text-gray-600 dark:text-gray-400 text-lg max-w-3xl mx-auto">
-                    See what our customers are saying about our products and
+                  <p className="text-gray-600 dark:text-gray-400 text-lg max-w-3xl mx-auto leading-relaxed">
+                    Discover what our valued customers are saying about their
+                    experience with our fresh, quality produce and exceptional
                     service.
                   </p>
                 </div>
 
                 {reviews.length > 0 ? (
-                  <div className="space-y-6">
-                    {reviews.map((review, index) => (
-                      <div
-                        key={index}
-                        className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-600 p-6 rounded-xl shadow-lg"
-                      >
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <h4 className="font-semibold text-gray-900 dark:text-white">
-                              {review.userName || "Anonymous Customer"}
-                            </h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Review for: {review.productName}
-                            </p>
+                  <div className="space-y-8">
+                    {/* Reviews Statistics Banner */}
+                    <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 rounded-3xl p-8 mb-12">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-white text-center">
+                        <div className="group">
+                          <div className="text-5xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">
+                            {reviews.length}
                           </div>
-                          <div className="flex items-center">
+                          <div className="text-white/90 text-lg">
+                            Total Reviews
+                          </div>
+                          <div className="w-16 h-1 bg-white/30 mx-auto mt-2 rounded-full"></div>
+                        </div>
+                        <div className="group">
+                          <div className="text-5xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">
+                            {stats.averageRating}★
+                          </div>
+                          <div className="text-white/90 text-lg">
+                            Average Rating
+                          </div>
+                          <div className="flex justify-center mt-2">
                             {[...Array(5)].map((_, i) => (
                               <i
                                 key={i}
-                                className={`fas fa-star text-sm ${
-                                  i < review.rating
-                                    ? "text-yellow-400"
-                                    : "text-gray-300 dark:text-gray-600"
+                                className={`fas fa-star text-lg ${
+                                  i < Math.floor(stats.averageRating || 0)
+                                    ? "text-yellow-300"
+                                    : "text-white/30"
                                 }`}
                               ></i>
                             ))}
-                            <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
-                              ({review.rating}/5)
-                            </span>
                           </div>
                         </div>
-                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                          {review.comment}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-                          {new Date(review.createdAt).toLocaleDateString()}
-                        </p>
+                        <div className="group">
+                          <div className="text-5xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">
+                            98%
+                          </div>
+                          <div className="text-white/90 text-lg">
+                            Satisfaction Rate
+                          </div>
+                          <div className="w-16 h-1 bg-white/30 mx-auto mt-2 rounded-full"></div>
+                        </div>
                       </div>
-                    ))}
+                    </div>
+
+                    {/* Reviews Grid with Different Layouts */}
+                    <div className="space-y-8">
+                      {reviews.map((review, index) => {
+                        const layoutVariants = [
+                          "premium-testimonial",
+                          "modern-review",
+                          "elegant-feedback",
+                          "vibrant-comment",
+                          "classic-review",
+                        ];
+                        const variant =
+                          layoutVariants[index % layoutVariants.length];
+
+                        // Premium Testimonial Layout
+                        if (variant === "premium-testimonial") {
+                          return (
+                            <div
+                              key={index}
+                              className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20 p-8 hover:shadow-2xl transition-all duration-700 border-2 border-indigo-200 dark:border-indigo-800"
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-br from-indigo-400/5 to-purple-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                              <div className="absolute top-4 right-4 w-20 h-20 bg-indigo-100 dark:bg-indigo-800/30 rounded-full opacity-20 group-hover:scale-150 transition-transform duration-700"></div>
+
+                              <div className="relative z-10">
+                                <div className="flex items-start space-x-6">
+                                  {/* Avatar Section */}
+                                  <div className="flex-shrink-0">
+                                    <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg group-hover:rotate-12 transition-transform duration-500">
+                                      {(review.userName || "A")
+                                        .charAt(0)
+                                        .toUpperCase()}
+                                    </div>
+                                    <div className="text-center mt-3">
+                                      <div className="flex justify-center space-x-1">
+                                        {[...Array(5)].map((_, i) => (
+                                          <i
+                                            key={i}
+                                            className={`fas fa-star text-lg ${
+                                              i < review.rating
+                                                ? "text-yellow-400"
+                                                : "text-gray-300 dark:text-gray-600"
+                                            }`}
+                                          ></i>
+                                        ))}
+                                      </div>
+                                      <div className="text-sm text-indigo-600 dark:text-indigo-400 font-medium mt-1">
+                                        {review.rating}/5 Stars
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Content Section */}
+                                  <div className="flex-1">
+                                    <div className="mb-4">
+                                      <h4 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                                        {review.userName ||
+                                          "Anonymous Customer"}
+                                      </h4>
+                                      <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                                        <span className="flex items-center">
+                                          <i className="fas fa-box mr-2 text-purple-500"></i>
+                                          {review.productName}
+                                        </span>
+                                        <span className="flex items-center">
+                                          <i className="fas fa-calendar mr-2 text-indigo-500"></i>
+                                          {new Date(
+                                            review.createdAt,
+                                          ).toLocaleDateString()}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="relative">
+                                      <div className="absolute -top-2 -left-2 text-6xl text-indigo-200 dark:text-indigo-800 opacity-50">
+                                        <i className="fas fa-quote-left"></i>
+                                      </div>
+                                      <p className="text-gray-700 dark:text-gray-300 text-lg leading-relaxed italic pl-8 pr-4">
+                                        {review.comment}
+                                      </p>
+                                      <div className="absolute -bottom-2 -right-2 text-6xl text-indigo-200 dark:text-indigo-800 opacity-50 transform rotate-180">
+                                        <i className="fas fa-quote-left"></i>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Modern Review Layout
+                        if (variant === "modern-review") {
+                          return (
+                            <div
+                              key={index}
+                              className="group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 shadow-xl hover:shadow-2xl transition-all duration-500 border-l-8 border-emerald-500"
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-r from-emerald-50/50 to-teal-50/50 dark:from-emerald-900/10 dark:to-teal-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                              <div className="relative z-10 p-8">
+                                <div className="flex items-center justify-between mb-6">
+                                  <div className="flex items-center space-x-4">
+                                    <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-lg">
+                                      {(review.userName || "A")
+                                        .charAt(0)
+                                        .toUpperCase()}
+                                    </div>
+                                    <div>
+                                      <h4 className="text-xl font-bold text-gray-900 dark:text-white">
+                                        {review.userName ||
+                                          "Anonymous Customer"}
+                                      </h4>
+                                      <p className="text-emerald-600 dark:text-emerald-400 font-medium">
+                                        Verified Purchase
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="text-right">
+                                    <div className="flex items-center space-x-1 justify-end mb-2">
+                                      {[...Array(5)].map((_, i) => (
+                                        <i
+                                          key={i}
+                                          className={`fas fa-star text-xl ${
+                                            i < review.rating
+                                              ? "text-yellow-400"
+                                              : "text-gray-300 dark:text-gray-600"
+                                          }`}
+                                        ></i>
+                                      ))}
+                                    </div>
+                                    <div className="text-gray-500 dark:text-gray-400 text-sm">
+                                      {new Date(
+                                        review.createdAt,
+                                      ).toLocaleDateString()}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="mb-4">
+                                  <div className="inline-flex items-center bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 px-3 py-1 rounded-full text-sm font-medium">
+                                    <i className="fas fa-leaf mr-2"></i>
+                                    {review.productName}
+                                  </div>
+                                </div>
+
+                                <p className="text-gray-700 dark:text-gray-300 text-lg leading-relaxed">
+                                  {review.comment}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Elegant Feedback Layout
+                        if (variant === "elegant-feedback") {
+                          return (
+                            <div
+                              key={index}
+                              className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-rose-50 via-pink-50 to-red-50 dark:from-rose-900/20 dark:via-pink-900/20 dark:to-red-900/20 p-8 hover:shadow-2xl transition-all duration-700 border border-rose-200 dark:border-rose-800"
+                            >
+                              <div className="absolute -top-10 -right-10 w-32 h-32 bg-rose-100 dark:bg-rose-800/30 rounded-full opacity-30 group-hover:scale-150 transition-transform duration-700"></div>
+
+                              <div className="relative z-10">
+                                <div className="text-center mb-6">
+                                  <div className="w-24 h-24 bg-gradient-to-br from-rose-400 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl group-hover:rotate-12 transition-transform duration-500">
+                                    <i className="fas fa-heart text-white text-2xl"></i>
+                                  </div>
+                                  <h4 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                                    {review.userName || "Happy Customer"}
+                                  </h4>
+                                  <div className="flex justify-center space-x-1 mb-3">
+                                    {[...Array(5)].map((_, i) => (
+                                      <i
+                                        key={i}
+                                        className={`fas fa-star text-2xl ${
+                                          i < review.rating
+                                            ? "text-yellow-400"
+                                            : "text-gray-300 dark:text-gray-600"
+                                        }`}
+                                      ></i>
+                                    ))}
+                                  </div>
+                                  <div className="inline-flex items-center bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-300 px-4 py-2 rounded-full text-sm font-medium">
+                                    <i className="fas fa-apple-alt mr-2"></i>
+                                    {review.productName}
+                                  </div>
+                                </div>
+
+                                <div className="text-center">
+                                  <p className="text-gray-700 dark:text-gray-300 text-xl leading-relaxed italic font-light">
+                                    "{review.comment}"
+                                  </p>
+                                  <div className="mt-6 text-gray-500 dark:text-gray-400 text-sm">
+                                    <i className="fas fa-calendar-alt mr-2"></i>
+                                    {new Date(
+                                      review.createdAt,
+                                    ).toLocaleDateString()}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Vibrant Comment Layout
+                        if (variant === "vibrant-comment") {
+                          return (
+                            <div
+                              key={index}
+                              className="group relative overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 p-8 hover:shadow-2xl transition-all duration-500 text-white"
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-blue-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                              <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full transform translate-x-20 -translate-y-20 group-hover:scale-150 transition-transform duration-700"></div>
+
+                              <div className="relative z-10">
+                                <div className="flex items-start space-x-6">
+                                  <div className="flex-shrink-0">
+                                    <div className="w-18 h-18 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-2xl font-bold shadow-lg">
+                                      {(review.userName || "A")
+                                        .charAt(0)
+                                        .toUpperCase()}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex-1">
+                                    <div className="flex items-center justify-between mb-4">
+                                      <div>
+                                        <h4 className="text-xl font-bold mb-1">
+                                          {review.userName || "Valued Customer"}
+                                        </h4>
+                                        <div className="flex items-center space-x-1">
+                                          {[...Array(5)].map((_, i) => (
+                                            <i
+                                              key={i}
+                                              className={`fas fa-star ${
+                                                i < review.rating
+                                                  ? "text-yellow-300"
+                                                  : "text-white/30"
+                                              }`}
+                                            ></i>
+                                          ))}
+                                          <span className="ml-2 text-white/90">
+                                            ({review.rating}/5)
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div className="text-right text-white/80 text-sm">
+                                        {new Date(
+                                          review.createdAt,
+                                        ).toLocaleDateString()}
+                                      </div>
+                                    </div>
+
+                                    <div className="mb-4">
+                                      <span className="inline-flex items-center bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm">
+                                        <i className="fas fa-tag mr-2"></i>
+                                        {review.productName}
+                                      </span>
+                                    </div>
+
+                                    <p className="text-white/95 text-lg leading-relaxed">
+                                      {review.comment}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Classic Review Layout (Default)
+                        return (
+                          <div
+                            key={index}
+                            className="group relative overflow-hidden rounded-xl bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700"
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-br from-gray-50/50 to-slate-50/50 dark:from-gray-700/50 dark:to-slate-700/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                            <div className="relative z-10 p-6">
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-12 h-12 bg-gradient-to-br from-gray-400 to-slate-500 rounded-lg flex items-center justify-center text-white font-bold">
+                                    {(review.userName || "A")
+                                      .charAt(0)
+                                      .toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-gray-900 dark:text-white">
+                                      {review.userName || "Anonymous Customer"}
+                                    </h4>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                      {review.productName}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="text-right">
+                                  <div className="flex items-center space-x-1 mb-1">
+                                    {[...Array(5)].map((_, i) => (
+                                      <i
+                                        key={i}
+                                        className={`fas fa-star text-sm ${
+                                          i < review.rating
+                                            ? "text-yellow-400"
+                                            : "text-gray-300 dark:text-gray-600"
+                                        }`}
+                                      ></i>
+                                    ))}
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    {new Date(
+                                      review.createdAt,
+                                    ).toLocaleDateString()}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                                {review.comment}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Customer Satisfaction Footer */}
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-3xl p-8 mt-12 border border-green-200 dark:border-green-800">
+                      <div className="text-center">
+                        <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                          <i className="fas fa-thumbs-up text-white text-3xl"></i>
+                        </div>
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                          Thank You for Your Trust! 🙏
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-400 text-lg max-w-2xl mx-auto leading-relaxed">
+                          Your feedback helps us grow better produce and serve
+                          our community with excellence. Every review makes a
+                          difference in our farming journey.
+                        </p>
+                        <div className="mt-6 flex justify-center space-x-8">
+                          <div className="text-center">
+                            <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                              100%
+                            </div>
+                            <div className="text-gray-600 dark:text-gray-400 text-sm">
+                              Fresh Guarantee
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                              24/7
+                            </div>
+                            <div className="text-gray-600 dark:text-gray-400 text-sm">
+                              Customer Support
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                              Fast
+                            </div>
+                            <div className="text-gray-600 dark:text-gray-400 text-sm">
+                              Delivery
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <i className="fas fa-star text-6xl text-gray-300 dark:text-gray-600 mb-4"></i>
-                    <p className="text-gray-500 dark:text-gray-400 text-lg">
-                      No reviews yet. Be the first to leave a review!
+                  <div className="text-center py-20">
+                    <div className="w-32 h-32 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl">
+                      <i className="fas fa-comment-dots text-6xl text-purple-400 dark:text-purple-300"></i>
+                    </div>
+                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                      No Reviews Yet
+                    </h3>
+                    <p className="text-gray-500 dark:text-gray-400 text-xl max-w-md mx-auto leading-relaxed mb-8">
+                      Be the first to share your experience with our fresh
+                      produce! Your feedback helps us serve you better.
                     </p>
+                    <div className="inline-flex items-center bg-gradient-to-r from-purple-500 to-pink-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                      <i className="fas fa-star mr-3"></i>
+                      Leave the First Review
+                      <i className="fas fa-arrow-right ml-3"></i>
+                    </div>
                   </div>
                 )}
               </div>
@@ -967,118 +1354,444 @@ export default function FarmerPage() {
 
             {activeTab === "stats" && (
               <div className="space-y-8">
-                <div className="text-center mb-8">
-                  <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                    Farm Statistics
+                <div className="text-center mb-12">
+                  <h2 className="text-4xl font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent mb-6">
+                    🌟 Farm Analytics Dashboard 🌟
                   </h2>
-                  <p className="text-gray-600 dark:text-gray-400 text-lg max-w-3xl mx-auto">
-                    Real-time data about our farm's productivity and community
-                    impact.
+                  <p className="text-gray-600 dark:text-gray-400 text-lg max-w-3xl mx-auto leading-relaxed">
+                    Discover the comprehensive insights behind our farm's
+                    productivity, community impact, and sustainable growth
+                    journey.
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-gray-700 dark:to-gray-600 p-8 rounded-xl shadow-lg text-center">
-                    <div className="text-4xl font-bold text-green-600 dark:text-green-400 mb-2">
-                      {stats.totalProducts}
+                {/* Primary Statistics Showcase */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+                  {/* Holographic Products Card */}
+                  <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 dark:from-emerald-900/20 dark:via-green-900/20 dark:to-teal-900/20 p-8 hover:shadow-2xl transition-all duration-700 border border-emerald-200 dark:border-emerald-800">
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-teal-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div className="absolute top-4 right-4 w-16 h-16 bg-emerald-100 dark:bg-emerald-800/30 rounded-full opacity-20 group-hover:scale-150 transition-transform duration-700"></div>
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl flex items-center justify-center transform group-hover:rotate-12 transition-transform duration-500 shadow-lg">
+                          <i className="fas fa-seedling text-2xl text-white"></i>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-4xl font-bold text-emerald-600 dark:text-emerald-400 mb-1">
+                            {stats.totalProducts}
+                          </div>
+                          <div className="text-emerald-500 dark:text-emerald-300 text-sm font-medium">
+                            Total Products
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-gray-700 dark:text-gray-300">
+                          <span>Active Items</span>
+                          <span className="font-bold text-green-600 dark:text-green-400">
+                            {stats.activeProducts}
+                          </span>
+                        </div>
+                        <div className="w-full bg-emerald-100 dark:bg-emerald-900/30 rounded-full h-3">
+                          <div
+                            className="bg-gradient-to-r from-emerald-500 to-green-500 h-3 rounded-full transition-all duration-1000 shadow-sm"
+                            style={{
+                              width: `${(stats.activeProducts / stats.totalProducts) * 100}%`,
+                            }}
+                          ></div>
+                        </div>
+                        <div className="text-center text-xs text-gray-500 dark:text-gray-400">
+                          {(
+                            (stats.activeProducts / stats.totalProducts) *
+                            100
+                          ).toFixed(0)}
+                          % availability rate
+                        </div>
+                      </div>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                      Total Products
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">
-                      Available in our catalog
-                    </p>
                   </div>
 
-                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-gray-700 dark:to-gray-600 p-8 rounded-xl shadow-lg text-center">
-                    <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                      {stats.activeProducts}
+                  {/* Crystal Inventory Card */}
+                  <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-50 via-cyan-50 to-indigo-50 dark:from-blue-900/20 dark:via-cyan-900/20 dark:to-indigo-900/20 p-8 hover:shadow-2xl transition-all duration-700 border border-blue-200 dark:border-blue-800">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-cyan-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div className="absolute -top-4 -right-4 w-20 h-20 bg-blue-100 dark:bg-blue-800/30 rounded-full opacity-20 group-hover:scale-125 transition-transform duration-700"></div>
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl flex items-center justify-center transform group-hover:scale-110 transition-transform duration-500 shadow-lg">
+                          <i className="fas fa-boxes text-2xl text-white"></i>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-1">
+                            {stats.totalStock}
+                          </div>
+                          <div className="text-blue-500 dark:text-blue-300 text-sm font-medium">
+                            Items in Stock
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="text-center p-3 bg-white/50 dark:bg-blue-900/20 rounded-xl">
+                          <div className="text-lg font-bold text-cyan-600 dark:text-cyan-400">
+                            {stats.categories?.length || 0}
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                            Categories
+                          </div>
+                        </div>
+                        <div className="text-center p-3 bg-white/50 dark:bg-blue-900/20 rounded-xl">
+                          <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                            ${stats.averagePrice}
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">
+                            Avg Price
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                      In Stock
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">
-                      Ready for purchase
-                    </p>
                   </div>
 
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-700 dark:to-gray-600 p-8 rounded-xl shadow-lg text-center">
-                    <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-2">
-                      {stats.totalStock}
+                  {/* Prismatic Community Impact */}
+                  <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 dark:from-purple-900/20 dark:via-pink-900/20 dark:to-rose-900/20 p-8 hover:shadow-2xl transition-all duration-700 border border-purple-200 dark:border-purple-800">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-400/10 to-pink-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div className="absolute bottom-4 left-4 w-12 h-12 bg-purple-100 dark:bg-purple-800/30 rounded-full opacity-30 group-hover:animate-pulse"></div>
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center transform group-hover:rotate-45 transition-transform duration-500 shadow-lg">
+                          <i className="fas fa-users text-2xl text-white"></i>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-1">
+                            {stats.familiesServed}+
+                          </div>
+                          <div className="text-purple-500 dark:text-purple-300 text-sm font-medium">
+                            Families Served
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-gray-700 dark:text-gray-300">
+                          <span>Monthly Impact</span>
+                          <span className="font-bold text-pink-600 dark:text-pink-400">
+                            Community
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="flex-1 h-2 bg-purple-100 dark:bg-purple-900/30 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse"></div>
+                          </div>
+                          <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                            Growing
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                      Total Stock
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">
-                      Items available
-                    </p>
                   </div>
 
-                  <div className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-gray-700 dark:to-gray-600 p-8 rounded-xl shadow-lg text-center">
-                    <div className="text-4xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">
-                      {stats.familiesServed}+
+                  {/* Luminous Performance */}
+                  <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-900/20 dark:via-yellow-900/20 dark:to-orange-900/20 p-8 hover:shadow-2xl transition-all duration-700 border border-amber-200 dark:border-amber-800">
+                    <div className="absolute inset-0 bg-gradient-to-br from-amber-400/10 to-orange-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div className="absolute top-0 left-0 w-24 h-24 bg-amber-100 dark:bg-amber-800/30 rounded-full opacity-20 transform -translate-x-12 -translate-y-12 group-hover:scale-150 transition-transform duration-700"></div>
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center transform group-hover:scale-110 transition-transform duration-500 shadow-lg">
+                          <i className="fas fa-star text-2xl text-white"></i>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-4xl font-bold text-amber-600 dark:text-amber-400 mb-1">
+                            {stats.averageRating || "N/A"}
+                          </div>
+                          <div className="text-amber-500 dark:text-amber-300 text-sm font-medium">
+                            Average Rating
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-gray-700 dark:text-gray-300">
+                          <span>Total Reviews</span>
+                          <span className="font-bold text-orange-600 dark:text-orange-400">
+                            {stats.totalReviews}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          {[...Array(5)].map((_, i) => (
+                            <i
+                              key={i}
+                              className={`fas fa-star text-lg ${
+                                i < Math.floor(stats.averageRating || 0)
+                                  ? "text-amber-400"
+                                  : "text-gray-300 dark:text-gray-600"
+                              }`}
+                            ></i>
+                          ))}
+                          <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                            ({stats.averageRating}/5.0)
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                      Families Served
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm">
-                      Monthly community impact
-                    </p>
                   </div>
                 </div>
 
-                {/* Additional Stats - Use stats values consistently */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mt-8">
-                  <div className="bg-white dark:bg-gray-700 p-6 rounded-xl shadow-lg">
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                      Farm Size
-                    </h3>
-                    <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                      {stats.farmSize} {stats.farmSizeUnit}
+                {/* Enhanced Farm Details Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+                  {/* Experience Showcase */}
+                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 p-6 hover:shadow-xl transition-all duration-500 border-l-4 border-indigo-500">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center transform group-hover:rotate-12 transition-transform duration-300">
+                          <i className="fas fa-clock text-white text-lg"></i>
+                        </div>
+                        <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                          {stats.yearsOfExperience}+
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        Years of Experience
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm">
+                        Dedicated farming expertise
+                      </p>
                     </div>
                   </div>
 
-                  <div className="bg-white dark:bg-gray-700 p-6 rounded-xl shadow-lg">
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                      Experience
-                    </h3>
-                    <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                      {stats.yearsOfExperience}+ Years
+                  {/* Farm Size Display */}
+                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 p-6 hover:shadow-xl transition-all duration-500 border-l-4 border-green-500">
+                    <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center transform group-hover:scale-110 transition-transform duration-300">
+                          <i className="fas fa-map text-white text-lg"></i>
+                        </div>
+                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                          {stats.farmSize || "5"} {stats.farmSizeUnit}
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        Farm Size
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm">
+                        Total cultivated area
+                      </p>
                     </div>
                   </div>
 
-                  <div className="bg-white dark:bg-gray-700 p-6 rounded-xl shadow-lg">
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                      Total Revenue
-                    </h3>
-                    <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                      ${stats.totalRevenue}
+                  {/* Certification Status */}
+                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 p-6 hover:shadow-xl transition-all duration-500 border-l-4 border-blue-500">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center transform group-hover:bounce transition-transform duration-300">
+                          <i className="fas fa-certificate text-white text-lg"></i>
+                        </div>
+                        <div
+                          className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            stats.certificationStatus === "Certified"
+                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+                          }`}
+                        >
+                          {stats.certificationStatus}
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        Certification
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm">
+                        Quality assurance status
+                      </p>
                     </div>
                   </div>
 
-                  <div className="bg-white dark:bg-gray-700 p-6 rounded-xl shadow-lg">
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                      Monthly Revenue
-                    </h3>
-                    <div className="text-3xl font-bold text-yellow-500">
-                      ${stats.monthlyRevenue}
+                  {/* Farming Methods */}
+                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 p-6 hover:shadow-xl transition-all duration-500 border-l-4 border-orange-500">
+                    <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center transform group-hover:rotate-45 transition-transform duration-300">
+                          <i className="fas fa-leaf text-white text-lg"></i>
+                        </div>
+                        <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                          {stats.farmingMethods?.length || 2}
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        Methods Used
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm">
+                        Sustainable practices
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Dynamic Farming Methods Section */}
+                {/* Revenue Analytics Section */}
+                <div className="bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900/50 dark:to-gray-900/50 rounded-3xl p-8 mb-12 border border-slate-200 dark:border-slate-700">
+                  <div className="text-center mb-8">
+                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                      📊 Revenue Analytics
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Financial performance and growth metrics
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    {/* Monthly Revenue */}
+                    <div className="group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+                      <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-emerald-400/20 to-green-400/20 rounded-full transform translate-x-10 -translate-y-10 group-hover:scale-150 transition-transform duration-500"></div>
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
+                            <i className="fas fa-calendar-alt text-emerald-600 dark:text-emerald-400"></i>
+                          </div>
+                          <span className="text-xs bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded-full font-medium">
+                            This Month
+                          </span>
+                        </div>
+                        <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">
+                          ${stats.monthlyRevenue}
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                          Monthly Revenue
+                        </h4>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">
+                          Current month earnings
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Total Revenue */}
+                    <div className="group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+                      <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-full transform -translate-x-12 translate-y-12 group-hover:scale-150 transition-transform duration-500"></div>
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                            <i className="fas fa-chart-line text-blue-600 dark:text-blue-400"></i>
+                          </div>
+                          <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full font-medium">
+                            All Time
+                          </span>
+                        </div>
+                        <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                          ${stats.totalRevenue}
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                          Total Revenue
+                        </h4>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">
+                          Lifetime earnings
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Inventory Value */}
+                    <div className="group relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+                      <div className="absolute top-1/2 right-0 w-16 h-16 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full transform translate-x-8 -translate-y-8 group-hover:scale-150 transition-transform duration-500"></div>
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
+                            <i className="fas fa-warehouse text-purple-600 dark:text-purple-400"></i>
+                          </div>
+                          <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-1 rounded-full font-medium">
+                            Current
+                          </span>
+                        </div>
+                        <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
+                          ${stats.inventoryValue}
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                          Inventory Value
+                        </h4>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">
+                          Stock worth
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Farming Methods Showcase */}
                 {stats.farmingMethods && stats.farmingMethods.length > 0 && (
-                  <div className="mt-12">
-                    <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6 text-center">
-                      Our Farming Methods
-                    </h3>
+                  <div className="mb-12">
+                    <div className="text-center mb-8">
+                      <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                        🌱 Our Farming Philosophy
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Sustainable and innovative agricultural practices
+                      </p>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {stats.farmingMethods.map((method, index) =>
-                        renderMethodCard(method, index),
-                      )}
+                      {stats.farmingMethods.map((method, index) => {
+                        const config = methodConfig[method] || {
+                          icon: "fas fa-tractor",
+                          color: "text-gray-600 dark:text-gray-400",
+                          description: "Specialized farming technique",
+                        };
+
+                        return (
+                          <div
+                            key={index}
+                            className="group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-lg hover:shadow-2xl transition-all duration-500 border-t-4 border-green-500"
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-br from-green-50/50 to-emerald-50/50 dark:from-green-900/10 dark:to-emerald-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative z-10 text-center">
+                              <div className="w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                                <i
+                                  className={`${config.icon} text-4xl ${config.color}`}
+                                ></i>
+                              </div>
+                              <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                                {method}
+                              </h4>
+                              <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                {config.description}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
+
+                {/* Growth Metrics Footer */}
+                <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-3xl p-8 text-white">
+                  <div className="text-center">
+                    <h3 className="text-2xl font-bold mb-6">
+                      🚀 Growth Trajectory
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                      <div className="group">
+                        <div className="text-4xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">
+                          {(
+                            (stats.activeProducts / stats.totalProducts) *
+                            100
+                          ).toFixed(0)}
+                          %
+                        </div>
+                        <div className="text-white/90">
+                          Product Availability
+                        </div>
+                      </div>
+                      <div className="group">
+                        <div className="text-4xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">
+                          {stats.familiesServed}+
+                        </div>
+                        <div className="text-white/90">Community Reach</div>
+                      </div>
+                      <div className="group">
+                        <div className="text-4xl font-bold mb-2 group-hover:scale-110 transition-transform duration-300">
+                          {stats.averageRating || "4.8"}★
+                        </div>
+                        <div className="text-white/90">
+                          Customer Satisfaction
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

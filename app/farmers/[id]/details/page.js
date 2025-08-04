@@ -5,108 +5,513 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Footer from "@/components/Footer";
 
-// Simple Minimalistic Product Card Component
-const MinimalistProductCard = ({ product, index }) => {
+// Compact List Row (Table-like)
+const CompactListRow = ({ product, index }) => {
   return (
     <div
-      className="group bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-500"
-      style={{ animationDelay: `${index * 50}ms` }}
+      className="group flex items-center py-4 px-6 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
+      style={{ animationDelay: `${index * 30}ms` }}
     >
-      <div className="flex items-center gap-6 p-6">
-        {/* Compact Product Image */}
-        <div className="relative w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden">
-          <img
-            src={product.images?.[0] || "/placeholder-product.jpg"}
-            alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
+      {/* Product Image */}
+      <div className="relative w-12 h-12 flex-shrink-0 rounded-full overflow-hidden mr-4">
+        <img
+          src={product.images?.[0] || "/placeholder-product.jpg"}
+          alt={product.name}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+        />
+        <div className="absolute -top-1 -right-1">
+          <div
+            className={`w-3 h-3 rounded-full border-2 border-white ${product.stock > 0 ? "bg-green-500" : "bg-red-500"}`}
+          ></div>
+        </div>
+      </div>
 
-          {/* Stock Indicator */}
-          <div className="absolute top-2 right-2">
-            <div
-              className={`w-3 h-3 rounded-full ${
-                product.stock > 0 ? "bg-emerald-400" : "bg-red-400"
-              }`}
-            ></div>
+      {/* Product Name & Category */}
+      <div className="flex-1 min-w-0 mr-4">
+        <h3 className="font-medium text-gray-900 dark:text-white truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+          {product.name}
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {product.category}
+        </p>
+      </div>
+
+      {/* Rating */}
+      <div className="hidden sm:flex items-center mr-4">
+        <div className="flex text-yellow-400 mr-1">
+          {[...Array(5)].map((_, i) => (
+            <i
+              key={i}
+              className={`fas fa-star text-xs ${i < Math.floor(product.averageRating || 0) ? "text-yellow-400" : "text-gray-300"}`}
+            ></i>
+          ))}
+        </div>
+        <span className="text-xs text-gray-500 ml-1">
+          ({product.reviews?.length || 0})
+        </span>
+      </div>
+
+      {/* Stock Status */}
+      <div className="hidden md:block mr-4">
+        <span
+          className={`px-2 py-1 rounded text-xs font-medium ${
+            product.stock > 0
+              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+          }`}
+        >
+          {product.stock > 0 ? `${product.stock} left` : "Out of stock"}
+        </span>
+      </div>
+
+      {/* Price */}
+      <div className="font-bold text-lg text-emerald-600 dark:text-emerald-400 mr-4">
+        ${product.price}
+      </div>
+
+      {/* Action Button */}
+      <button
+        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+          product.stock > 0
+            ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+            : "bg-gray-300 text-gray-500 cursor-not-allowed"
+        }`}
+        disabled={product.stock === 0}
+      >
+        {product.stock > 0 ? "Add" : "Out"}
+      </button>
+    </div>
+  );
+};
+
+// Grid Tile (Instagram-like squares)
+const GridTile = ({ product, index }) => {
+  return (
+    <div
+      className="group relative aspect-square overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800 hover:shadow-lg transition-all duration-300"
+      style={{ animationDelay: `${index * 80}ms` }}
+    >
+      {/* Background Image */}
+      <img
+        src={product.images?.[0] || "/placeholder-product.jpg"}
+        alt={product.name}
+        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+      />
+
+      {/* Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+      {/* Top Corner Badges */}
+      <div className="absolute top-3 left-3 right-3 flex justify-between items-start">
+        <span className="bg-white/90 backdrop-blur-sm text-gray-800 px-2 py-1 rounded text-xs font-medium">
+          {product.category}
+        </span>
+        <div
+          className={`w-3 h-3 rounded-full ${product.stock > 0 ? "bg-green-400" : "bg-red-400"}`}
+        ></div>
+      </div>
+
+      {/* Bottom Content (Shows on Hover) */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 text-white transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+        <h3 className="font-bold text-lg mb-1 truncate">{product.name}</h3>
+
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center">
+            <div className="flex text-yellow-400 mr-1">
+              {[...Array(5)].map((_, i) => (
+                <i
+                  key={i}
+                  className={`fas fa-star text-xs ${i < Math.floor(product.averageRating || 0) ? "text-yellow-400" : "text-white/50"}`}
+                ></i>
+              ))}
+            </div>
+            <span className="text-xs text-white/80">
+              ({product.reviews?.length || 0})
+            </span>
           </div>
+          <span className="font-bold text-xl">${product.price}</span>
         </div>
 
-        {/* Product Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between">
-            <div className="flex-1 min-w-0">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                {product.name}
-              </h3>
+        <button
+          className={`w-full py-2 rounded font-medium transition-all ${
+            product.stock > 0
+              ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+              : "bg-gray-600 text-gray-300 cursor-not-allowed"
+          }`}
+          disabled={product.stock === 0}
+        >
+          {product.stock > 0 ? "Add to Cart" : "Sold Out"}
+        </button>
+      </div>
 
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {product.category}
-              </p>
-
-              {/* Rating */}
-              <div className="flex items-center mt-2">
-                <div className="flex text-yellow-400 mr-2">
-                  {[...Array(5)].map((_, i) => (
-                    <i
-                      key={i}
-                      className={`fas fa-star text-sm ${
-                        i < Math.floor(product.averageRating || 0)
-                          ? "text-yellow-400"
-                          : "text-gray-300 dark:text-gray-600"
-                      }`}
-                    ></i>
-                  ))}
-                </div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  ({product.reviews?.length || 0})
-                </span>
-              </div>
-            </div>
-
-            {/* Price and Actions */}
-            <div className="flex flex-col items-end gap-3 ml-4">
-              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                ${product.price}
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                  disabled={product.stock === 0}
-                >
-                  <i className="fas fa-cart-plus mr-1"></i>
-                  {product.stock > 0 ? "Add" : "Out"}
-                </button>
-
-                <button className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 p-2 rounded-lg transition-colors">
-                  <i className="fas fa-heart text-sm"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Stock Info */}
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              {product.stock > 0
-                ? `${product.stock} available`
-                : "Out of stock"}
-            </span>
-
-            <button className="text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium">
-              View Details →
-            </button>
-          </div>
+      {/* Quick Action Buttons (Shows on Hover) */}
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="flex gap-2">
+          <button className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110">
+            <i className="fas fa-eye text-sm"></i>
+          </button>
+          <button className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110">
+            <i className="fas fa-heart text-sm"></i>
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-// Simple Product Grid Layout
-const SimpleProductLayout = ({ products }) => {
+// Non-Card Alternative Layout (Replacing Complex Card Layout)
+const AlternativeProductLayout = ({ product, index }) => {
+  const layoutVariants = [
+    "floating-panel",
+    "magazine-spread",
+    "ticket-stub",
+    "polaroid-photo",
+    "blueprint-sheet",
+    "label-tag",
+  ];
+  const variant = layoutVariants[index % layoutVariants.length];
+
+  const getLayoutClasses = () => {
+    switch (variant) {
+      case "floating-panel":
+        return "bg-white dark:bg-gray-900 shadow-2xl border-l-8 border-emerald-500 transform skew-y-1";
+      case "magazine-spread":
+        return "bg-gradient-to-r from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-2 border-dashed border-gray-300 dark:border-gray-600";
+      case "ticket-stub":
+        return "bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-2 border-gray-400 dark:border-gray-500 relative";
+      case "polaroid-photo":
+        return "bg-white dark:bg-gray-100 shadow-xl transform rotate-2 border-8 border-white dark:border-gray-200";
+      case "blueprint-sheet":
+        return "bg-blue-900 text-white border-4 border-blue-300 relative overflow-hidden";
+      case "label-tag":
+        return "bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 border-4 border-green-300 dark:border-green-600 relative";
+      default:
+        return "bg-white dark:bg-gray-800 shadow-lg";
+    }
+  };
+
+  const getAccentPattern = () => {
+    switch (variant) {
+      case "floating-panel":
+        return (
+          <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/10 rounded-full transform translate-x-10 -translate-y-10"></div>
+        );
+      case "magazine-spread":
+        return (
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-4 left-4 w-2 h-2 bg-red-500 rounded-full"></div>
+            <div className="absolute top-4 right-4 w-2 h-2 bg-blue-500 rounded-full"></div>
+            <div className="absolute bottom-4 left-4 w-2 h-2 bg-green-500 rounded-full"></div>
+            <div className="absolute bottom-4 right-4 w-2 h-2 bg-yellow-500 rounded-full"></div>
+          </div>
+        );
+      case "ticket-stub":
+        return (
+          <div className="absolute left-0 top-1/2 transform -translate-y-1/2">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="w-4 h-4 bg-white dark:bg-gray-300 rounded-full -ml-2 mb-2 border-2 border-gray-400"
+              ></div>
+            ))}
+          </div>
+        );
+      case "polaroid-photo":
+        return (
+          <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-red-500 rounded-full shadow-lg transform rotate-45"></div>
+        );
+      case "blueprint-sheet":
+        return (
+          <div className="absolute inset-0 pointer-events-none opacity-20">
+            <svg className="w-full h-full" viewBox="0 0 100 100">
+              <defs>
+                <pattern
+                  id="grid"
+                  width="10"
+                  height="10"
+                  patternUnits="userSpaceOnUse"
+                >
+                  <path
+                    d="M 10 0 L 0 0 0 10"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="0.5"
+                  />
+                </pattern>
+              </defs>
+              <rect width="100" height="100" fill="url(#grid)" />
+            </svg>
+          </div>
+        );
+      case "label-tag":
+        return (
+          <div className="absolute -top-2 -left-2 w-6 h-6 bg-green-500 rounded-full border-4 border-white shadow-lg"></div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="simple-product-layout">
+    <div
+      className={`group relative overflow-hidden ${getLayoutClasses()} hover:shadow-3xl transition-all duration-700 transform hover:scale-[1.03] ${variant === "polaroid-photo" ? "hover:rotate-0" : variant === "floating-panel" ? "hover:skew-y-0" : ""}`}
+      style={{
+        animationDelay: `${index * 150}ms`,
+        minHeight: index % 4 === 0 ? "380px" : "320px",
+        ...(variant === "ticket-stub" && {
+          clipPath:
+            "polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px))",
+        }),
+      }}
+    >
+      {/* Accent Patterns */}
+      {getAccentPattern()}
+
+      {/* Main Content Area */}
+      <div className="relative z-10">
+        {/* Image Section */}
+        <div
+          className={`relative overflow-hidden ${variant === "polaroid-photo" ? "h-48 mb-4" : variant === "magazine-spread" ? "h-40" : "h-44"}`}
+        >
+          <img
+            src={product.images?.[0] || "/placeholder-product.jpg"}
+            alt={product.name}
+            className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ${variant === "blueprint-sheet" ? "mix-blend-overlay" : ""}`}
+          />
+
+          {/* Overlay Elements Based on Variant */}
+          {variant === "floating-panel" && (
+            <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          )}
+
+          {variant === "magazine-spread" && (
+            <div className="absolute top-4 left-4 bg-black text-white px-3 py-1 text-xs font-bold transform -rotate-12">
+              FRESH
+            </div>
+          )}
+
+          {variant === "ticket-stub" && (
+            <div className="absolute top-4 right-4 bg-red-500 text-white px-2 py-1 text-xs font-bold rounded">
+              #{index + 1}
+            </div>
+          )}
+
+          {variant === "blueprint-sheet" && (
+            <div className="absolute top-4 left-4 text-blue-300 text-xs font-mono">
+              SPEC: {product.category?.toUpperCase()}
+            </div>
+          )}
+
+          {/* Category Badge */}
+          <div
+            className={`absolute bottom-4 left-4 px-3 py-1 text-xs font-bold rounded-full ${
+              variant === "blueprint-sheet"
+                ? "bg-blue-300 text-blue-900"
+                : variant === "polaroid-photo"
+                  ? "bg-gray-800 text-white"
+                  : "bg-white/90 text-gray-800"
+            }`}
+          >
+            {product.category}
+          </div>
+
+          {/* Stock Indicator */}
+          <div className="absolute bottom-4 right-4">
+            <div
+              className={`w-3 h-3 rounded-full ${product.stock > 0 ? "bg-green-400" : "bg-red-400"} shadow-lg`}
+            ></div>
+          </div>
+        </div>
+
+        {/* Content Section */}
+        <div className={`p-6 ${variant === "polaroid-photo" ? "pb-8" : ""}`}>
+          {/* Product Name */}
+          <h3
+            className={`text-xl font-bold mb-3 ${
+              variant === "blueprint-sheet"
+                ? "text-blue-100 font-mono"
+                : variant === "polaroid-photo"
+                  ? "text-gray-800 text-center"
+                  : "text-gray-900 dark:text-white"
+            }`}
+          >
+            {product.name}
+          </h3>
+
+          {/* Description */}
+          {product.description && (
+            <p
+              className={`text-sm mb-4 line-clamp-2 ${
+                variant === "blueprint-sheet"
+                  ? "text-blue-200 font-mono"
+                  : variant === "polaroid-photo"
+                    ? "text-gray-600 text-center"
+                    : "text-gray-600 dark:text-gray-300"
+              }`}
+            >
+              {product.description}
+            </p>
+          )}
+
+          {/* Rating & Stock Info */}
+          <div
+            className={`flex items-center justify-between mb-4 ${variant === "polaroid-photo" ? "justify-center gap-4" : ""}`}
+          >
+            <div className="flex items-center">
+              <div className="flex text-yellow-400 mr-2">
+                {[...Array(5)].map((_, i) => (
+                  <i
+                    key={i}
+                    className={`fas fa-star text-sm ${i < Math.floor(product.averageRating || 0) ? "text-yellow-400" : variant === "blueprint-sheet" ? "text-blue-300/30" : "text-gray-300"}`}
+                  ></i>
+                ))}
+              </div>
+              <span
+                className={`text-sm ${
+                  variant === "blueprint-sheet"
+                    ? "text-blue-200"
+                    : variant === "polaroid-photo"
+                      ? "text-gray-600"
+                      : "text-gray-500 dark:text-gray-400"
+                }`}
+              >
+                ({product.reviews?.length || 0})
+              </span>
+            </div>
+            {!variant === "polaroid-photo" && (
+              <span
+                className={`text-sm px-3 py-1 rounded-full ${
+                  product.stock > 0
+                    ? variant === "blueprint-sheet"
+                      ? "bg-blue-300/20 text-blue-200"
+                      : "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                    : variant === "blueprint-sheet"
+                      ? "bg-red-300/20 text-red-200"
+                      : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                }`}
+              >
+                {product.stock > 0 ? `${product.stock} left` : "Sold out"}
+              </span>
+            )}
+          </div>
+
+          {/* Price & Action Section */}
+          <div
+            className={`flex items-center justify-between pt-4 ${
+              variant === "magazine-spread"
+                ? "border-t-2 border-dashed border-gray-300"
+                : variant === "ticket-stub"
+                  ? "border-t-2 border-dotted border-gray-400"
+                  : variant === "blueprint-sheet"
+                    ? "border-t border-blue-300/30"
+                    : "border-t border-gray-200 dark:border-gray-600"
+            } ${variant === "polaroid-photo" ? "justify-center gap-4" : ""}`}
+          >
+            <div
+              className={`text-3xl font-bold ${
+                variant === "blueprint-sheet"
+                  ? "text-blue-300 font-mono"
+                  : variant === "floating-panel"
+                    ? "text-emerald-600"
+                    : variant === "magazine-spread"
+                      ? "text-purple-600"
+                      : variant === "ticket-stub"
+                        ? "text-orange-600"
+                        : variant === "label-tag"
+                          ? "text-green-700 dark:text-green-400"
+                          : "text-gray-800"
+              }`}
+            >
+              ${product.price}
+            </div>
+            <button
+              className={`px-6 py-3 font-bold text-sm transition-all duration-300 transform hover:scale-105 ${
+                product.stock > 0
+                  ? variant === "floating-panel"
+                    ? "bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-emerald-500/30"
+                    : variant === "magazine-spread"
+                      ? "bg-purple-500 hover:bg-purple-600 text-white rounded-none border-2 border-purple-600"
+                      : variant === "ticket-stub"
+                        ? "bg-orange-500 hover:bg-orange-600 text-white rounded-full"
+                        : variant === "polaroid-photo"
+                          ? "bg-gray-800 hover:bg-gray-900 text-white rounded-sm"
+                          : variant === "blueprint-sheet"
+                            ? "bg-blue-300 hover:bg-blue-400 text-blue-900 rounded-none border border-blue-300"
+                            : variant === "label-tag"
+                              ? "bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                              : "bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
+                  : "bg-gray-400 text-gray-200 cursor-not-allowed rounded-lg"
+              } shadow-lg`}
+              disabled={product.stock === 0}
+            >
+              {product.stock > 0 ? (
+                <>
+                  <i className="fas fa-shopping-bag mr-2"></i>
+                  {variant === "ticket-stub"
+                    ? "Get"
+                    : variant === "blueprint-sheet"
+                      ? "ORDER"
+                      : "Buy Now"}
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-times mr-2"></i>
+                  Sold Out
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Special Variant Elements */}
+          {variant === "polaroid-photo" && (
+            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-gray-400 text-xs">
+              Farm Fresh #{index + 1}
+            </div>
+          )}
+
+          {variant === "floating-panel" && (
+            <div className="absolute -bottom-1 -right-1 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-b-8 border-b-emerald-500 transform rotate-45"></div>
+          )}
+        </div>
+      </div>
+
+      {/* Hover Effects */}
+      <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+        {variant === "magazine-spread" && (
+          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full transform translate-x-8 -translate-y-8"></div>
+        )}
+        {variant === "label-tag" && (
+          <div className="absolute inset-0 bg-gradient-to-br from-green-400/10 to-emerald-400/10 animate-pulse"></div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Unified Product Layout Component
+const ProductDisplayLayout = ({ products, viewType, sortBy }) => {
+  const sortedProducts = useMemo(() => {
+    let sorted = [...products];
+    switch (sortBy) {
+      case "price-low":
+        return sorted.sort((a, b) => (a.price || 0) - (b.price || 0));
+      case "price-high":
+        return sorted.sort((a, b) => (b.price || 0) - (a.price || 0));
+      case "rating":
+        return sorted.sort(
+          (a, b) => (b.averageRating || 0) - (a.averageRating || 0),
+        );
+      case "name":
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case "stock":
+        return sorted.sort((a, b) => (b.stock || 0) - (a.stock || 0));
+      default:
+        return sorted;
+    }
+  }, [products, sortBy]);
+
+  return (
+    <div className="product-display-layout">
       <div className="text-center mb-12">
         <h3 className="text-4xl font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent mb-4">
           Farm Fresh Products
@@ -117,41 +522,141 @@ const SimpleProductLayout = ({ products }) => {
         </p>
       </div>
 
-      {/* Products List */}
-      <div className="space-y-4">
-        {products.map((product, index) => (
-          <MinimalistProductCard
-            key={product._id}
-            product={product}
-            index={index}
-          />
-        ))}
+      {/* Different layouts based on view type */}
+      {viewType === "list" ? (
+        <div className="max-w-4xl mx-auto space-y-3">
+          {sortedProducts.map((product, index) => (
+            <CompactListRow key={product._id} product={product} index={index} />
+          ))}
+        </div>
+      ) : viewType === "masonry" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          {sortedProducts.map((product, index) => (
+            <AlternativeProductLayout
+              key={product._id}
+              product={product}
+              index={index}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {sortedProducts.map((product, index) => (
+            <GridTile key={product._id} product={product} index={index} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Enhanced Product Layout with Multiple Views
+const EnhancedProductLayout = ({ products, viewType, sortBy }) => {
+  const sortedProducts = useMemo(() => {
+    let sorted = [...products];
+    switch (sortBy) {
+      case "price-low":
+        return sorted.sort((a, b) => (a.price || 0) - (b.price || 0));
+      case "price-high":
+        return sorted.sort((a, b) => (b.price || 0) - (a.price || 0));
+      case "rating":
+        return sorted.sort(
+          (a, b) => (b.averageRating || 0) - (a.averageRating || 0),
+        );
+      case "name":
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case "stock":
+        return sorted.sort((a, b) => (b.stock || 0) - (a.stock || 0));
+      default:
+        return sorted;
+    }
+  }, [products, sortBy]);
+
+  return (
+    <div className="enhanced-product-layout">
+      <div className="text-center mb-12">
+        <h3 className="text-4xl font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent mb-4">
+          Farm Fresh Products
+        </h3>
+        <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+          Premium organic produce, carefully grown and harvested for exceptional
+          quality
+        </p>
       </div>
+
+      {/* Products Grid/List */}
+      {viewType === "list" ? (
+        <div className="space-y-4">
+          {sortedProducts.map((product, index) => (
+            <ModernProductCard
+              key={product._id}
+              product={product}
+              index={index}
+              viewType="list"
+            />
+          ))}
+        </div>
+      ) : viewType === "masonry" ? (
+        <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
+          {sortedProducts.map((product, index) => (
+            <div key={product._id} className="break-inside-avoid mb-6">
+              <ModernProductCard
+                product={product}
+                index={index}
+                viewType="grid"
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          {sortedProducts.map((product, index) => (
+            <ModernProductCard
+              key={product._id}
+              product={product}
+              index={index}
+              viewType="grid"
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
 // Updated Layout Components
-const CathedralVaultLayout = ({ products }) => {
+const CathedralVaultLayout = ({ products, viewType, sortBy }) => {
   return (
     <div className="cathedral-vault relative">
-      <SimpleProductLayout products={products} />
+      <EnhancedProductLayout
+        products={products}
+        viewType={viewType}
+        sortBy={sortBy}
+      />
     </div>
   );
 };
 
-const MandalaGardenLayout = ({ products }) => {
+const MandalaGardenLayout = ({ products, viewType, sortBy }) => {
   return (
     <div className="mandala-garden relative">
-      <SimpleProductLayout products={products} />
+      <EnhancedProductLayout
+        products={products}
+        viewType={viewType}
+        sortBy={sortBy}
+      />
     </div>
   );
 };
 
-const MetropolitanSkylineLayout = ({ products }) => {
+const MetropolitanSkylineLayout = ({ products, viewType, sortBy }) => {
   return (
     <div className="metropolitan-skyline relative">
-      <SimpleProductLayout products={products} />
+      <EnhancedProductLayout
+        products={products}
+        viewType={viewType}
+        sortBy={sortBy}
+      />
     </div>
   );
 };
@@ -169,6 +674,8 @@ export default function FarmerDetailsPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [viewMode, setViewMode] = useState("cathedral");
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState("default");
+  const [viewType, setViewType] = useState("grid"); // Add view type state
 
   const PRODUCTS_PER_PAGE = 20;
 
@@ -571,37 +1078,82 @@ export default function FarmerDetailsPage() {
                 ))}
               </select>
             </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-3xl p-3 shadow-2xl border border-gray-200 dark:border-gray-600">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-8 py-4 bg-transparent border-none focus:outline-none text-gray-700 dark:text-gray-300 font-semibold text-lg"
+              >
+                <option value="default">Sort By</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="rating">Rating</option>
+                <option value="name">Name</option>
+                <option value="stock">Stock</option>
+              </select>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setViewType("grid")}
+                className={`px-6 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
+                  viewType === "grid"
+                    ? "bg-emerald-500 text-white shadow-lg"
+                    : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                }`}
+              >
+                <i className="fas fa-th"></i>
+                Grid View
+              </button>
+              <button
+                onClick={() => setViewType("list")}
+                className={`px-6 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
+                  viewType === "list"
+                    ? "bg-emerald-500 text-white shadow-lg"
+                    : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                }`}
+              >
+                <i className="fas fa-list"></i>
+                List View
+              </button>
+              <button
+                onClick={() => setViewType("masonry")}
+                className={`px-6 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
+                  viewType === "masonry"
+                    ? "bg-emerald-500 text-white shadow-lg"
+                    : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                }`}
+              >
+                <i className="fas fa-columns"></i>
+                Masonry View
+              </button>
+            </div>
           </div>
 
           {/* Products Display */}
           {filteredProducts.length === 0 ? (
             <div className="text-center py-32">
               <div className="text-gray-400 text-9xl mb-8">
-                <i className="fas fa-magic"></i>
+                <i className="fas fa-seedling"></i>
               </div>
               <h3 className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
-                No Mystical Creations Found
+                No Products Found
               </h3>
-              <p className="text-2xl text-gray-600 dark:text-gray-400">
+              <p className="text-xl text-gray-600 dark:text-gray-400">
                 {selectedCategory !== "all"
-                  ? "Try exploring a different mystical realm"
-                  : `${farmer.name} is still conjuring their magical products`}
+                  ? "Try selecting a different category"
+                  : `${farmer.name} is working on adding new products`}
               </p>
             </div>
           ) : (
             <>
-              {/* Render Based on View Mode */}
-              {viewMode === "cathedral" && (
-                <CathedralVaultLayout products={paginatedProducts} />
-              )}
-
-              {viewMode === "mandala" && (
-                <MandalaGardenLayout products={paginatedProducts} />
-              )}
-
-              {viewMode === "metropolitan" && (
-                <MetropolitanSkylineLayout products={paginatedProducts} />
-              )}
+              {/* Single Unified Product Display */}
+              <ProductDisplayLayout
+                products={paginatedProducts}
+                viewType={viewType}
+                sortBy={sortBy}
+              />
 
               {/* Pagination */}
               {totalPages > 1 && (
