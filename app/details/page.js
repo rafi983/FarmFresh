@@ -37,16 +37,6 @@ export default function ProductDetails() {
   const viewMode = searchParams.get("view");
   const { data: session, status: sessionStatus } = useSession();
 
-  // Add session loading debug
-  console.log("🔍 SESSION LOADING STATUS:", {
-    sessionStatus: sessionStatus,
-    sessionData: session,
-    hasSession: !!session,
-    hasUser: !!session?.user,
-    hasUserId: !!session?.user?.id,
-    userId: session?.user?.id,
-  });
-
   const { addToCart } = useCart();
   const { addToFavorites, removeFromFavorites, isProductFavorited } =
     useFavorites();
@@ -92,6 +82,8 @@ export default function ProductDetails() {
 
   // Data states
   const [hasPurchasedProduct, setHasPurchasedProduct] = useState(false);
+  const [hasReviewedProduct, setHasReviewedProduct] = useState(false);
+  const [userExistingReview, setUserExistingReview] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
 
   // Memoized favorite status
@@ -134,40 +126,17 @@ export default function ProductDetails() {
 
   // Optimized API calls with caching
   const checkUserPurchase = useCallback(async () => {
-    console.log("🔥🔥🔥 FUNCTION ENTRY: checkUserPurchase() CALLED! 🔥🔥🔥");
-
     // Get userId from either property
     const userId = session?.user?.id || session?.user?.userId;
 
-    console.log("🚀 checkUserPurchase function called!", {
-      hasSession: !!session?.user,
-      hasProductId: !!productId,
-      sessionUserId: session?.user?.id,
-      sessionUserIdProp: session?.user?.userId,
-      actualUserId: userId,
-      productId: productId,
-      fullSession: session,
-    });
-
     if (!userId || !productId) {
-      console.log("❌ Early return - missing session or productId", {
-        userId: userId,
-        productId: productId,
-      });
       return;
     }
-
-    console.log("🔍 Checking review eligibility for:", {
-      userId: userId,
-      productId: productId,
-      userEmail: session.user.email,
-    });
 
     setCheckingPurchase(true);
     try {
       // Use the new can-review endpoint to check if user can review this product
       const apiUrl = `/api/products/${productId}/can-review?userId=${userId}`;
-      console.log("📡 Making API call to:", apiUrl);
 
       const response = await fetch(apiUrl, {
         headers: {
@@ -175,36 +144,15 @@ export default function ProductDetails() {
         },
       });
 
-      console.log("📡 Can-review API response:", {
-        status: response.status,
-        ok: response.ok,
-        statusText: response.statusText,
-        url: apiUrl,
-      });
-
       if (response.ok) {
         const data = await response.json();
-        console.log("✅ Can-review API data:", data);
-        console.log("🎯 Setting hasPurchasedProduct to:", data.canReview);
 
-        // Only allow reviews if user has delivered orders for this product and hasn't reviewed yet
-        setHasPurchasedProduct(data.canReview);
-
-        console.log("📊 Review eligibility summary:", {
-          canReview: data.canReview,
-          reason: data.reason,
-          hasPurchased: data.hasPurchased,
-          hasReviewed: data.hasReviewed,
-          existingReview: data.existingReview,
-          orderDetails: data.orderDetails,
-        });
+        // Set states based on API response
+        setHasPurchasedProduct(data.hasPurchased || false); // Whether user has purchased (regardless of review status)
+        setHasReviewedProduct(data.hasReviewed || false); // Whether user has already reviewed
+        setUserExistingReview(data.existingReview || null); // User's existing review if any
       } else {
         const errorData = await response.text();
-        console.log("❌ Can-review API failed:", {
-          status: response.status,
-          statusText: response.statusText,
-          errorData: errorData,
-        });
         setHasPurchasedProduct(false);
       }
     } catch (error) {
@@ -212,10 +160,6 @@ export default function ProductDetails() {
       setHasPurchasedProduct(false);
     } finally {
       setCheckingPurchase(false);
-      console.log(
-        "🏁 checkUserPurchase completed, hasPurchasedProduct state:",
-        hasPurchasedProduct,
-      );
     }
   }, [
     session?.user?.id,
@@ -258,6 +202,14 @@ export default function ProductDetails() {
 
     if (!product) return;
 
+    // Check if user is a farmer and show appropriate message
+    if (session?.user?.userType === "farmer") {
+      alert(
+        "Farmers cannot purchase products. You can only sell your own products on this platform. Use the 'Manage' section to add your products.",
+      );
+      return;
+    }
+
     setIsAddingToCart(true);
     try {
       const item = {
@@ -283,7 +235,7 @@ export default function ProductDetails() {
         error.message.includes("Only") &&
         error.message.includes("available in stock")
           ? error.message
-          : "Failed to add product to cart. Please try again.";
+          : error.message || "Failed to add product to cart. Please try again.";
       alert(errorMessage);
     } finally {
       setIsAddingToCart(false);
@@ -305,6 +257,14 @@ export default function ProductDetails() {
     }
 
     if (!product) return;
+
+    // Check if user is a farmer and show appropriate message
+    if (session?.user?.userType === "farmer") {
+      alert(
+        "Farmers cannot purchase products. You can only sell your own products on this platform. Use the 'Manage' section to add your products.",
+      );
+      return;
+    }
 
     setIsAddingToCart(true);
     try {
@@ -1249,57 +1209,78 @@ export default function ProductDetails() {
                     </h3>
 
                     <div className="space-y-3">
-                      <Link
-                        href={`/create?edit=${productId}`}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition flex items-center justify-center"
-                      >
-                        <i className="fas fa-edit mr-2"></i>
-                        Edit Product
-                      </Link>
-
-                      <Link
-                        href={`/details?id=${productId}&view=customer`}
-                        className="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-4 rounded-lg font-medium transition flex items-center justify-center"
-                      >
-                        <i className="fas fa-eye mr-2"></i>
-                        View as Customer
-                      </Link>
-
-                      <button
-                        onClick={handleToggleStatus}
-                        disabled={isUpdating}
-                        className={`w-full py-3 px-4 rounded-lg font-medium transition flex items-center justify-center ${
-                          product.status === "active"
-                            ? "bg-orange-600 hover:bg-orange-700 text-white"
-                            : "bg-green-600 hover:bg-green-700 text-white"
-                        } ${isUpdating ? "opacity-50 cursor-not-allowed" : ""}`}
-                      >
-                        {isUpdating ? (
-                          <i className="fas fa-spinner fa-spin mr-2"></i>
-                        ) : (
-                          <i
-                            className={`fas ${product.status === "active" ? "fa-pause" : "fa-play"} mr-2`}
-                          ></i>
-                        )}
-                        {product.status === "active"
-                          ? "Deactivate"
-                          : "Activate"}
-                      </button>
-
-                      <button
-                        onClick={handleDeleteProduct}
-                        disabled={isUpdating}
-                        className={`w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg font-medium transition flex items-center justify-center ${
-                          isUpdating ? "opacity-50 cursor-not-allowed" : ""
-                        }`}
-                      >
-                        {isUpdating ? (
-                          <i className="fas fa-spinner fa-spin mr-2"></i>
-                        ) : (
-                          <i className="fas fa-trash mr-2"></i>
-                        )}
-                        Delete Product
-                      </button>
+                      {session?.user?.userType === "farmer" ? (
+                        // Farmer-specific buttons
+                        <>
+                          <Link
+                            href="/create"
+                            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center"
+                          >
+                            <i className="fas fa-plus mr-2"></i>
+                            Add Product
+                          </Link>
+                          <Link
+                            href="/manage"
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center"
+                          >
+                            <i className="fas fa-cog mr-2"></i>
+                            Manage Orders
+                          </Link>
+                          <Link
+                            href="/farmer-orders"
+                            className="w-full border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-white py-3 px-6 rounded-lg font-medium transition flex items-center justify-center"
+                          >
+                            <i className="fas fa-clipboard-list mr-2"></i>
+                            View My Orders
+                          </Link>
+                        </>
+                      ) : (
+                        // Customer buttons
+                        <>
+                          <button
+                            onClick={handleBuyNow}
+                            disabled={
+                              product.stock <= 0 ||
+                              session?.user?.userType === "farmer"
+                            }
+                            className="w-full bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-800 text-white py-3 px-6 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:bg-gray-400"
+                            title={
+                              session?.user?.userType === "farmer"
+                                ? "Farmers cannot purchase products"
+                                : ""
+                            }
+                          >
+                            <i className="fas fa-bolt mr-2"></i>
+                            Buy Now
+                          </button>
+                          <button
+                            onClick={handleAddToCart}
+                            disabled={
+                              isAddingToCart ||
+                              product.stock <= 0 ||
+                              session?.user?.userType === "farmer"
+                            }
+                            className="w-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white py-3 px-6 rounded-lg font-medium transition disabled:bg-gray-400"
+                            title={
+                              session?.user?.userType === "farmer"
+                                ? "Farmers cannot purchase products"
+                                : ""
+                            }
+                          >
+                            <i className="fas fa-shopping-cart mr-2"></i>
+                            {isAddingToCart ? "Adding..." : "Add to Cart"}
+                          </button>
+                          <button
+                            onClick={handleFavoriteToggle}
+                            className="w-full border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-white py-3 px-6 rounded-lg font-medium transition"
+                          >
+                            <i
+                              className={`${isFavorite ? "fas" : "far"} fa-heart mr-2 ${isFavorite ? "text-red-500" : ""}`}
+                            ></i>
+                            Add to Favorite
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1489,7 +1470,8 @@ export default function ProductDetails() {
                       <div className="flex items-center space-x-3">
                         <button
                           onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                          className="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700"
+                          disabled={session?.user?.userType === "farmer"}
+                          className="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <i className="fas fa-minus"></i>
                         </button>
@@ -1503,65 +1485,102 @@ export default function ProductDetails() {
                               Math.max(1, parseInt(e.target.value) || 1),
                             )
                           }
-                          className="w-20 text-center py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          disabled={session?.user?.userType === "farmer"}
+                          className="w-20 text-center py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <button
                           onClick={() =>
                             setQuantity(Math.min(product.stock, quantity + 1))
                           }
-                          className="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700"
+                          disabled={session?.user?.userType === "farmer"}
+                          className="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <i className="fas fa-plus"></i>
                         </button>
                       </div>
+                      {session?.user?.userType === "farmer" && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 italic">
+                          <i className="fas fa-info-circle mr-1"></i>
+                          Farmers can only view product details, not purchase
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   {/* Action Buttons */}
                   <div className="space-y-3">
-                    <button
-                      onClick={handleBuyNow}
-                      disabled={product.stock <= 0}
-                      className="w-full bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-800 text-white py-3 px-6 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:bg-gray-400"
-                    >
-                      <i className="fas fa-bolt mr-2"></i>
-                      Buy Now
-                    </button>
-                    <button
-                      onClick={handleAddToCart}
-                      disabled={isAddingToCart || product.stock <= 0}
-                      className="w-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white py-3 px-6 rounded-lg font-medium transition disabled:bg-gray-400"
-                    >
-                      <i className="fas fa-shopping-cart mr-2"></i>
-                      {isAddingToCart ? "Adding..." : "Add to Cart"}
-                    </button>
-                    <button
-                      onClick={handleFavoriteToggle}
-                      className="w-full border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-white py-3 px-6 rounded-lg font-medium transition"
-                    >
-                      <i
-                        className={`${isFavorite ? "fas" : "far"} fa-heart mr-2 ${isFavorite ? "text-red-500" : ""}`}
-                      ></i>
-                      Add to Favorite
-                    </button>
-                  </div>
-
-                  {/* Farmer Contact */}
-                  <div className="bg-primary-50 dark:bg-primary-900 rounded-xl p-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-800 flex items-center justify-center">
-                        <i className="fas fa-user text-primary-600 dark:text-primary-400"></i>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-gray-900 dark:text-white">
-                          {product.farmer?.name || "Farmer"}
-                        </h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {product.farmer?.email ||
-                            "Contact information not available"}
-                        </p>
-                      </div>
-                    </div>
+                    {session?.user?.userType === "farmer" ? (
+                      // Farmer-specific buttons
+                      <>
+                        <Link
+                          href="/create"
+                          className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center"
+                        >
+                          <i className="fas fa-plus mr-2"></i>
+                          Add Product
+                        </Link>
+                        <Link
+                          href="/manage"
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center"
+                        >
+                          <i className="fas fa-cog mr-2"></i>
+                          Manage Orders
+                        </Link>
+                        <Link
+                          href="/farmer-orders"
+                          className="w-full border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-white py-3 px-6 rounded-lg font-medium transition flex items-center justify-center"
+                        >
+                          <i className="fas fa-clipboard-list mr-2"></i>
+                          View My Orders
+                        </Link>
+                      </>
+                    ) : (
+                      // Customer buttons
+                      <>
+                        <button
+                          onClick={handleBuyNow}
+                          disabled={
+                            product.stock <= 0 ||
+                            session?.user?.userType === "farmer"
+                          }
+                          className="w-full bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-800 text-white py-3 px-6 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:bg-gray-400"
+                          title={
+                            session?.user?.userType === "farmer"
+                              ? "Farmers cannot purchase products"
+                              : ""
+                          }
+                        >
+                          <i className="fas fa-bolt mr-2"></i>
+                          Buy Now
+                        </button>
+                        <button
+                          onClick={handleAddToCart}
+                          disabled={
+                            isAddingToCart ||
+                            product.stock <= 0 ||
+                            session?.user?.userType === "farmer"
+                          }
+                          className="w-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white py-3 px-6 rounded-lg font-medium transition disabled:bg-gray-400"
+                          title={
+                            session?.user?.userType === "farmer"
+                              ? "Farmers cannot purchase products"
+                              : ""
+                          }
+                        >
+                          <i className="fas fa-shopping-cart mr-2"></i>
+                          {isAddingToCart ? "Adding..." : "Add to Cart"}
+                        </button>
+                        <button
+                          onClick={handleFavoriteToggle}
+                          className="w-full border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-white py-3 px-6 rounded-lg font-medium transition"
+                        >
+                          <i
+                            className={`${isFavorite ? "fas" : "far"} fa-heart mr-2 ${isFavorite ? "text-red-500" : ""}`}
+                          ></i>
+                          Add to Favorite
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1672,22 +1691,22 @@ export default function ProductDetails() {
                           General Storage Tips
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                            <h5 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+                          <div className="bg-blue-50 dark:bg-blue-900 text-blue-900 dark:text-blue-100 rounded-lg p-4">
+                            <h5 className="font-medium mb-2">
                               <i className="fas fa-thermometer-half mr-2"></i>
                               Temperature
                             </h5>
-                            <p className="text-sm text-blue-700 dark:text-blue-300">
+                            <p className="text-sm">
                               Store in a cool, dry place away from direct
                               sunlight
                             </p>
                           </div>
-                          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                            <h5 className="font-medium text-green-900 dark:text-green-100 mb-2">
+                          <div className="bg-green-50 dark:bg-green-900 text-green-900 dark:text-green-100 rounded-lg p-4">
+                            <h5 className="font-medium mb-2">
                               <i className="fas fa-tint mr-2"></i>
                               Humidity
                             </h5>
-                            <p className="text-sm text-green-700 dark:text-green-300">
+                            <p className="text-sm">
                               Keep in low humidity environment to prevent
                               spoilage
                             </p>
@@ -1705,23 +1724,26 @@ export default function ProductDetails() {
                           Customer Reviews (
                           {product.reviewCount || product.totalReviews || 0})
                         </h2>
-                        {/* Show review button only for users who have purchased and received the product */}
-                        {session && hasPurchasedProduct && (
-                          <button
-                            onClick={() => setShowReviewForm(true)}
-                            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition"
-                          >
-                            <i className="fas fa-plus mr-2"></i>
-                            Write Review
-                          </button>
-                        )}
+                        {/* Show review button only for customers who have purchased and received the product */}
                         {session &&
+                          session?.user?.userType !== "farmer" &&
+                          hasPurchasedProduct && (
+                            <button
+                              onClick={() => setShowReviewForm(true)}
+                              className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition"
+                            >
+                              <i className="fas fa-plus mr-2"></i>
+                              Write Review
+                            </button>
+                          )}
+                        {session &&
+                          session?.user?.userType !== "farmer" &&
                           !hasPurchasedProduct &&
                           !checkingPurchase && (
                             <div className="text-center">
                               <p className="text-gray-500 dark:text-gray-400 text-sm italic mb-4">
                                 You need to purchase and receive this product to
-                                write the first review
+                                write a review
                               </p>
                               <div className="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-gray-600 dark:text-gray-400 text-sm">
                                 <i className="fas fa-shopping-cart mr-2"></i>
@@ -1729,11 +1751,21 @@ export default function ProductDetails() {
                               </div>
                             </div>
                           )}
-                        {checkingPurchase && (
+                        {session &&
+                          session?.user?.userType !== "farmer" &&
+                          checkingPurchase && (
+                            <div className="text-center">
+                              <div className="inline-flex items-center text-gray-500 dark:text-gray-400 text-sm">
+                                <i className="fas fa-spinner fa-spin mr-2"></i>
+                                Checking purchase history...
+                              </div>
+                            </div>
+                          )}
+                        {session && session?.user?.userType === "farmer" && (
                           <div className="text-center">
-                            <div className="inline-flex items-center text-gray-500 dark:text-gray-400 text-sm">
-                              <i className="fas fa-spinner fa-spin mr-2"></i>
-                              Checking purchase history...
+                            <div className="inline-flex items-center px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400 text-sm">
+                              <i className="fas fa-info-circle mr-2"></i>
+                              Farmers can view reviews but cannot write them
                             </div>
                           </div>
                         )}
@@ -1806,7 +1838,22 @@ export default function ProductDetails() {
                               Rating Breakdown
                             </h4>
                             {(() => {
-                              // Use the existing memoized ratingDistribution instead of undefined function
+                              // Calculate rating distribution
+                              const ratingDistribution = {
+                                5: 0,
+                                4: 0,
+                                3: 0,
+                                2: 0,
+                                1: 0,
+                              };
+                              if (reviews && reviews.length > 0) {
+                                reviews.forEach((review) => {
+                                  const rating = Math.floor(review.rating);
+                                  if (rating >= 1 && rating <= 5) {
+                                    ratingDistribution[rating]++;
+                                  }
+                                });
+                              }
                               const totalReviews = reviews?.length || 0;
 
                               return [5, 4, 3, 2, 1].map((rating) => {
@@ -1937,15 +1984,6 @@ export default function ProductDetails() {
                                   </div>
                                 </div>
                                 <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                  {/* Debug information */}
-                                  {console.log("DEBUG Review comparison:", {
-                                    sessionUserId: session?.user?.userId,
-                                    reviewUserId: review.userId,
-                                    areEqual:
-                                      session?.user?.userId === review.userId,
-                                    sessionUser: session?.user,
-                                  })}
-
                                   {/* Show edit/delete buttons only for user's own review */}
                                   {session?.user?.userId === review.userId ? (
                                     <>
@@ -2126,168 +2164,168 @@ export default function ProductDetails() {
                       </div>
                     </div>
                   )}
-
-                  {/* Related Products Section - Enhanced */}
-                  {relatedProducts.length > 0 && (
-                    <div className="mt-16 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700">
-                      {/* Section Header */}
-                      <div className="text-center mb-10">
-                        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full mb-4 shadow-lg">
-                          <i className="fas fa-box-open text-2xl text-white"></i>
-                        </div>
-                        <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
-                          Related Products
-                        </h3>
-                        <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                          Discover similar high-quality products from our
-                          trusted farmers. Each item is carefully selected to
-                          meet our quality standards.
-                        </p>
-                        <div className="mt-4 flex items-center justify-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                          <i className="fas fa-leaf text-green-500"></i>
-                          <span>{relatedProducts.length} products found</span>
-                          <span>•</span>
-                          <i className="fas fa-truck text-blue-500"></i>
-                          <span>Fast delivery available</span>
-                        </div>
-                      </div>
-
-                      {/* Enhanced Product Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                        {relatedProducts.map((relatedProduct, index) => (
-                          <div
-                            key={relatedProduct._id}
-                            className="group transform transition-all duration-300 hover:-translate-y-2"
-                            style={{ animationDelay: `${index * 100}ms` }}
-                          >
-                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 dark:border-gray-700 hover:border-primary-200 dark:hover:border-primary-600 overflow-hidden">
-                              {/* Product Image */}
-                              <div className="relative aspect-square overflow-hidden">
-                                <Image
-                                  src={
-                                    relatedProduct.image ||
-                                    relatedProduct.images?.[0] ||
-                                    "/placeholder-image.jpg"
-                                  }
-                                  alt={relatedProduct.name}
-                                  width={300}
-                                  height={300}
-                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                />
-
-                                {/* Product Badges */}
-                                <div className="absolute top-3 left-3 flex flex-col space-y-2">
-                                  {relatedProduct.isOrganic && (
-                                    <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                                      Organic
-                                    </span>
-                                  )}
-                                  {relatedProduct.isFresh && (
-                                    <span className="bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                                      Fresh
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Quick Actions Overlay */}
-                                <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                                  <Link
-                                    href={`/details?id=${relatedProduct._id}`}
-                                    className="bg-white text-gray-900 px-6 py-2 rounded-full font-medium hover:bg-gray-100 transition-colors transform hover:scale-105"
-                                  >
-                                    View Details
-                                  </Link>
-                                </div>
-                              </div>
-
-                              {/* Product Info */}
-                              <div className="p-6">
-                                <div className="mb-3">
-                                  <h4 className="font-bold text-lg text-gray-900 dark:text-white line-clamp-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                                    {relatedProduct.name}
-                                  </h4>
-                                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
-                                    by{" "}
-                                    {relatedProduct.farmer?.name ||
-                                      relatedProduct.farmer?.farmName ||
-                                      "Unknown Farmer"}
-                                  </p>
-                                </div>
-
-                                {/* Rating */}
-                                <div className="flex items-center space-x-1 mb-3">
-                                  <StarRating
-                                    rating={relatedProduct.averageRating || 0}
-                                    size="sm"
-                                  />
-                                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                                    (
-                                    {relatedProduct.reviewCount ||
-                                      relatedProduct.totalReviews ||
-                                      0}
-                                    )
-                                  </span>
-                                </div>
-
-                                {/* Price and Stock */}
-                                <div className="flex items-center justify-between mb-4">
-                                  <div>
-                                    <span className="text-xl font-bold text-primary-600 dark:text-primary-400">
-                                      ${(relatedProduct.price || 0).toFixed(2)}
-                                    </span>
-                                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                                      /{relatedProduct.unit || "kg"}
-                                    </span>
-                                  </div>
-                                  <div className="text-right">
-                                    <div
-                                      className={`text-xs font-medium ${
-                                        (relatedProduct.stock || 0) > 0
-                                          ? "text-green-600 dark:text-green-400"
-                                          : "text-red-600 dark:text-red-400"
-                                      }`}
-                                    >
-                                      {(relatedProduct.stock || 0) > 0
-                                        ? `${relatedProduct.stock} ${relatedProduct.unit || "kg"} left`
-                                        : "Out of stock"}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Action Button */}
-                                <Link
-                                  href={`/details?id=${relatedProduct._id}`}
-                                  className="w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white py-2.5 px-4 rounded-lg font-medium transition-all duration-200 text-center block group-hover:shadow-lg transform group-hover:scale-[1.02]"
-                                >
-                                  <i className="fas fa-eye mr-2"></i>
-                                  View Product
-                                </Link>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Browse More Section */}
-                      <div className="mt-12 text-center">
-                        <div className="border-t border-gray-200 dark:border-gray-700 pt-8">
-                          <p className="text-gray-600 dark:text-gray-400 mb-4">
-                            Looking for more products?
-                          </p>
-                          <Link
-                            href="/products"
-                            className="inline-flex items-center bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
-                          >
-                            <i className="fas fa-shopping-bag mr-2"></i>
-                            Browse All Products
-                            <i className="fas fa-arrow-right ml-2"></i>
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
+
+              {/* Related Products Section - Enhanced */}
+              {relatedProducts.length > 0 && (
+                <div className="mt-16 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700">
+                  {/* Section Header */}
+                  <div className="text-center mb-10">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full mb-4 shadow-lg">
+                      <i className="fas fa-box-open text-2xl text-white"></i>
+                    </div>
+                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                      Related Products
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                      Discover similar high-quality products from our trusted
+                      farmers. Each item is carefully selected to meet our
+                      quality standards.
+                    </p>
+                    <div className="mt-4 flex items-center justify-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                      <i className="fas fa-leaf text-green-500"></i>
+                      <span>{relatedProducts.length} products found</span>
+                      <span>•</span>
+                      <i className="fas fa-truck text-blue-500"></i>
+                      <span>Fast delivery available</span>
+                    </div>
+                  </div>
+
+                  {/* Enhanced Product Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                    {relatedProducts.map((relatedProduct, index) => (
+                      <div
+                        key={relatedProduct._id}
+                        className="group transform transition-all duration-300 hover:-translate-y-2"
+                        style={{ animationDelay: `${index * 100}ms` }}
+                      >
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 dark:border-gray-700 hover:border-primary-200 dark:hover:border-primary-600 overflow-hidden">
+                          {/* Product Image */}
+                          <div className="relative aspect-square overflow-hidden">
+                            <Image
+                              src={
+                                relatedProduct.image ||
+                                relatedProduct.images?.[0] ||
+                                "/placeholder-image.jpg"
+                              }
+                              alt={relatedProduct.name}
+                              width={300}
+                              height={300}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
+
+                            {/* Product Badges */}
+                            <div className="absolute top-3 left-3 flex flex-col space-y-2">
+                              {relatedProduct.isOrganic && (
+                                <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                  Organic
+                                </span>
+                              )}
+                              {relatedProduct.isFresh && (
+                                <span className="bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                  Fresh
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Quick Actions Overlay */}
+                            <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                              <Link
+                                href={`/details?id=${relatedProduct._id}`}
+                                className="bg-white text-gray-900 px-6 py-2 rounded-full font-medium hover:bg-gray-100 transition-colors transform hover:scale-105"
+                              >
+                                View Details
+                              </Link>
+                            </div>
+                          </div>
+
+                          {/* Product Info */}
+                          <div className="p-6">
+                            <div className="mb-3">
+                              <h4 className="font-bold text-lg text-gray-900 dark:text-white line-clamp-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                {relatedProduct.name}
+                              </h4>
+                              <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
+                                by{" "}
+                                {relatedProduct.farmer?.name ||
+                                  relatedProduct.farmer?.farmName ||
+                                  "Unknown Farmer"}
+                              </p>
+                            </div>
+
+                            {/* Rating */}
+                            <div className="flex items-center space-x-1 mb-3">
+                              <StarRating
+                                rating={relatedProduct.averageRating || 0}
+                                size="sm"
+                              />
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                (
+                                {relatedProduct.reviewCount ||
+                                  relatedProduct.totalReviews ||
+                                  0}
+                                )
+                              </span>
+                            </div>
+
+                            {/* Price and Stock */}
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <span className="text-xl font-bold text-primary-600 dark:text-primary-400">
+                                  ${(relatedProduct.price || 0).toFixed(2)}
+                                </span>
+                                <span className="text-sm text-gray-500 dark:text-gray-400">
+                                  /{relatedProduct.unit || "kg"}
+                                </span>
+                              </div>
+                              <div className="text-right">
+                                <div
+                                  className={`text-xs font-medium ${
+                                    (relatedProduct.stock || 0) > 0
+                                      ? "text-green-600 dark:text-green-400"
+                                      : "text-red-600 dark:text-red-400"
+                                  }`}
+                                >
+                                  {(relatedProduct.stock || 0) > 0
+                                    ? `${relatedProduct.stock} ${relatedProduct.unit || "kg"} left`
+                                    : "Out of stock"}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Action Button */}
+                            <Link
+                              href={`/details?id=${relatedProduct._id}`}
+                              className="w-full bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white py-2.5 px-4 rounded-lg font-medium transition-all duration-200 text-center block group-hover:shadow-lg transform group-hover:scale-[1.02]"
+                            >
+                              <i className="fas fa-eye mr-2"></i>
+                              View Product
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Browse More Section */}
+                  <div className="mt-12 text-center">
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-8">
+                      <p className="text-gray-600 dark:text-gray-400 mb-4">
+                        Looking for more products?
+                      </p>
+                      <Link
+                        href="/products"
+                        className="inline-flex items-center bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
+                      >
+                        <i className="fas fa-shopping-bag mr-2"></i>
+                        Browse All Products
+                        <i className="fas fa-arrow-right ml-2"></i>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

@@ -2,10 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { useFavorites } from "../contexts/FavoritesContext";
-import { useCart } from "../contexts/CartContext";
+import { useFavorites } from "@/contexts/FavoritesContext";
+import { useCart } from "@/contexts/CartContext";
 import StarRating from "./StarRating";
 
 export default function ProductCard({ product, showAddToCart = true }) {
@@ -42,6 +42,14 @@ export default function ProductCard({ product, showAddToCart = true }) {
   const handleAddToCart = async () => {
     if (!session?.user) {
       window.location.href = "/login";
+      return;
+    }
+
+    // Check if user is a farmer and show appropriate message
+    if (session?.user?.userType === "farmer") {
+      alert(
+        "Farmers cannot purchase products. You can only sell your own products on this platform. Use the 'Manage' section to add your products.",
+      );
       return;
     }
 

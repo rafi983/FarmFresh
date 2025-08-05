@@ -12,6 +12,11 @@ export function CartProvider({ children }) {
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [recentlyOrderedItems, setRecentlyOrderedItems] = useState([]);
 
+  // New states for better UX
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [cartMessage, setCartMessage] = useState(null); // { type: 'success' | 'error' | 'info', message: string }
+  const [addingItemId, setAddingItemId] = useState(null); // Track which item is being added
+
   // Fetch cart when session changes
   useEffect(() => {
     if (session?.user) {
@@ -96,6 +101,16 @@ export function CartProvider({ children }) {
 
   const addToCart = async (product, quantity = 1) => {
     try {
+      // Check if user is a farmer and prevent them from adding to cart
+      if (session?.user?.userType === "farmer") {
+        throw new Error(
+          "Farmers cannot purchase products. You can only sell your own products on this platform.",
+        );
+      }
+
+      setAddingToCart(true);
+      setAddingItemId(product.id);
+
       setCartItems((prevItems) => {
         const existingItem = prevItems.find((item) => item.id === product.id);
         let newItems;
@@ -114,13 +129,25 @@ export function CartProvider({ children }) {
           saveCart(newItems);
         }
 
+        setCartMessage({
+          type: "success",
+          message: `${product.name} has been added to your cart.`,
+        });
+
         return newItems;
       });
 
       return true; // Return success
     } catch (error) {
       console.error("Error adding to cart:", error);
-      return false; // Return failure
+      setCartMessage({
+        type: "error",
+        message: error.message || "Error adding item to cart.",
+      });
+      throw error; // Re-throw to let calling components handle the error
+    } finally {
+      setAddingToCart(false);
+      setAddingItemId(null);
     }
   };
 
@@ -194,12 +221,30 @@ export function CartProvider({ children }) {
     return cartCount;
   };
 
+  // Function to clear cart messages
+  const clearCartMessage = () => {
+    setCartMessage(null);
+  };
+
+  // Auto-clear messages after 5 seconds
+  useEffect(() => {
+    if (cartMessage) {
+      const timer = setTimeout(() => {
+        setCartMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [cartMessage]);
+
   const value = {
     items: cartItems,
     cartCount,
     loading,
     paymentProcessing,
     recentlyOrderedItems,
+    addingToCart,
+    cartMessage,
+    addingItemId,
     addToCart,
     updateQuantity,
     removeFromCart,
@@ -208,6 +253,7 @@ export function CartProvider({ children }) {
     getCartTotal,
     getCartItemsCount,
     fetchCart,
+    clearCartMessage,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
