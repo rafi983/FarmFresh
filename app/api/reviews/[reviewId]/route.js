@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-import reviewEvents, { REVIEW_EVENTS } from "@/lib/reviewEvents";
 
 // Cache to track if indexes have been initialized
 let reviewOperationIndexesInitialized = false;
@@ -314,23 +313,6 @@ export async function DELETE(request, { params }) {
         },
       },
     );
-
-    // Emit review deletion event to notify other pages
-    try {
-      reviewEvents.emit(existingReview.productId, REVIEW_EVENTS.DELETED, {
-        reviewId,
-        userId,
-        productId: existingReview.productId,
-        newAverageRating: Math.round(finalAverageRating * 10) / 10,
-        newTotalRatings: finalTotalRatings,
-      });
-      console.log(
-        `✅ Review deletion event emitted for product ${existingReview.productId}`,
-      );
-    } catch (eventError) {
-      console.error("❌ Error emitting review deletion event:", eventError);
-      // Don't fail the operation if event emission fails
-    }
 
     return NextResponse.json({
       success: true,

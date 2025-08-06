@@ -18,9 +18,10 @@
       <change beforePath="$PROJECT_DIR$/app/api/reviews/[reviewId]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/reviews/[reviewId]/route.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/details/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/details/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/products/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/products/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hooks/useReviewUpdates.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useReviewUpdates.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/api-service.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/api-service.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/cache.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/cache.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useReviewUpdates.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useReviews.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useReviewsQuery.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useReviewsQuery.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/reviewEvents.js" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -120,7 +121,7 @@
       <workItem from="1754381291144" duration="7000" />
       <workItem from="1754381330831" duration="24000" />
       <workItem from="1754381403912" duration="23480000" />
-      <workItem from="1754473092855" duration="5024000" />
+      <workItem from="1754473092855" duration="6393000" />
     </task>
     <servers />
   </component>

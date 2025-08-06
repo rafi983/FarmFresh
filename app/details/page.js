@@ -34,7 +34,7 @@ export default function ProductDetails() {
   const router = useRouter();
   const productId = searchParams.get("id");
   const viewMode = searchParams.get("view");
-  const { data: session, status: sessionStatus } = useSession();
+  const { data: session } = useSession();
 
   const { addToCart } = useCart();
   const { addToFavorites, removeFromFavorites, isProductFavorited } =
@@ -54,17 +54,11 @@ export default function ProductDetails() {
   const {
     reviews,
     hasMoreReviews,
-    isLoading: reviewsLoading,
     isSubmitting,
     isUpdating,
-    isDeleting,
-    submitError,
-    updateError,
-    deleteError,
     submitReview,
     updateReview,
     deleteReview,
-    refetch: refetchReviews,
   } = useReviewsQuery(productId, session?.user?.id);
   const isOwner = useOwnership(product, session, viewMode);
 
@@ -75,8 +69,8 @@ export default function ProductDetails() {
 
   // Loading states
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-  const [isUpdatingReview, setIsUpdatingReview] = useState(false);
+  const [, setIsSubmittingReview] = useState(false);
+  const [, setIsUpdatingReview] = useState(false);
   const [isDeletingReview, setIsDeletingReview] = useState(false);
   const [, setIsUpdating] = useState(false);
   const [loadingOrders, setLoadingOrders] = useState(false);
@@ -117,7 +111,7 @@ export default function ProductDetails() {
   }, [product]);
 
   // Memoized rating distribution
-  const ratingDistribution = useMemo(() => {
+  useMemo(() => {
     if (!reviews || reviews.length === 0) {
       return { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
     }
@@ -132,7 +126,6 @@ export default function ProductDetails() {
 
     return distribution;
   }, [reviews]);
-
   // Optimized API calls with caching
   const checkUserPurchase = useCallback(async () => {
     // Get userId from either property

@@ -6,7 +6,6 @@ import ProductCard from "@/components/ProductCard";
 import Footer from "@/components/Footer";
 import { debounce } from "@/utils/debounce";
 import { apiService } from "@/lib/api-service";
-import { useProductListReviewUpdates } from "@/hooks/useReviewUpdates";
 import { useQueryClient } from "@tanstack/react-query";
 
 // Move constants outside component to prevent recreations
@@ -257,16 +256,6 @@ export default function Products() {
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
-
-  // Listen for review updates and refresh products data
-  useProductListReviewUpdates(
-    useCallback(() => {
-      console.log("🔄 Products page: Review update detected via event system");
-      // Force refresh products with React Query cache invalidation
-      queryClient.invalidateQueries(["products"]);
-      queryClient.invalidateQueries(["allProducts"]);
-    }, []),
-  );
 
   // Listen for custom review update events (from useReviewsQuery)
   useEffect(() => {

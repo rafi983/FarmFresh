@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { clearProductsCache } from "../../route.js";
-import reviewEvents, { REVIEW_EVENTS } from "@/lib/reviewEvents";
 
 // Cache to track if indexes have been initialized
 let indexesInitialized = false;
@@ -545,23 +544,6 @@ export async function POST(request, { params }) {
       // Clear the products API cache for updated product
       clearProductsCache(id);
 
-      // Emit review creation event to notify other pages
-      try {
-        reviewEvents.emit(id, REVIEW_EVENTS.ADDED, {
-          reviewId: result.insertedId,
-          userId,
-          productId: id,
-          rating: parseInt(rating),
-          reviewer: reviewerName,
-          newAverageRating: Math.round(ratingStats.averageRating * 10) / 10,
-          newTotalRatings: ratingStats.totalRatings,
-        });
-        console.log(`✅ Review creation event emitted for product ${id}`);
-      } catch (eventError) {
-        console.error("❌ Error emitting review creation event:", eventError);
-        // Don't fail the operation if event emission fails
-      }
-
       return NextResponse.json({
         success: true,
         reviewId: result.insertedId,
@@ -571,21 +553,6 @@ export async function POST(request, { params }) {
     }
 
     // Emit event even if no rating stats (shouldn't happen but just in case)
-    try {
-      reviewEvents.emit(id, REVIEW_EVENTS.ADDED, {
-        reviewId: result.insertedId,
-        userId,
-        productId: id,
-        rating: parseInt(rating),
-        reviewer: reviewerName,
-      });
-      console.log(
-        `✅ Review creation event emitted for product ${id} (no stats)`,
-      );
-    } catch (eventError) {
-      console.error("❌ Error emitting review creation event:", eventError);
-    }
-
     return NextResponse.json({
       success: true,
       reviewId: result.insertedId,
