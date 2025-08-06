@@ -279,78 +279,227 @@ const useOrderStats = (orders) => {
   }, [orders]);
 };
 
-// Enhanced loading component
+// Enhanced loading skeleton with modern animations that matches actual order structure
 const OrdersLoadingSkeleton = () => (
-  <div className="space-y-6 animate-pulse">
-    {/* Stats Cards Loading */}
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-      {[...Array(4)].map((_, i) => (
-        <div
-          key={i}
-          className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg"
-        >
-          <div className="flex items-center justify-between">
-            <div className="space-y-3 flex-1">
-              <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded-lg w-20"></div>
-              <div className="h-8 bg-gray-200 dark:bg-gray-600 rounded-lg w-16"></div>
+  <div className="space-y-6">
+    {/* Custom CSS animations for bookings */}
+    <style jsx>{`
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes shimmer {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+
+      @keyframes orderFloat {
+        0%,
+        100% {
+          transform: translateY(0px) rotate(0deg);
+        }
+        50% {
+          transform: translateY(-10px) rotate(2deg);
+        }
+      }
+
+      @keyframes packageMove {
+        0% {
+          transform: translateX(-15px);
+        }
+        100% {
+          transform: translateX(15px);
+        }
+      }
+
+      @keyframes statusPulse {
+        0%,
+        100% {
+          opacity: 0.4;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      .animate-shimmer {
+        animation: shimmer 2s infinite;
+      }
+
+      .animate-order-float {
+        animation: orderFloat 3s ease-in-out infinite;
+      }
+
+      .animate-package-move {
+        animation: packageMove 2s ease-in-out infinite alternate;
+      }
+
+      .animate-status-pulse {
+        animation: statusPulse 2s ease-in-out infinite;
+      }
+    `}</style>
+
+    {/* Orders Loading - Matching Actual Structure */}
+    {[...Array(6)].map((_, i) => (
+      <div
+        key={i}
+        className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300"
+        style={{
+          animationDelay: `${i * 100}ms`,
+          animation: "fadeInUp 0.8s ease-out forwards",
+        }}
+      >
+        {/* Enhanced shimmer effect */}
+        <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 dark:via-gray-600/20 to-transparent animate-shimmer"></div>
+
+        {/* Order Header - Matches the gradient header in real cards */}
+        <div className="bg-gradient-to-r from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 p-6 border-b border-gray-200 dark:border-gray-600">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex-1">
+              {/* Order ID and Date */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+                <div>
+                  <div className="flex items-center space-x-2 mb-1">
+                    <div className="h-6 bg-gradient-to-r from-gray-300 via-gray-400 to-gray-300 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 rounded w-32 animate-pulse"></div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 bg-blue-200 dark:bg-blue-700 rounded animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-24 animate-pulse"></div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  {/* Status Badge */}
+                  <div className="h-8 bg-gradient-to-r from-green-200 via-green-300 to-green-200 dark:from-green-700 dark:via-green-600 dark:to-green-700 rounded-full w-24 animate-pulse"></div>
+                  {/* Price and Items */}
+                  <div className="text-right">
+                    <div className="h-8 bg-gradient-to-r from-gray-300 via-gray-400 to-gray-300 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 rounded w-20 animate-pulse mb-1"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-16 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress Timeline - Matches the real progress section */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 bg-blue-200 dark:bg-blue-700 rounded animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-24 animate-pulse"></div>
+                  </div>
+                  <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-8 animate-pulse"></div>
+                </div>
+
+                {/* Progress Steps */}
+                <div className="relative">
+                  <div className="flex items-center justify-between">
+                    {[...Array(4)].map((_, stepIndex) => (
+                      <div
+                        key={stepIndex}
+                        className="flex flex-col items-center relative z-10"
+                      >
+                        {/* Step Icon */}
+                        <div className="w-12 h-12 bg-gradient-to-br from-gray-200 via-gray-300 to-gray-200 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 rounded-full flex items-center justify-center animate-pulse"></div>
+                        {/* Step Label */}
+                        <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-12 mt-2 animate-pulse"></div>
+                        {/* Date */}
+                        <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded w-8 mt-1 animate-pulse"></div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Progress Line */}
+                  <div className="absolute top-6 left-6 right-6 h-0.5 bg-gray-200 dark:bg-gray-600">
+                    <div className="h-full bg-gradient-to-r from-yellow-300 to-green-300 rounded-full w-1/3 animate-pulse"></div>
+                  </div>
+                </div>
+
+                {/* Status Message */}
+                <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 bg-blue-200 dark:bg-blue-700 rounded animate-pulse"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-3/4 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-full"></div>
           </div>
         </div>
-      ))}
-    </div>
 
-    {/* Filters Loading */}
-    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="space-y-2">
-            <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-16"></div>
-            <div className="h-10 bg-gray-200 dark:bg-gray-600 rounded-lg"></div>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* Orders Loading */}
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {[...Array(6)].map((_, i) => (
-        <div
-          key={i}
-          className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg"
-        >
-          <div className="space-y-4">
-            {/* Header */}
-            <div className="flex justify-between items-start">
-              <div className="space-y-2">
-                <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-24"></div>
-                <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded w-32"></div>
-              </div>
-              <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded-full w-20"></div>
+        {/* Order Content */}
+        <div className="p-6">
+          {/* Order Items Grid */}
+          <div className="mb-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <div className="w-5 h-5 bg-blue-200 dark:bg-blue-700 rounded animate-pulse"></div>
+              <div className="h-5 bg-gray-200 dark:bg-gray-600 rounded w-32 animate-pulse"></div>
             </div>
 
-            {/* Items */}
-            <div className="space-y-3">
-              {[...Array(2)].map((_, j) => (
-                <div key={j} className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-lg"></div>
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
-                    <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2"></div>
+            {/* Items Grid - Matches the 4-column grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4">
+              {[...Array(4)].map((_, itemIndex) => (
+                <div
+                  key={itemIndex}
+                  className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 border border-gray-200 dark:border-gray-600"
+                >
+                  <div className="flex items-start space-x-3">
+                    <div className="relative flex-shrink-0">
+                      <div className="w-16 h-16 bg-gradient-to-br from-orange-200 via-orange-300 to-orange-200 dark:from-orange-600 dark:via-orange-700 dark:to-orange-600 rounded-lg animate-pulse"></div>
+                      {/* Quantity badge */}
+                      <div className="absolute -top-2 -right-2 bg-blue-200 dark:bg-blue-700 w-6 h-6 rounded-full animate-pulse"></div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-3/4 mb-1 animate-pulse"></div>
+                      <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded w-1/2 mb-1 animate-pulse"></div>
+                      <div className="flex justify-between items-center">
+                        <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded w-8 animate-pulse"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-12 animate-pulse"></div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
+          </div>
 
-            {/* Footer */}
-            <div className="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-gray-700">
-              <div className="h-6 bg-gray-200 dark:bg-gray-600 rounded w-20"></div>
-              <div className="h-8 bg-gray-200 dark:bg-gray-600 rounded w-24"></div>
+          {/* Order Summary & Actions - Matches the bottom section */}
+          <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+              {/* Order Summary Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
+                {["Items", "Subtotal", "Delivery", "Total"].map(
+                  (label, summaryIndex) => (
+                    <div
+                      key={summaryIndex}
+                      className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
+                    >
+                      <div className="h-5 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 rounded w-8 mx-auto mb-1 animate-pulse"></div>
+                      <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded w-12 mx-auto animate-pulse"></div>
+                    </div>
+                  ),
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-3">
+                <div className="h-10 bg-gradient-to-r from-blue-200 via-blue-300 to-blue-200 dark:from-blue-700 dark:via-blue-600 dark:to-blue-700 rounded-lg w-24 animate-pulse"></div>
+                <div className="h-10 bg-gradient-to-r from-green-200 via-green-300 to-green-200 dark:from-green-700 dark:via-green-600 dark:to-green-700 rounded-lg w-20 animate-pulse"></div>
+                <div className="h-10 bg-gray-200 dark:bg-gray-600 rounded-lg w-16 animate-pulse"></div>
+              </div>
             </div>
           </div>
         </div>
-      ))}
-    </div>
+      </div>
+    ))}
   </div>
 );
 
@@ -945,7 +1094,13 @@ export default function Bookings() {
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
 
   // Show loading screen if still loading authentication, data, or navigation
-  if (status === "loading" || loading || navigationLoading) {
+  // Also show loading if we have no orders yet but we're authenticated (prevents empty cards)
+  if (
+    status === "loading" ||
+    loading ||
+    navigationLoading ||
+    (status === "authenticated" && !orders.length && !error)
+  ) {
     return <InitialLoadingScreen />;
   }
 
@@ -1141,7 +1296,7 @@ export default function Bookings() {
               >
                 {/* Order Header */}
                 <div className="bg-gradient-to-r from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700 p-6 border-b border-gray-200 dark:border-gray-600">
-                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
                         <div>
