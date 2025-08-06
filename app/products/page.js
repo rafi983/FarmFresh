@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { debounce } from "@/utils/debounce";
 import { apiService } from "@/lib/api-service";
 import { useProductListReviewUpdates } from "@/hooks/useReviewUpdates";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Move constants outside component to prevent recreations
 const CATEGORY_OPTIONS = [
@@ -23,7 +24,7 @@ const PRICE_RANGE_OPTIONS = [
   { label: "Under ৳50", min: 0, max: 49 },
   { label: "৳50 - ৳100", min: 50, max: 100 },
   { label: "৳100 - ৳200", min: 101, max: 200 },
-  { label: "৳200 - ৳500", min: 201, max: 500 },
+  { label: "৳200 - ���500", min: 201, max: 500 },
   { label: "Above ৳500", min: 501, max: 9999 },
 ];
 
@@ -41,6 +42,7 @@ const ITEMS_PER_PAGE = 12;
 export default function Products() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   // Core data states
   const [allProducts, setAllProducts] = useState([]);
@@ -259,11 +261,157 @@ export default function Products() {
   // Listen for review updates and refresh products data
   useProductListReviewUpdates(
     useCallback(() => {
-      console.log("Products page: Review update detected via event system");
-      // Force refresh to get updated review stats
-      fetchProducts(true);
-    }, [fetchProducts]),
+      console.log("🔄 Products page: Review update detected via event system");
+      // Force refresh products with React Query cache invalidation
+      queryClient.invalidateQueries(["products"]);
+      queryClient.invalidateQueries(["allProducts"]);
+    }, []),
   );
+
+  // Listen for custom review update events (from useReviewsQuery)
+  useEffect(() => {
+    console.log("🔧 Products page: Setting up custom review event listener");
+
+    const handleReviewUpdate = (event) => {
+      // Skip test events
+      if (event.detail.test) {
+        console.log("🧪 Products page: Skipping test event");
+        return;
+      }
+
+      console.log(
+        "🔄 Products page: Custom review update event detected:",
+        event.detail,
+      );
+
+      // Immediately clear API service cache
+      console.log("🧹 Products page: Clearing API service cache...");
+      if (window.apiService) {
+        window.apiService.clearProductsCache();
+        console.log("✅ Products page: API service cache cleared");
+      } else {
+        console.warn("⚠️ Products page: window.apiService not available");
+      }
+
+      // Force refresh products data to show updated ratings
+      setTimeout(() => {
+        console.log(
+          "🔄 Products page: Force refreshing products after review update",
+        );
+        fetchProducts(true); // Force refresh bypasses all caches
+      }, 100); // Reduced timeout for faster response
+    };
+
+    // Listen for custom review update events
+    window.addEventListener("reviewUpdated", handleReviewUpdate);
+
+    return () => {
+      console.log("🔧 Products page: Cleaning up custom review event listener");
+      window.removeEventListener("reviewUpdated", handleReviewUpdate);
+    };
+  }, [fetchProducts]);
+
+  // Listen for React Query cache invalidations
+  useEffect(() => {
+    console.log("🔧 Products page: Setting up React Query cache listener");
+
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      console.log("📡 Products page: Cache event detected:", {
+        type: event.type,
+        queryKey: event.query.queryKey,
+        state: event.query.state,
+      });
+
+      // Listen for cache invalidations and updates of product-related queries
+      if (event.query.queryKey) {
+        const queryKeyString = Array.isArray(event.query.queryKey)
+          ? event.query.queryKey.join(",").toLowerCase()
+          : String(event.query.queryKey).toLowerCase();
+
+        const isProductRelated =
+          queryKeyString.includes("products") ||
+          queryKeyString.includes("product") ||
+          queryKeyString.includes("reviews");
+
+        // Check for any type of query state change that might indicate data updates
+        const shouldRefresh =
+          isProductRelated &&
+          (event.type === "updated" ||
+            event.type === "observerAdded" ||
+            event.type === "observerRemoved" ||
+            (event.query.state && event.query.state.isInvalidated));
+
+        if (shouldRefresh) {
+          console.log(
+            "🔄 Products page: React Query cache change detected, refreshing products...",
+            {
+              queryKey: event.query.queryKey,
+              eventType: event.type,
+              isInvalidated: event.query.state?.isInvalidated,
+            },
+          );
+
+          // Add a small delay to ensure the cache has been fully updated
+          setTimeout(() => {
+            fetchProducts(true);
+          }, 100);
+        }
+      }
+    });
+
+    return () => {
+      console.log("🔧 Products page: Cleaning up React Query cache listener");
+      unsubscribe();
+    };
+  }, [fetchProducts, queryClient]);
+
+  // Additional listener for mutation cache events
+  useEffect(() => {
+    console.log("🔧 Products page: Setting up React Query mutation listener");
+
+    const unsubscribe = queryClient.getMutationCache().subscribe((event) => {
+      console.log("🔄 Products page: Mutation event detected:", {
+        type: event.type,
+        mutationKey: event.mutation?.options?.mutationKey,
+        variables: event.mutation?.state?.variables,
+        status: event.mutation?.state?.status,
+        data: event.mutation?.state?.data,
+      });
+
+      // Listen for review-related mutations
+      if (event.mutation?.state?.variables) {
+        const variables = event.mutation.state.variables;
+        const status = event.mutation.state.status;
+        const isMutationComplete =
+          event.type === "updated" && status === "success";
+
+        // Check if this is a review-related mutation
+        const isReviewMutation =
+          variables.productId || variables.reviewId || variables.reviewData;
+
+        if (isMutationComplete && isReviewMutation) {
+          console.log(
+            "🔄 Products page: Review mutation completed successfully, refreshing products...",
+            {
+              variables,
+              status,
+              eventType: event.type,
+            },
+          );
+          setTimeout(() => {
+            fetchProducts(true);
+          }, 200);
+        }
+      }
+    });
+
+    return () => {
+      console.log(
+        "🔧 Products page: Cleaning up React Query mutation listener",
+      );
+      unsubscribe();
+    };
+  }, [fetchProducts, queryClient]);
 
   // Listen for bulk update events to refresh data
   useEffect(() => {

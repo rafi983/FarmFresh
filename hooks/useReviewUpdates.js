@@ -36,6 +36,8 @@ export const useProductListReviewUpdates = (refreshProducts) => {
 
   useReviewUpdates(
     useCallback((event) => {
+      console.log("🔄 Product list detected review update:", event);
+
       // Only refresh if the event affects review stats (rating/count changes)
       if (
         [
@@ -44,35 +46,47 @@ export const useProductListReviewUpdates = (refreshProducts) => {
           REVIEW_EVENTS.UPDATED,
         ].includes(event.eventType)
       ) {
-        // Debounce the refresh to avoid multiple rapid updates
-        if (refreshRef.current) {
-          refreshRef.current();
-        }
+        console.log("🔄 Refreshing products list due to review change");
+
+        // Add a small delay to ensure backend has processed the change
+        setTimeout(() => {
+          if (refreshRef.current) {
+            refreshRef.current();
+          }
+        }, 100);
       }
     }, []),
   );
 };
 
-// Hook for individual product pages to refresh when their reviews change
-export const useProductReviewUpdates = (productId, refreshProduct) => {
-  const refreshRef = useRef(refreshProduct);
+// Hook for individual product pages to listen for their specific product updates
+export const useProductReviewUpdates = (productId, onUpdate) => {
+  const updateRef = useRef(onUpdate);
 
   useEffect(() => {
-    refreshRef.current = refreshProduct;
-  }, [refreshProduct]);
+    updateRef.current = onUpdate;
+  }, [onUpdate]);
 
   useEffect(() => {
     if (!productId) return;
 
-    const handleReviewUpdate = (event) => {
-      // Only refresh if this event is for our product
-      if (event.productId === productId && refreshRef.current) {
-        refreshRef.current();
+    const handleProductReviewUpdate = (eventType, data) => {
+      console.log(
+        `🔄 Product ${productId} detected review update:`,
+        eventType,
+        data,
+      );
+
+      if (updateRef.current) {
+        updateRef.current(eventType, data);
       }
     };
 
     // Subscribe to updates for this specific product
-    const unsubscribe = reviewEvents.subscribe(productId, handleReviewUpdate);
+    const unsubscribe = reviewEvents.subscribe(
+      productId,
+      handleProductReviewUpdate,
+    );
 
     return unsubscribe;
   }, [productId]);
