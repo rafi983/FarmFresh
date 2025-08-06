@@ -6,6 +6,7 @@ import Link from "next/link";
 export default function FarmersPage() {
   const [farmers, setFarmers] = useState([]);
   const [displayedFarmers, setDisplayedFarmers] = useState([]);
+  const [products, setProducts] = useState([]); // Add products state
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
@@ -20,50 +21,86 @@ export default function FarmersPage() {
       setLoading(true);
       setError(null);
 
-      // Only fetch farmers data, not products (to avoid cache overflow)
-      const farmersResponse = await fetch("/api/farmers", {
-        headers: {
-          "Cache-Control": "no-cache", // Bypass cache to avoid write failures
-          Pragma: "no-cache",
-        },
-      });
+      // Fetch both farmers and products data
+      const [farmersResponse, productsResponse] = await Promise.all([
+        fetch("/api/farmers", {
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+        }),
+        fetch("/api/products", {
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+        }),
+      ]);
 
       if (!farmersResponse.ok) {
         throw new Error(`Failed to fetch farmers: ${farmersResponse.status}`);
       }
 
-      const farmersData = await farmersResponse.json();
-      const allFarmers = farmersData.farmers || [];
+      if (!productsResponse.ok) {
+        throw new Error(`Failed to fetch products: ${productsResponse.status}`);
+      }
 
-      console.log(`Fetched ${allFarmers.length} farmers`);
+      const farmersData = await farmersResponse.json();
+      const productsData = await productsResponse.json();
+
+      const allFarmers = farmersData.farmers || [];
+      const allProducts = productsData.products || [];
+
+      console.log(
+        `Fetched ${allFarmers.length} farmers and ${allProducts.length} products`,
+      );
 
       setFarmers(allFarmers);
+      setProducts(allProducts);
       // Initially show only first 6 farmers
       setDisplayedFarmers(allFarmers.slice(0, 6));
     } catch (error) {
-      console.error("Error fetching farmers data:", error);
+      console.error("Error fetching data:", error);
       setError("Failed to load farmers. Please try again later.");
       setFarmers([]);
+      setProducts([]);
       setDisplayedFarmers([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Calculate dynamic stats based on farmers data only
+  // Calculate dynamic stats based on farmers and products data
   const getStats = () => {
     const totalFarmers = farmers.length;
-    const verifiedFarmers = farmers.filter((f) => f.verified).length;
-    const activeFarmers = farmers.filter(
-      (f) => f.availability?.status === "available",
-    ).length;
-    const totalLocations = new Set(farmers.map((f) => f.location)).size;
+    const totalProducts = products.length;
+
+    // Filter active/available products
+    const activeProducts = products.filter((product) => {
+      // Don't count deleted or inactive products
+      if (product.status === "deleted" || product.status === "inactive")
+        return false;
+
+      // Count products that have stock or don't have stock field defined
+      const hasStock =
+        product.stock === undefined ||
+        product.stock === null ||
+        product.stock > 0;
+      return hasStock;
+    }).length;
+
+    // Get unique categories from products
+    const categoriesCount = new Set(
+      products
+        .filter((product) => product.category) // Only products with categories
+        .map((product) => product.category.toLowerCase()),
+    ).size;
 
     return {
       totalFarmers,
-      verifiedFarmers,
-      activeFarmers,
-      totalLocations,
+      totalProducts,
+      activeProducts,
+      categoriesCount,
     };
   };
 
@@ -77,19 +114,21 @@ export default function FarmersPage() {
   };
 
   const getFarmerProductCount = (farmerId) => {
-    return farmers.filter(
-      (p) => p.farmer?.id === farmerId || p.farmerId === farmerId,
+    return products.filter(
+      (product) =>
+        product.farmer?.id === farmerId || product.farmerId === farmerId,
     ).length;
   };
 
   const getFarmerRating = (farmerId) => {
-    const farmerProducts = farmers.filter(
-      (p) => p.farmer?.id === farmerId || p.farmerId === farmerId,
+    const farmerProducts = products.filter(
+      (product) =>
+        product.farmer?.id === farmerId || product.farmerId === farmerId,
     );
     if (farmerProducts.length === 0) return 0;
 
     const totalRating = farmerProducts.reduce(
-      (sum, product) => sum + (product.averageRating || 0),
+      (sum, product) => sum + (parseFloat(product.averageRating) || 0),
       0,
     );
     return (totalRating / farmerProducts.length).toFixed(1);
@@ -99,10 +138,254 @@ export default function FarmersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <i className="fas fa-spinner fa-spin text-4xl text-primary-600 mb-4"></i>
-          <p className="text-gray-600 dark:text-gray-400">Loading farmers...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Custom CSS animations for farmers */}
+        <style jsx>{`
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(30px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          @keyframes shimmer {
+            0% {
+              transform: translateX(-100%);
+            }
+            100% {
+              transform: translateX(100%);
+            }
+          }
+
+          @keyframes farmFloat {
+            0%,
+            100% {
+              transform: translateY(0px) rotate(0deg);
+            }
+            50% {
+              transform: translateY(-15px) rotate(3deg);
+            }
+          }
+
+          @keyframes tractorMove {
+            0% {
+              transform: translateX(-20px);
+            }
+            100% {
+              transform: translateX(20px);
+            }
+          }
+
+          @keyframes leafSway {
+            0%,
+            100% {
+              transform: rotate(-5deg);
+            }
+            50% {
+              transform: rotate(5deg);
+            }
+          }
+
+          .animate-shimmer {
+            animation: shimmer 2s infinite;
+          }
+
+          .animate-farm-float {
+            animation: farmFloat 4s ease-in-out infinite;
+          }
+
+          .animate-tractor-move {
+            animation: tractorMove 3s ease-in-out infinite alternate;
+          }
+
+          .animate-leaf-sway {
+            animation: leafSway 2s ease-in-out infinite;
+          }
+        `}</style>
+
+        {/* Hero Section Skeleton */}
+        <div className="bg-gradient-to-r from-primary-600 to-green-600 text-white py-16 relative overflow-hidden">
+          {/* Animated farm background */}
+          <div className="absolute inset-0 opacity-20">
+            <div className="animate-farm-float absolute top-8 left-1/4">
+              <i className="fas fa-tractor text-5xl text-white"></i>
+            </div>
+            <div
+              className="animate-leaf-sway absolute top-12 right-1/3"
+              style={{ animationDelay: "1s" }}
+            >
+              <i className="fas fa-leaf text-3xl text-white"></i>
+            </div>
+            <div
+              className="animate-farm-float absolute bottom-8 left-1/3"
+              style={{ animationDelay: "2s" }}
+            >
+              <i className="fas fa-seedling text-4xl text-white"></i>
+            </div>
+            <div
+              className="animate-tractor-move absolute top-16 right-1/4"
+              style={{ animationDelay: "0.5s" }}
+            >
+              <i className="fas fa-barn text-4xl text-white"></i>
+            </div>
+          </div>
+
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="text-center">
+              <div className="h-12 w-96 bg-white/20 rounded-lg animate-pulse mb-4 mx-auto"></div>
+              <div className="h-6 w-[600px] bg-white/15 rounded animate-pulse mx-auto"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Section Skeleton */}
+        <div className="bg-white dark:bg-gray-800 py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              {[
+                { color: "primary", icon: "user-tie", delay: "0s" },
+                { color: "green", icon: "apple-alt", delay: "0.2s" },
+                { color: "blue", icon: "check-circle", delay: "0.4s" },
+                { color: "purple", icon: "tags", delay: "0.6s" },
+              ].map((stat, index) => (
+                <div
+                  key={index}
+                  className="text-center"
+                  style={{ animationDelay: stat.delay }}
+                >
+                  <div className="relative mb-4">
+                    <div
+                      className={`h-12 w-20 bg-${stat.color}-200 dark:bg-${stat.color}-700 rounded-lg animate-pulse mx-auto`}
+                    ></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <i
+                        className={`fas fa-${stat.icon} text-2xl text-${stat.color}-400 animate-bounce`}
+                      ></i>
+                    </div>
+                  </div>
+                  <div
+                    className={`h-4 w-24 bg-gray-300 dark:bg-gray-600 rounded animate-pulse mx-auto`}
+                    style={{ animationDelay: stat.delay }}
+                  ></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          {/* Section Header Skeleton */}
+          <div className="text-center mb-12">
+            <div className="h-8 w-48 bg-gray-300 dark:bg-gray-600 rounded-lg animate-pulse mb-4 mx-auto"></div>
+            <div className="h-5 w-96 bg-gray-250 dark:bg-gray-650 rounded animate-pulse mx-auto"></div>
+          </div>
+
+          {/* Farmers Grid Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[...Array(6)].map((_, index) => (
+              <div
+                key={index}
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden relative"
+                style={{
+                  animationDelay: `${index * 200}ms`,
+                  animation: "fadeInUp 0.8s ease-out forwards",
+                }}
+              >
+                {/* Shimmer effect overlay */}
+                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+
+                {/* Farmer Image Skeleton */}
+                <div className="relative h-48 bg-gradient-to-br from-green-200 via-green-300 to-green-200 dark:from-green-600 dark:via-green-700 dark:to-green-600 overflow-hidden">
+                  {/* Animated farmer icons */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="animate-bounce">
+                      <i className="fas fa-user-tie text-5xl text-green-400 dark:text-green-300"></i>
+                    </div>
+                  </div>
+
+                  {/* Floating farm elements */}
+                  <div className="absolute top-3 left-3 w-3 h-3 bg-yellow-400 rounded-full animate-ping opacity-60"></div>
+                  <div
+                    className="absolute top-6 right-4 w-2 h-2 bg-green-500 rounded-full animate-pulse opacity-70"
+                    style={{ animationDelay: "0.5s" }}
+                  ></div>
+                  <div
+                    className="absolute bottom-4 left-5 w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce opacity-50"
+                    style={{ animationDelay: "1s" }}
+                  ></div>
+
+                  {/* Product count badge skeleton */}
+                  <div className="absolute top-4 right-4">
+                    <div className="bg-white/80 dark:bg-gray-800/80 px-3 py-1 rounded-full">
+                      <div className="h-3 w-16 bg-gray-400 dark:bg-gray-500 rounded animate-pulse"></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Farmer Info Skeleton */}
+                <div className="p-6 space-y-4">
+                  {/* Name and Rating */}
+                  <div className="flex items-center justify-between">
+                    <div className="h-6 w-32 bg-gradient-to-r from-gray-300 via-gray-400 to-gray-300 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 rounded-lg animate-pulse"></div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-4 h-4 bg-yellow-200 dark:bg-yellow-700 rounded animate-pulse"></div>
+                      <div className="h-3 w-8 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+                    </div>
+                  </div>
+
+                  {/* Contact Info */}
+                  <div className="space-y-2">
+                    {[
+                      { icon: "map-marker-alt", width: "w-24" },
+                      { icon: "phone", width: "w-20" },
+                      { icon: "envelope", width: "w-28" },
+                    ].map((contact, contactIndex) => (
+                      <div
+                        key={contactIndex}
+                        className="flex items-center gap-2"
+                      >
+                        <div className="w-4 h-4 bg-primary-300 dark:bg-primary-600 rounded animate-pulse"></div>
+                        <div
+                          className={`h-3 ${contact.width} bg-gray-300 dark:bg-gray-600 rounded animate-pulse`}
+                          style={{ animationDelay: `${contactIndex * 0.1}s` }}
+                        ></div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Specialties */}
+                  <div className="space-y-2">
+                    <div className="h-4 w-20 bg-gray-400 dark:bg-gray-500 rounded animate-pulse"></div>
+                    <div className="flex flex-wrap gap-1">
+                      {[1, 2, 3].map((specialty) => (
+                        <div
+                          key={specialty}
+                          className="h-5 w-16 bg-gradient-to-r from-primary-200 to-green-200 dark:from-primary-700 dark:to-green-700 rounded-full animate-pulse"
+                          style={{ animationDelay: `${specialty * 0.15}s` }}
+                        ></div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Action Button */}
+                  <div
+                    className="h-10 bg-gradient-to-r from-primary-300 via-primary-400 to-primary-300 dark:from-primary-600 dark:via-primary-700 dark:to-primary-600 rounded-lg animate-pulse"
+                    style={{ animationDelay: "0.8s" }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Load More Button Skeleton */}
+          <div className="text-center mt-12">
+            <div className="h-12 w-32 bg-gradient-to-r from-primary-300 via-primary-400 to-primary-300 dark:from-primary-600 dark:via-primary-700 dark:to-primary-600 rounded-lg animate-pulse mx-auto"></div>
+          </div>
         </div>
       </div>
     );
