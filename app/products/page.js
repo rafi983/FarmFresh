@@ -679,82 +679,298 @@ export default function Products() {
     return count;
   };
 
-  // Pagination Component
-  const PaginationComponent = useMemo(() => {
-    if (paginationData.pagination.totalPages <= 1) return null;
+  // Custom Loading Skeleton Components
+  const ProductCardSkeleton = ({ index }) => (
+    <div
+      className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-100 dark:border-gray-700 relative"
+      style={{
+        animationDelay: `${index * 150}ms`,
+        animation: "fadeInUp 0.6s ease-out forwards",
+      }}
+    >
+      {/* Shimmer effect overlay */}
+      <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
 
-    return (
-      <div className="flex justify-center items-center space-x-2 mt-8">
-        <button
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={!paginationData.pagination.hasPrevPage}
-          className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed
-                     hover:bg-gray-50 transition-colors duration-200"
-        >
-          Previous
-        </button>
+      {/* Product Image Skeleton */}
+      <div className="relative aspect-square bg-gradient-to-br from-gray-200 via-gray-300 to-gray-200 dark:from-gray-600 dark:via-gray-700 dark:to-gray-600 overflow-hidden">
+        {/* Animated placeholder icons */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="animate-bounce">
+            <i className="fas fa-seedling text-4xl text-gray-400 dark:text-gray-500"></i>
+          </div>
+        </div>
+        {/* Floating particles effect */}
+        <div className="absolute top-2 left-2 w-2 h-2 bg-green-400 rounded-full animate-ping opacity-60"></div>
+        <div
+          className="absolute top-4 right-3 w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse opacity-70"
+          style={{ animationDelay: "0.5s" }}
+        ></div>
+        <div
+          className="absolute bottom-3 left-4 w-1 h-1 bg-blue-400 rounded-full animate-bounce opacity-50"
+          style={{ animationDelay: "1s" }}
+        ></div>
+      </div>
 
-        <div className="flex space-x-1">
-          {Array.from(
-            { length: Math.min(5, paginationData.pagination.totalPages) },
-            (_, i) => {
-              const page = Math.max(1, currentPage - 2) + i;
-              if (page > paginationData.pagination.totalPages) return null;
-
-              return (
-                <button
-                  key={page}
-                  onClick={() => handlePageChange(page)}
-                  className={`px-3 py-2 rounded-lg transition-colors duration-200 ${
-                    page === currentPage
-                      ? "bg-green-600 text-white"
-                      : "border hover:bg-gray-50"
-                  }`}
-                >
-                  {page}
-                </button>
-              );
-            },
-          )}
+      {/* Content Skeleton */}
+      <div className="p-6 space-y-4">
+        {/* Category Badge */}
+        <div className="flex items-center gap-2">
+          <div className="h-6 w-20 bg-gradient-to-r from-green-200 to-green-300 dark:from-green-700 dark:to-green-600 rounded-full animate-pulse"></div>
+          <div
+            className="h-5 w-12 bg-gradient-to-r from-blue-200 to-blue-300 dark:from-blue-700 dark:to-blue-600 rounded-full animate-pulse"
+            style={{ animationDelay: "0.2s" }}
+          ></div>
         </div>
 
-        <button
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={!paginationData.pagination.hasNextPage}
-          className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed
-                     hover:bg-gray-50 transition-colors duration-200"
-        >
-          Next
-        </button>
-      </div>
-    );
-  }, [paginationData.pagination, currentPage, handlePageChange]);
+        {/* Product Name */}
+        <div className="space-y-2">
+          <div className="h-5 bg-gradient-to-r from-gray-300 via-gray-400 to-gray-300 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 rounded-lg animate-pulse"></div>
+          <div
+            className="h-4 w-3/4 bg-gradient-to-r from-gray-250 via-gray-350 to-gray-250 dark:from-gray-650 dark:via-gray-550 dark:to-gray-650 rounded animate-pulse"
+            style={{ animationDelay: "0.3s" }}
+          ></div>
+        </div>
 
-  if (loading && allProducts.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading fresh products...</p>
+        {/* Rating */}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <div
+                key={star}
+                className="w-4 h-4 bg-yellow-200 dark:bg-yellow-700 rounded animate-pulse"
+                style={{ animationDelay: `${star * 0.1}s` }}
+              ></div>
+            ))}
+          </div>
+          <div
+            className="h-3 w-12 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"
+            style={{ animationDelay: "0.8s" }}
+          ></div>
+        </div>
+
+        {/* Price */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <div className="h-7 w-24 bg-gradient-to-r from-primary-200 to-primary-300 dark:from-primary-700 dark:to-primary-600 rounded-lg animate-pulse"></div>
+            <div
+              className="h-3 w-16 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"
+              style={{ animationDelay: "0.4s" }}
+            ></div>
+          </div>
+          <div className="text-right space-y-1">
+            <div
+              className="h-4 w-20 bg-green-200 dark:bg-green-700 rounded animate-pulse"
+              style={{ animationDelay: "0.6s" }}
+            ></div>
+            <div
+              className="h-3 w-14 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"
+              style={{ animationDelay: "0.7s" }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div
+          className="h-10 bg-gradient-to-r from-primary-300 via-primary-400 to-primary-300 dark:from-primary-600 dark:via-primary-700 dark:to-primary-600 rounded-lg animate-pulse"
+          style={{ animationDelay: "0.9s" }}
+        ></div>
+      </div>
+    </div>
+  );
+
+  const FilterSidebarSkeleton = () => (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="h-6 w-20 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+        <div className="h-5 w-5 bg-primary-300 dark:bg-primary-600 rounded-full animate-pulse"></div>
+      </div>
+
+      {/* Filter Sections */}
+      {[1, 2, 3, 4, 5].map((section) => (
+        <div
+          key={section}
+          className="space-y-3"
+          style={{ animationDelay: `${section * 0.1}s` }}
+        >
+          <div className="flex items-center gap-2 animate-pulse">
+            <div className="h-4 w-4 bg-primary-300 dark:bg-primary-600 rounded"></div>
+            <div className="h-5 w-24 bg-gray-300 dark:bg-gray-600 rounded"></div>
+          </div>
+          <div className="space-y-2 ml-2">
+            {[1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className="flex items-center gap-2 animate-pulse"
+                style={{ animationDelay: `${item * 0.05}s` }}
+              >
+                <div className="h-3 w-3 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                <div className="h-3 w-20 bg-gray-250 dark:bg-gray-650 rounded"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const HeaderSkeleton = () => (
+    <div className="bg-gradient-to-r from-primary-600 to-emerald-600 text-white py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Animated farm background */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="animate-float" style={{ animationDelay: "0s" }}>
+            <i className="fas fa-tractor text-6xl absolute top-8 left-1/4"></i>
+          </div>
+          <div className="animate-float" style={{ animationDelay: "2s" }}>
+            <i className="fas fa-leaf text-4xl absolute top-16 right-1/3"></i>
+          </div>
+          <div className="animate-float" style={{ animationDelay: "4s" }}>
+            <i className="fas fa-seedling text-3xl absolute bottom-8 left-1/3"></i>
+          </div>
+        </div>
+
+        <div className="relative z-10">
+          <div className="h-10 w-64 bg-white/20 rounded-lg animate-pulse mb-4"></div>
+          <div className="h-6 w-96 bg-white/15 rounded animate-pulse"></div>
+
+          {/* Search results skeleton */}
+          <div className="mt-6 p-4 bg-primary-700 rounded-lg animate-pulse">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-4 w-48 bg-white/20 rounded"></div>
+                <div className="h-3 w-32 bg-white/15 rounded"></div>
+              </div>
+              <div className="flex gap-2">
+                <div className="h-10 w-48 bg-white/20 rounded-lg"></div>
+                <div className="h-10 w-12 bg-white/15 rounded-lg"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (error) {
+  if (loading && allProducts.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <div className="text-red-600 text-lg mb-4">{error}</div>
-            <button
-              onClick={refreshData}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              Try Again
-            </button>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Custom CSS animations */}
+        <style jsx>{`
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(30px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          @keyframes shimmer {
+            0% {
+              transform: translateX(-100%);
+            }
+            100% {
+              transform: translateX(100%);
+            }
+          }
+
+          @keyframes float {
+            0%,
+            100% {
+              transform: translateY(0px);
+            }
+            50% {
+              transform: translateY(-20px);
+            }
+          }
+
+          .animate-shimmer {
+            animation: shimmer 2s infinite;
+          }
+
+          .animate-float {
+            animation: float 6s ease-in-out infinite;
+          }
+        `}</style>
+
+        {/* Header Skeleton */}
+        <HeaderSkeleton />
+
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Mobile Filter Toggle Skeleton */}
+          <div className="lg:hidden mb-6">
+            <div className="w-full h-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 animate-pulse"></div>
+          </div>
+
+          {/* Active Filters Skeleton */}
+          <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-5 w-32 bg-gray-300 dark:bg-gray-600 rounded"></div>
+              <div className="h-4 w-16 bg-primary-300 dark:bg-primary-600 rounded"></div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[1, 2, 3, 4].map((item) => (
+                <div
+                  key={item}
+                  className="h-6 w-20 bg-gradient-to-r from-primary-200 to-green-200 dark:from-primary-700 dark:to-green-700 rounded-full animate-pulse"
+                  style={{ animationDelay: `${item * 0.1}s` }}
+                ></div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Filters Sidebar Skeleton */}
+            <div className="lg:col-span-1">
+              <FilterSidebarSkeleton />
+            </div>
+
+            {/* Products Grid */}
+            <div className="lg:col-span-3">
+              {/* Sort and View Options Skeleton */}
+              <div className="flex items-center justify-between mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center gap-2 animate-pulse">
+                    <div className="h-4 w-4 bg-primary-400 rounded animate-bounce"></div>
+                    <div className="h-5 w-24 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                  </div>
+                  <div className="flex items-center text-primary-600 animate-pulse">
+                    <div className="h-4 w-4 bg-primary-400 rounded-full animate-spin mr-2"></div>
+                    <div className="h-4 w-20 bg-primary-300 rounded"></div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="h-4 w-16 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></div>
+                  <div className="h-10 w-32 bg-gray-300 dark:bg-gray-600 rounded-lg animate-pulse"></div>
+                </div>
+              </div>
+
+              {/* Products Grid Skeleton */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(9)].map((_, index) => (
+                  <ProductCardSkeleton key={index} index={index} />
+                ))}
+              </div>
+
+              {/* Pagination Skeleton */}
+              <div className="flex justify-center items-center space-x-2 mt-8">
+                <div className="h-10 w-20 bg-gray-300 dark:bg-gray-600 rounded-lg animate-pulse"></div>
+                <div className="flex space-x-1">
+                  {[1, 2, 3, 4, 5].map((page) => (
+                    <div
+                      key={page}
+                      className="h-10 w-10 bg-gray-300 dark:bg-gray-600 rounded-lg animate-pulse"
+                      style={{ animationDelay: `${page * 0.1}s` }}
+                    ></div>
+                  ))}
+                </div>
+                <div className="h-10 w-16 bg-gray-300 dark:bg-gray-600 rounded-lg animate-pulse"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -953,7 +1169,9 @@ export default function Products() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Filters Sidebar */}
             <div
-              className={`lg:col-span-1 ${showMobileFilters ? "block" : "hidden lg:block"}`}
+              className={`lg:col-span-1 ${
+                showMobileFilters ? "block" : "hidden lg:block"
+              }`}
             >
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sticky top-24">
                 <div className="flex items-center justify-between mb-4">
@@ -1244,7 +1462,52 @@ export default function Products() {
                     ))}
                   </div>
 
-                  {PaginationComponent}
+                  {/* Pagination Component */}
+                  {paginationData.pagination.totalPages > 1 && (
+                    <div className="flex justify-center items-center gap-2 mt-8">
+                      <button
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.max(prev - 1, 1))
+                        }
+                        disabled={!paginationData.pagination.hasPrevPage}
+                        className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                      >
+                        <i className="fas fa-chevron-left"></i>
+                      </button>
+
+                      {Array.from(
+                        { length: paginationData.pagination.totalPages },
+                        (_, i) => i + 1,
+                      ).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-2 rounded-lg transition ${
+                            page === paginationData.pagination.currentPage
+                              ? "bg-primary-500 text-white"
+                              : "border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+
+                      <button
+                        onClick={() =>
+                          setCurrentPage((prev) =>
+                            Math.min(
+                              prev + 1,
+                              paginationData.pagination.totalPages,
+                            ),
+                          )
+                        }
+                        disabled={!paginationData.pagination.hasNextPage}
+                        className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                      >
+                        <i className="fas fa-chevron-right"></i>
+                      </button>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="text-center py-12">
