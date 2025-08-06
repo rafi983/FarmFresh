@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Footer from "@/components/Footer";
 
 export default function FarmersPage() {
   const [farmers, setFarmers] = useState([]);
   const [displayedFarmers, setDisplayedFarmers] = useState([]);
   const [products, setProducts] = useState([]); // Add products state
+  const [reviews, setReviews] = useState([]); // Add reviews state for separate reviews collection
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
@@ -21,21 +23,30 @@ export default function FarmersPage() {
       setLoading(true);
       setError(null);
 
-      // Fetch both farmers and products data
-      const [farmersResponse, productsResponse] = await Promise.all([
-        fetch("/api/farmers", {
-          headers: {
-            "Cache-Control": "no-cache",
-            Pragma: "no-cache",
-          },
-        }),
-        fetch("/api/products", {
-          headers: {
-            "Cache-Control": "no-cache",
-            Pragma: "no-cache",
-          },
-        }),
-      ]);
+      // Fetch farmers, products, and reviews data with proper parameters to get all data
+      const [farmersResponse, productsResponse, reviewsResponse] =
+        await Promise.all([
+          fetch("/api/farmers", {
+            headers: {
+              "Cache-Control": "no-cache",
+              Pragma: "no-cache",
+            },
+          }),
+          fetch("/api/products?limit=1000", {
+            // Add limit to get all products
+            headers: {
+              "Cache-Control": "no-cache",
+              Pragma: "no-cache",
+            },
+          }),
+          fetch("/api/reviews?limit=5000", {
+            // Fetch all reviews from separate collection
+            headers: {
+              "Cache-Control": "no-cache",
+              Pragma: "no-cache",
+            },
+          }),
+        ]);
 
       if (!farmersResponse.ok) {
         throw new Error(`Failed to fetch farmers: ${farmersResponse.status}`);
@@ -51,12 +62,29 @@ export default function FarmersPage() {
       const allFarmers = farmersData.farmers || [];
       const allProducts = productsData.products || [];
 
+      // Handle reviews response (may fail for some setups)
+      let allReviews = [];
+      if (reviewsResponse.ok) {
+        const reviewsData = await reviewsResponse.json();
+        allReviews = reviewsData.reviews || [];
+        console.log(
+          `Fetched ${allReviews.length} reviews from separate collection`,
+        );
+      } else {
+        console.warn("Failed to fetch reviews from separate collection");
+      }
+
       console.log(
-        `Fetched ${allFarmers.length} farmers and ${allProducts.length} products`,
+        `Fetched ${allFarmers.length} farmers, ${allProducts.length} products, and ${allReviews.length} reviews`,
       );
+      console.log("Products sample:", allProducts.slice(0, 3));
+      console.log("All categories found:", [
+        ...new Set(allProducts.map((p) => p.category).filter(Boolean)),
+      ]);
 
       setFarmers(allFarmers);
       setProducts(allProducts);
+      setReviews(allReviews);
       // Initially show only first 6 farmers
       setDisplayedFarmers(allFarmers.slice(0, 6));
     } catch (error) {
@@ -64,6 +92,7 @@ export default function FarmersPage() {
       setError("Failed to load farmers. Please try again later.");
       setFarmers([]);
       setProducts([]);
+      setReviews([]);
       setDisplayedFarmers([]);
     } finally {
       setLoading(false);
@@ -75,31 +104,77 @@ export default function FarmersPage() {
     const totalFarmers = farmers.length;
     const totalProducts = products.length;
 
-    // Filter active/available products
+    console.log("Stats calculation:");
+    console.log("- Total products from state:", totalProducts);
+    console.log(
+      "- Products status breakdown:",
+      products.reduce((acc, p) => {
+        const status = p.status || "undefined";
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {}),
+    );
+    console.log(
+      "- Products with stock info:",
+      products
+        .map((p) => ({
+          name: p.name,
+          stock: p.stock,
+          status: p.status,
+        }))
+        .slice(0, 5),
+    );
+
+    // Filter active/available products with more detailed logging
     const activeProducts = products.filter((product) => {
       // Don't count deleted or inactive products
-      if (product.status === "deleted" || product.status === "inactive")
+      if (product.status === "deleted" || product.status === "inactive") {
         return false;
+      }
 
       // Count products that have stock or don't have stock field defined
+      // Be more permissive with stock checking
       const hasStock =
         product.stock === undefined ||
         product.stock === null ||
-        product.stock > 0;
+        parseInt(product.stock) > 0 ||
+        product.stock === "";
       return hasStock;
-    }).length;
+    });
 
-    // Get unique categories from products
-    const categoriesCount = new Set(
+    console.log("- Active products count:", activeProducts.length);
+    console.log(
+      "- Filtered out products:",
       products
-        .filter((product) => product.category) // Only products with categories
-        .map((product) => product.category.toLowerCase()),
-    ).size;
+        .filter(
+          (p) =>
+            p.status === "deleted" ||
+            p.status === "inactive" ||
+            (p.stock !== undefined &&
+              p.stock !== null &&
+              p.stock !== "" &&
+              parseInt(p.stock) <= 0),
+        )
+        .map((p) => ({ name: p.name, status: p.status, stock: p.stock })),
+    );
+
+    // Get unique categories from products with better handling
+    const categories = new Set();
+    products.forEach((product) => {
+      if (product.category && product.category.trim()) {
+        // Normalize category names
+        categories.add(product.category.toLowerCase().trim());
+      }
+    });
+    const categoriesCount = categories.size;
+
+    console.log("- Categories found:", Array.from(categories));
+    console.log("- Categories count:", categoriesCount);
 
     return {
       totalFarmers,
       totalProducts,
-      activeProducts,
+      activeProducts: activeProducts.length,
       categoriesCount,
     };
   };
@@ -114,24 +189,145 @@ export default function FarmersPage() {
   };
 
   const getFarmerProductCount = (farmerId) => {
-    return products.filter(
-      (product) =>
-        product.farmer?.id === farmerId || product.farmerId === farmerId,
-    ).length;
+    // Debug logging to understand the matching
+    console.log("Getting product count for farmer:", farmerId);
+
+    const matchingProducts = products.filter((product) => {
+      // Handle different farmer ID formats
+      const productFarmerId =
+        product.farmer?.id || product.farmer?._id || product.farmerId;
+      const productFarmerName = product.farmer?.name || product.farmerName;
+
+      // For old farmers (farmer_001 format), try matching by ID
+      const matchesById = productFarmerId === farmerId;
+
+      // For new farmers, try matching by MongoDB ObjectId
+      const matchesByObjectId = productFarmerId === farmerId;
+
+      // Also try matching by farmer name for fallback
+      const farmer = farmers.find((f) => f._id === farmerId);
+      const farmerName = farmer?.name;
+      const matchesByName = farmerName && productFarmerName === farmerName;
+
+      const isMatch = matchesById || matchesByObjectId || matchesByName;
+
+      if (isMatch) {
+        console.log("Found matching product:", {
+          productName: product.name,
+          productFarmerId,
+          productFarmerName,
+          farmerId,
+          farmerName,
+        });
+      }
+
+      return isMatch;
+    });
+
+    console.log(`Farmer ${farmerId} has ${matchingProducts.length} products`);
+    return matchingProducts.length;
   };
 
   const getFarmerRating = (farmerId) => {
-    const farmerProducts = products.filter(
-      (product) =>
-        product.farmer?.id === farmerId || product.farmerId === farmerId,
-    );
+    const farmer = farmers.find((f) => f._id === farmerId);
+    const farmerEmail = farmer?.email;
+
+    const farmerProducts = products.filter((product) => {
+      const productFarmerId =
+        product.farmer?.id || product.farmer?._id || product.farmerId;
+      const productFarmerName = product.farmer?.name || product.farmerName;
+      const productFarmerEmail = product.farmer?.email || product.farmerEmail;
+
+      // Use the same matching logic as the farmer ID page
+      const matchesById = productFarmerId === farmerId;
+      const matchesByObjectId = productFarmerId === farmerId;
+      const farmerName = farmer?.name;
+      const matchesByName = farmerName && productFarmerName === farmerName;
+      const matchesByEmail = farmerEmail && productFarmerEmail === farmerEmail;
+
+      return (
+        matchesById || matchesByObjectId || matchesByName || matchesByEmail
+      );
+    });
+
     if (farmerProducts.length === 0) return 0;
 
-    const totalRating = farmerProducts.reduce(
-      (sum, product) => sum + (parseFloat(product.averageRating) || 0),
+    // Calculate simple average of product ratings (only products with ratings)
+    const productsWithRatings = farmerProducts.filter(
+      (p) => parseFloat(p.averageRating) > 0,
+    );
+
+    if (productsWithRatings.length > 0) {
+      const totalRating = productsWithRatings.reduce((sum, p) => {
+        return sum + parseFloat(p.averageRating);
+      }, 0);
+
+      return (totalRating / productsWithRatings.length).toFixed(1);
+    }
+
+    return 0;
+  };
+
+  // Updated function to get total review count for a farmer from both sources
+  const getFarmerReviewCount = (farmerId) => {
+    const farmer = farmers.find((f) => f._id === farmerId);
+    const farmerEmail = farmer?.email;
+
+    const farmerProducts = products.filter((product) => {
+      const productFarmerId =
+        product.farmer?.id || product.farmer?._id || product.farmerId;
+      const productFarmerName = product.farmer?.name || product.farmerName;
+      const productFarmerEmail = product.farmer?.email || product.farmerEmail;
+
+      // Use the same matching logic as the farmer ID page
+      const matchesById = productFarmerId === farmerId;
+      const matchesByObjectId = productFarmerId === farmerId;
+      const farmerName = farmer?.name;
+      const matchesByName = farmerName && productFarmerName === farmerName;
+      const matchesByEmail = farmerEmail && productFarmerEmail === farmerEmail;
+
+      return (
+        matchesById || matchesByObjectId || matchesByName || matchesByEmail
+      );
+    });
+
+    // Count embedded reviews in products
+    const productReviewsCount = farmerProducts.reduce(
+      (sum, product) => sum + (product.reviews?.length || 0),
       0,
     );
-    return (totalRating / farmerProducts.length).toFixed(1);
+
+    // Count reviews from separate reviews collection
+    const separateReviewsCount = reviews.filter((review) => {
+      // Match reviews by farmerId directly
+      if (review.farmerId === farmerId || review.farmer?._id === farmerId) {
+        return true;
+      }
+
+      // Match reviews by farmer email
+      if (
+        farmerEmail &&
+        (review.farmerEmail === farmerEmail ||
+          review.farmer?.email === farmerEmail)
+      ) {
+        return true;
+      }
+
+      // Match reviews by product association (if the review is for a product that belongs to this farmer)
+      const relatedProduct = farmerProducts.find(
+        (product) =>
+          product._id === review.productId ||
+          product._id === review.product?._id,
+      );
+
+      return !!relatedProduct;
+    }).length;
+
+    console.log(
+      `Farmer ${farmerId} reviews: ${productReviewsCount} from products + ${separateReviewsCount} from reviews collection = ${productReviewsCount + separateReviewsCount} total`,
+    );
+
+    return productReviewsCount + separateReviewsCount;
   };
 
   const stats = getStats();
@@ -643,8 +839,8 @@ export default function FarmersPage() {
       </div>
 
       {/* Call to Action */}
-      <div className="bg-primary-600 py-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div className="bg-primary-600">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
           <h2 className="text-3xl font-bold text-white mb-4">
             Want to Join Our Farming Community?
           </h2>
@@ -670,6 +866,8 @@ export default function FarmersPage() {
           </div>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }

@@ -82,14 +82,9 @@ export default function Products() {
       // Don't show inactive products (if status is explicitly set to inactive)
       if (product.status === "inactive") return false;
 
-      // Show products that have stock OR don't have stock field defined
-      // This handles cases where stock might be undefined/null in the database
-      const hasStock =
-        product.stock === undefined ||
-        product.stock === null ||
-        product.stock > 0;
-
-      return hasStock;
+      // Show ALL products including stock-out ones
+      // Only exclude if stock is explicitly undefined/null AND status indicates unavailable
+      return true; // Show all active products regardless of stock level
     });
 
     // Apply price range checkboxes

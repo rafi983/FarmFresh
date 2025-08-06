@@ -192,23 +192,89 @@ export default function FarmerPage() {
 
       const farmerData = await farmerResponse.json();
 
-      // Now fetch products and orders with farmer information
-      const [ordersResponse] = await Promise.all([
-        fetch(
-          `/api/orders?farmerId=${farmerId}&farmerEmail=${farmerData.farmer?.email || ""}`,
-          {
-            headers: { "Cache-Control": "no-cache" },
-          },
-        ),
-      ]);
+      // Fetch all products to match with farmer
+      const productsResponse = await fetch("/api/products?limit=1000", {
+        headers: { "Cache-Control": "no-cache" },
+      });
+
+      const productsData = await productsResponse.json();
+      const allProducts = productsData.products || [];
+
+      // Match products to farmer using multiple strategies
+      const farmerProducts = allProducts.filter((product) => {
+        const productFarmerId =
+          product.farmer?.id || product.farmer?._id || product.farmerId;
+        const productFarmerName = product.farmer?.name || product.farmerName;
+
+        // Try matching by ID first (handles both old format like 'farmer_001' and new MongoDB ObjectIds)
+        const matchesById = productFarmerId === farmerId;
+
+        // For new farmers, also try matching by MongoDB ObjectId string comparison
+        const matchesByObjectId =
+          product.farmer?._id === farmerId || product.farmerId === farmerId;
+
+        // For old farmers, also try matching by name
+        const farmerName = farmerData.farmer?.name;
+        const matchesByName = farmerName && productFarmerName === farmerName;
+
+        // Also try matching by email for additional verification
+        const farmerEmail = farmerData.farmer?.email;
+        const productFarmerEmail = product.farmer?.email || product.farmerEmail;
+        const matchesByEmail =
+          farmerEmail && productFarmerEmail === farmerEmail;
+
+        const isMatch =
+          matchesById || matchesByObjectId || matchesByName || matchesByEmail;
+
+        if (isMatch) {
+          console.log("✅ Found matching product:", {
+            productName: product.name,
+            productId: product._id,
+            productFarmerId,
+            productFarmerName,
+            productFarmerEmail,
+            farmerId,
+            farmerName,
+            farmerEmail,
+            matchType: matchesById
+              ? "ID"
+              : matchesByObjectId
+                ? "ObjectId"
+                : matchesByName
+                  ? "Name"
+                  : "Email",
+          });
+        }
+
+        return isMatch;
+      });
+
+      console.log("Farmer ID:", farmerId);
+      console.log("Farmer Name:", farmerData.farmer?.name);
+      console.log("Found products for farmer:", farmerProducts.length);
+      console.log(
+        "Products:",
+        farmerProducts.map((p) => ({
+          name: p.name,
+          farmerId: p.farmer?.id || p.farmerId,
+          farmerName: p.farmer?.name || p.farmerName,
+        })),
+      );
+
+      // Now fetch orders with farmer information
+      const ordersResponse = await fetch(
+        `/api/orders?farmerId=${farmerId}&farmerEmail=${farmerData.farmer?.email || ""}`,
+        {
+          headers: { "Cache-Control": "no-cache" },
+        },
+      );
 
       const ordersData = await ordersResponse.json();
 
       setFarmer(farmerData.farmer);
-      setProducts(farmerData.farmer.products || []); // Use products from farmer data
+      setProducts(farmerProducts); // Use matched products instead of farmer.products
 
-      // Use the stats already calculated by the API instead of recalculating
-      const farmerProducts = farmerData.farmer.products || [];
+      // Calculate stats using matched products
       const totalProducts = farmerProducts.length;
       const activeProducts = farmerProducts.filter((p) => p.stock > 0).length;
       const totalStock = farmerProducts.reduce(
@@ -222,32 +288,105 @@ export default function FarmerPage() {
               farmerProducts.length
             ).toFixed(2)
           : 0;
-      const averageRating =
-        farmerProducts.length > 0
-          ? (
-              farmerProducts.reduce(
-                (sum, p) => sum + (p.averageRating || 0),
-                0,
-              ) / farmerProducts.length
-            ).toFixed(1)
-          : 0;
+
+      // Enhanced average rating calculation
+      console.log("Calculating average rating for farmer:", farmerId);
+
+      let averageRating = 0;
+      if (farmerProducts.length > 0) {
+        const ratingsData = farmerProducts.map((p) => ({
+          name: p.name,
+          rating: parseFloat(p.averageRating) || 0,
+          reviewsCount: p.reviews?.length || 0,
+        }));
+
+        console.log("Products with ratings:", ratingsData);
+
+        // Calculate simple average of product ratings (only products with ratings)
+        const productsWithRatings = farmerProducts.filter(
+          (p) => parseFloat(p.averageRating) > 0,
+        );
+        if (productsWithRatings.length > 0) {
+          const totalRating = productsWithRatings.reduce((sum, p) => {
+            return sum + parseFloat(p.averageRating);
+          }, 0);
+
+          averageRating = (totalRating / productsWithRatings.length).toFixed(1);
+        }
+
+        console.log("Products with ratings count:", productsWithRatings.length);
+        console.log("Calculated average rating:", averageRating);
+      } else {
+        console.log("No products found for farmer");
+      }
 
       // Get categories from products
       const categories = [
         ...new Set(farmerProducts.map((p) => p.category).filter(Boolean)),
       ];
 
-      // Get recent reviews from products
-      const allReviews = farmerProducts
-        .flatMap((p) =>
-          (p.reviews || []).map((review) => ({
-            ...review,
-            productName: p.name,
-            productId: p._id,
-          })),
-        )
+      // Get recent reviews from products (existing logic)
+      const productReviews = farmerProducts.flatMap((p) =>
+        (p.reviews || []).map((review) => ({
+          ...review,
+          productName: p.name,
+          productId: p._id,
+          source: "product",
+          // Ensure we have a valid date - use current date as fallback if createdAt is missing
+          createdAt:
+            review.createdAt || review.date || new Date().toISOString(),
+        })),
+      );
+
+      // Fetch reviews from the separate reviews collection
+      let separateReviews = [];
+      try {
+        const reviewsResponse = await fetch(
+          `/api/reviews?farmerId=${farmerId}`,
+          {
+            headers: { "Cache-Control": "no-cache" },
+          },
+        );
+
+        if (reviewsResponse.ok) {
+          const reviewsData = await reviewsResponse.json();
+          separateReviews = (reviewsData.reviews || []).map((review) => {
+            // Find the product info from farmer's products
+            const relatedProduct = farmerProducts.find(
+              (product) =>
+                product._id === review.productId ||
+                product._id === review.product?._id,
+            );
+
+            return {
+              ...review,
+              source: "reviews_collection",
+              // Map product information from the farmer's products
+              productName:
+                review.productName || relatedProduct?.name || "Unknown Product",
+              productId:
+                review.productId || review.product?._id || relatedProduct?._id,
+              // Ensure we have consistent field names
+              createdAt:
+                review.createdAt || review.date || new Date().toISOString(),
+            };
+          });
+          console.log(
+            `Found ${separateReviews.length} reviews from reviews collection`,
+          );
+        }
+      } catch (error) {
+        console.warn("Failed to fetch reviews from reviews collection:", error);
+      }
+
+      // Combine and deduplicate reviews
+      const allReviews = [...productReviews, ...separateReviews]
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 5);
+        .slice(0, 10); // Get top 10 most recent reviews
+
+      console.log(
+        `Total reviews found: ${allReviews.length} (${productReviews.length} from products, ${separateReviews.length} from reviews collection)`,
+      );
 
       // Calculate revenue from orders
       const farmerOrders = (ordersData.orders || []).filter((order) => {
@@ -291,6 +430,19 @@ export default function FarmerPage() {
         0,
       );
 
+      // Calculate real community reach based on actual orders
+      const uniqueCustomers = new Set();
+      validOrders.forEach((order) => {
+        if (order.userId) {
+          uniqueCustomers.add(order.userId);
+        }
+        if (order.email) {
+          uniqueCustomers.add(order.email);
+        }
+      });
+
+      const actualFamiliesServed = uniqueCustomers.size;
+
       setReviews(allReviews);
       setStats({
         totalProducts,
@@ -300,7 +452,7 @@ export default function FarmerPage() {
         averageRating,
         categories,
         totalReviews: allReviews.length,
-        familiesServed: Math.floor(totalProducts * 50 + Math.random() * 200),
+        familiesServed: actualFamiliesServed,
         farmSize: farmerData.farmer.farmSize || 0,
         farmSizeUnit: farmerData.farmer.farmSizeUnit || "acres",
         yearsOfExperience:
@@ -671,7 +823,8 @@ export default function FarmerPage() {
                         Community Impact
                       </h4>
                       <p className="text-gray-600 dark:text-gray-400 text-sm">
-                        Proudly serving {stats.familiesServed}+ families monthly
+                        Serving {farmer.location} with {stats.totalProducts}{" "}
+                        quality products
                       </p>
                     </div>
 
@@ -1152,7 +1305,7 @@ export default function FarmerPage() {
 
                                 <div className="text-center">
                                   <p className="text-gray-700 dark:text-gray-300 text-xl leading-relaxed italic font-light">
-                                    "{review.comment}"
+                                    &ldquo;{review.comment}&rdquo;
                                   </p>
                                   <div className="mt-6 text-gray-500 dark:text-gray-400 text-sm">
                                     <i className="fas fa-calendar-alt mr-2"></i>
@@ -1188,7 +1341,7 @@ export default function FarmerPage() {
 
                                   <div className="flex-1">
                                     <div className="flex items-center justify-between mb-4">
-                                      <div>
+                                      <div className="flex-1">
                                         <h4 className="text-xl font-bold mb-1">
                                           {review.reviewer || "Valued Customer"}
                                         </h4>
@@ -1458,30 +1611,40 @@ export default function FarmerPage() {
                     <div className="relative z-10">
                       <div className="flex items-center justify-between mb-6">
                         <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center transform group-hover:rotate-45 transition-transform duration-500 shadow-lg">
-                          <i className="fas fa-users text-2xl text-white"></i>
+                          <i className="fas fa-calendar text-2xl text-white"></i>
                         </div>
                         <div className="text-right">
                           <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-1">
-                            {stats.familiesServed}+
+                            {calculateYearsOfExperience(
+                              farmer.joinedDate,
+                              farmer.createdAt,
+                            )}
                           </div>
                           <div className="text-purple-500 dark:text-purple-300 text-sm font-medium">
-                            Families Served
+                            Years Experience
                           </div>
                         </div>
                       </div>
                       <div className="space-y-3">
                         <div className="flex justify-between text-gray-700 dark:text-gray-300">
-                          <span>Monthly Impact</span>
+                          <span>Farm Size</span>
                           <span className="font-bold text-pink-600 dark:text-pink-400">
-                            Community
+                            {farmer.farmSize
+                              ? `${farmer.farmSize} ${farmer.farmSizeUnit}`
+                              : "Not specified"}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2">
                           <div className="flex-1 h-2 bg-purple-100 dark:bg-purple-900/30 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse"></div>
+                            <div
+                              className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+                              style={{
+                                width: farmer.verified ? "100%" : "75%",
+                              }}
+                            ></div>
                           </div>
                           <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
-                            Growing
+                            {farmer.verified ? "Verified" : "Pending"}
                           </span>
                         </div>
                       </div>
