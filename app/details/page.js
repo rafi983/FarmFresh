@@ -1646,9 +1646,99 @@ export default function ProductDetails() {
 
                       {product.nutritionalInformation ? (
                         <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
-                          <p className="text-gray-600 dark:text-gray-400">
-                            {product.nutritionalInformation}
-                          </p>
+                          {typeof product.nutritionalInformation ===
+                          "string" ? (
+                            <p className="text-gray-600 dark:text-gray-400">
+                              {product.nutritionalInformation}
+                            </p>
+                          ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Display nutritional information as structured data */}
+                              {product.nutritionalInformation.servingSize && (
+                                <div className="flex justify-between">
+                                  <span className="font-medium">
+                                    Serving Size:
+                                  </span>
+                                  <span>
+                                    {product.nutritionalInformation.servingSize}
+                                  </span>
+                                </div>
+                              )}
+                              {product.nutritionalInformation.calories && (
+                                <div className="flex justify-between">
+                                  <span className="font-medium">Calories:</span>
+                                  <span>
+                                    {product.nutritionalInformation.calories}
+                                  </span>
+                                </div>
+                              )}
+                              {product.nutritionalInformation.protein && (
+                                <div className="flex justify-between">
+                                  <span className="font-medium">Protein:</span>
+                                  <span>
+                                    {product.nutritionalInformation.protein}
+                                  </span>
+                                </div>
+                              )}
+                              {product.nutritionalInformation.fat && (
+                                <div className="flex justify-between">
+                                  <span className="font-medium">Fat:</span>
+                                  <span>
+                                    {product.nutritionalInformation.fat}
+                                  </span>
+                                </div>
+                              )}
+                              {product.nutritionalInformation.carbohydrates && (
+                                <div className="flex justify-between">
+                                  <span className="font-medium">
+                                    Carbohydrates:
+                                  </span>
+                                  <span>
+                                    {
+                                      product.nutritionalInformation
+                                        .carbohydrates
+                                    }
+                                  </span>
+                                </div>
+                              )}
+                              {product.nutritionalInformation.fiber && (
+                                <div className="flex justify-between">
+                                  <span className="font-medium">Fiber:</span>
+                                  <span>
+                                    {product.nutritionalInformation.fiber}
+                                  </span>
+                                </div>
+                              )}
+                              {product.nutritionalInformation.vitaminC && (
+                                <div className="flex justify-between">
+                                  <span className="font-medium">
+                                    Vitamin C:
+                                  </span>
+                                  <span>
+                                    {product.nutritionalInformation.vitaminC}
+                                  </span>
+                                </div>
+                              )}
+                              {product.nutritionalInformation.potassium && (
+                                <div className="flex justify-between">
+                                  <span className="font-medium">
+                                    Potassium:
+                                  </span>
+                                  <span>
+                                    {product.nutritionalInformation.potassium}
+                                  </span>
+                                </div>
+                              )}
+                              {product.nutritionalInformation.iron && (
+                                <div className="flex justify-between">
+                                  <span className="font-medium">Iron:</span>
+                                  <span>
+                                    {product.nutritionalInformation.iron}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="text-center py-8">
