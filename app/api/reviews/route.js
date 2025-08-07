@@ -59,13 +59,6 @@ export async function GET(request) {
     const page = parseInt(searchParams.get("page")) || 1;
     const limit = parseInt(searchParams.get("limit")) || 10;
 
-    if (!farmerId && !productId && !userId) {
-      return NextResponse.json(
-        { error: "farmerId, productId, or userId parameter is required" },
-        { status: 400 },
-      );
-    }
-
     const client = await clientPromise;
     const db = client.db("farmfresh");
 
@@ -74,6 +67,86 @@ export async function GET(request) {
 
     let reviews = [];
     let totalReviews = 0;
+
+    // If no specific filter parameters are provided, fetch all reviews
+    if (!farmerId && !productId && !userId) {
+      // Fetch all reviews with basic aggregation
+      const allReviewsPipeline = [
+        {
+          $addFields: {
+            normalizedReviewer: {
+              $ifNull: ["$reviewer", "Anonymous"],
+            },
+            normalizedComment: {
+              $ifNull: [
+                "$comment",
+                { $ifNull: ["$text", { $ifNull: ["$content", ""] }] },
+              ],
+            },
+            normalizedCreatedAt: {
+              $ifNull: [
+                "$createdAt",
+                {
+                  $ifNull: ["$date", { $ifNull: ["$timestamp", new Date()] }],
+                },
+              ],
+            },
+          },
+        },
+        {
+          $project: {
+            _id: {
+              $ifNull: ["$_id", { $ifNull: ["$reviewId", new ObjectId()] }],
+            },
+            rating: { $ifNull: ["$rating", 5] },
+            comment: "$normalizedComment",
+            createdAt: "$normalizedCreatedAt",
+            reviewer: "$normalizedReviewer",
+            userId: 1,
+            productId: 1,
+            farmerId: 1,
+          },
+        },
+        {
+          $sort: {
+            createdAt: -1,
+          },
+        },
+        {
+          $skip: (page - 1) * limit,
+        },
+        {
+          $limit: limit,
+        },
+      ];
+
+      reviews = await db
+        .collection("reviews")
+        .aggregate(allReviewsPipeline)
+        .toArray();
+
+      totalReviews = await db.collection("reviews").countDocuments();
+
+      return NextResponse.json({
+        reviews,
+        pagination: {
+          page,
+          limit,
+          total: totalReviews,
+          pages: Math.ceil(totalReviews / limit),
+        },
+        summary: {
+          totalReviews,
+          averageRating:
+            reviews.length > 0
+              ? (
+                  reviews.reduce((sum, review) => sum + review.rating, 0) /
+                  reviews.length
+                ).toFixed(1)
+              : "0.0",
+        },
+      });
+    }
 
     // If farmerId is provided, we need to get reviews for all products belonging to that farmer
     if (farmerId) {

@@ -1,103 +1,251 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Footer from "@/components/Footer";
+import { apiService } from "@/lib/api-service";
 
 export default function FarmersPage() {
+  // Core data states with smart caching initialization
   const [farmers, setFarmers] = useState([]);
   const [displayedFarmers, setDisplayedFarmers] = useState([]);
-  const [products, setProducts] = useState([]); // Add products state
-  const [reviews, setReviews] = useState([]); // Add reviews state for separate reviews collection
+  const [products, setProducts] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [showAllFarmers, setShowAllFarmers] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const abortControllerRef = useRef(null);
 
+  // Optimized cache-first fetch with smart loading states
+  const fetchData = useCallback(
+    async (forceRefresh = false) => {
+      // For subsequent navigations, check cache first to avoid showing loading
+      if (!isInitialLoad && !forceRefresh) {
+        try {
+          // Quick cache check without loading state
+          const [farmersData, productsData, reviewsData] = await Promise.all([
+            apiService.getFarmers(
+              {},
+              {
+                ttl: 10 * 60 * 1000, // Longer cache for subsequent loads
+                useSessionCache: true,
+              },
+            ),
+            apiService.getProducts(
+              { limit: 1000 },
+              {
+                ttl: 10 * 60 * 1000,
+                useSessionCache: true,
+              },
+            ),
+            apiService
+              .getReviews(
+                { limit: 5000 },
+                {
+                  ttl: 10 * 60 * 1000,
+                  useSessionCache: true,
+                },
+              )
+              .catch(() => ({ reviews: [] })), // Handle reviews API failure gracefully
+          ]);
+
+          if (farmersData && farmersData.farmers) {
+            const allFarmers = farmersData.farmers || [];
+            const allProducts = productsData.products || [];
+            const allReviews = reviewsData.reviews || [];
+
+            setFarmers(allFarmers);
+            setProducts(allProducts);
+            setReviews(allReviews);
+            setDisplayedFarmers(allFarmers.slice(0, 6));
+            setIsInitialLoad(false);
+            return; // Exit early if cache hit
+          }
+        } catch (error) {
+          // If cache fails, continue to normal fetch with loading
+        }
+      }
+
+      // Cancel previous request if still pending
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      abortControllerRef.current = new AbortController();
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        console.log("Fetching farmers data from API");
+
+        let farmersData, productsData, reviewsData;
+
+        if (forceRefresh) {
+          // Force refresh bypasses all caches
+          const [farmersResponse, productsResponse, reviewsResponse] =
+            await Promise.all([
+              fetch("/api/farmers", {
+                signal: abortControllerRef.current.signal,
+                headers: {
+                  "Cache-Control": "no-cache",
+                  Pragma: "no-cache",
+                },
+              }),
+              fetch("/api/products?limit=1000", {
+                signal: abortControllerRef.current.signal,
+                headers: {
+                  "Cache-Control": "no-cache",
+                  Pragma: "no-cache",
+                },
+              }),
+              fetch("/api/reviews?limit=5000", {
+                signal: abortControllerRef.current.signal,
+                headers: {
+                  "Cache-Control": "no-cache",
+                  Pragma: "no-cache",
+                },
+              }),
+            ]);
+
+          if (!farmersResponse.ok) {
+            throw new Error(
+              `Failed to fetch farmers: ${farmersResponse.status}`,
+            );
+          }
+          if (!productsResponse.ok) {
+            throw new Error(
+              `Failed to fetch products: ${productsResponse.status}`,
+            );
+          }
+
+          farmersData = await farmersResponse.json();
+          productsData = await productsResponse.json();
+
+          if (reviewsResponse.ok) {
+            reviewsData = await reviewsResponse.json();
+          } else {
+            console.warn("Failed to fetch reviews from separate collection");
+            reviewsData = { reviews: [] };
+          }
+        } else {
+          // Normal fetch with enhanced caching
+          [farmersData, productsData, reviewsData] = await Promise.all([
+            apiService.getFarmers(
+              {},
+              {
+                ttl: isInitialLoad ? 5 * 60 * 1000 : 10 * 60 * 1000, // Longer cache for subsequent loads
+                useSessionCache: true,
+              },
+            ),
+            apiService.getProducts(
+              { limit: 1000 },
+              {
+                ttl: isInitialLoad ? 5 * 60 * 1000 : 10 * 60 * 1000,
+                useSessionCache: true,
+              },
+            ),
+            apiService
+              .getReviews(
+                { limit: 5000 },
+                {
+                  ttl: isInitialLoad ? 5 * 60 * 1000 : 10 * 60 * 1000,
+                  useSessionCache: true,
+                },
+              )
+              .catch(() => ({ reviews: [] })), // Handle reviews API failure gracefully
+          ]);
+        }
+
+        const allFarmers = farmersData.farmers || [];
+        const allProducts = productsData.products || [];
+        const allReviews = reviewsData.reviews || [];
+
+        console.log(
+          `Fetched ${allFarmers.length} farmers, ${allProducts.length} products, and ${allReviews.length} reviews`,
+        );
+
+        setFarmers(allFarmers);
+        setProducts(allProducts);
+        setReviews(allReviews);
+        setDisplayedFarmers(allFarmers.slice(0, 6));
+      } catch (error) {
+        if (error.name === "AbortError") {
+          console.log("Request was cancelled");
+          return;
+        }
+
+        console.error("Error fetching farmers data:", error);
+        setError("Failed to load farmers. Please try again later.");
+        setFarmers([]);
+        setProducts([]);
+        setReviews([]);
+        setDisplayedFarmers([]);
+      } finally {
+        setLoading(false);
+        setIsInitialLoad(false);
+      }
+    },
+    [isInitialLoad],
+  );
+
+  // Initial data fetch
   useEffect(() => {
     fetchData();
+  }, [fetchData]);
+
+  // Simplified event listeners - only for critical updates that actually require refresh
+  useEffect(() => {
+    const handleCriticalUpdate = (event) => {
+      // Only force refresh for critical updates that affect farmer data
+      if (event.detail?.requiresRefresh !== false) {
+        setTimeout(() => fetchData(true), 100);
+      }
+    };
+
+    // Listen only for critical farmer updates that require immediate refresh
+    window.addEventListener("farmersBulkUpdated", handleCriticalUpdate);
+    window.addEventListener("farmerDeleted", handleCriticalUpdate);
+    window.addEventListener("productsBulkUpdated", handleCriticalUpdate); // Products affect farmer stats
+
+    // Listen for storage changes from other tabs for critical updates only
+    const handleStorageChange = (event) => {
+      if (
+        event.key === "farmersBulkUpdated" ||
+        event.key === "farmerDeleted" ||
+        event.key === "productsBulkUpdated"
+      ) {
+        try {
+          const data = JSON.parse(event.newValue || "{}");
+          if (Date.now() - data.timestamp < 30000) {
+            fetchData(true);
+          }
+        } catch (e) {
+          // Invalid data, ignore
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("farmersBulkUpdated", handleCriticalUpdate);
+      window.removeEventListener("farmerDeleted", handleCriticalUpdate);
+      window.removeEventListener("productsBulkUpdated", handleCriticalUpdate);
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [fetchData]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, []);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Fetch farmers, products, and reviews data with proper parameters to get all data
-      const [farmersResponse, productsResponse, reviewsResponse] =
-        await Promise.all([
-          fetch("/api/farmers", {
-            headers: {
-              "Cache-Control": "no-cache",
-              Pragma: "no-cache",
-            },
-          }),
-          fetch("/api/products?limit=1000", {
-            // Add limit to get all products
-            headers: {
-              "Cache-Control": "no-cache",
-              Pragma: "no-cache",
-            },
-          }),
-          fetch("/api/reviews?limit=5000", {
-            // Fetch all reviews from separate collection
-            headers: {
-              "Cache-Control": "no-cache",
-              Pragma: "no-cache",
-            },
-          }),
-        ]);
-
-      if (!farmersResponse.ok) {
-        throw new Error(`Failed to fetch farmers: ${farmersResponse.status}`);
-      }
-
-      if (!productsResponse.ok) {
-        throw new Error(`Failed to fetch products: ${productsResponse.status}`);
-      }
-
-      const farmersData = await farmersResponse.json();
-      const productsData = await productsResponse.json();
-
-      const allFarmers = farmersData.farmers || [];
-      const allProducts = productsData.products || [];
-
-      // Handle reviews response (may fail for some setups)
-      let allReviews = [];
-      if (reviewsResponse.ok) {
-        const reviewsData = await reviewsResponse.json();
-        allReviews = reviewsData.reviews || [];
-        console.log(
-          `Fetched ${allReviews.length} reviews from separate collection`,
-        );
-      } else {
-        console.warn("Failed to fetch reviews from separate collection");
-      }
-
-      console.log(
-        `Fetched ${allFarmers.length} farmers, ${allProducts.length} products, and ${allReviews.length} reviews`,
-      );
-      console.log("Products sample:", allProducts.slice(0, 3));
-      console.log("All categories found:", [
-        ...new Set(allProducts.map((p) => p.category).filter(Boolean)),
-      ]);
-
-      setFarmers(allFarmers);
-      setProducts(allProducts);
-      setReviews(allReviews);
-      // Initially show only first 6 farmers
-      setDisplayedFarmers(allFarmers.slice(0, 6));
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setError("Failed to load farmers. Please try again later.");
-      setFarmers([]);
-      setProducts([]);
-      setReviews([]);
-      setDisplayedFarmers([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Calculate dynamic stats based on farmers and products data
   const getStats = () => {

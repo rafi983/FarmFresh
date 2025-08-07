@@ -48,6 +48,7 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [availableFarmers, setAvailableFarmers] = useState([]);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Filter states - Initialize from URL params
   const [filters, setFilters] = useState(() => ({
@@ -209,9 +210,46 @@ export default function Products() {
     };
   }, [filteredProducts, currentPage]);
 
-  // Use optimized API service with caching
+  // Optimized cache-first fetch with smart loading states
   const fetchProducts = useCallback(
     async (forceRefresh = false) => {
+      // For subsequent navigations, check cache first to avoid showing loading
+      if (!isInitialLoad && !forceRefresh) {
+        // Try to get cached data first to avoid loading state
+        try {
+          const params = {
+            limit: 1000,
+          };
+          if (filters.searchTerm) params.search = filters.searchTerm;
+          if (filters.selectedCategory !== "All Categories") {
+            params.category = filters.selectedCategory;
+          }
+
+          // Quick cache check without loading state
+          const cachedData = await apiService.getProducts(params, {
+            ttl: 10 * 60 * 1000, // Longer cache for subsequent loads
+            useSessionCache: true,
+          });
+
+          if (cachedData && cachedData.products) {
+            setAllProducts(cachedData.products || []);
+            // Extract farmers for filter options
+            const uniqueFarmers = [
+              ...new Set(
+                cachedData.products
+                  .map((p) => p.farmer?.name || p.farmerName)
+                  .filter(Boolean),
+              ),
+            ].sort();
+            setAvailableFarmers(uniqueFarmers);
+            setIsInitialLoad(false);
+            return; // Exit early if cache hit
+          }
+        } catch (error) {
+          // If cache fails, continue to normal fetch with loading
+        }
+      }
+
       setLoading(true);
       setError(null);
 
@@ -231,20 +269,34 @@ export default function Products() {
           // Use force refresh method that bypasses all caches
           data = await apiService.forceRefreshProducts(params);
         } else {
-          // Normal fetch with caching
-          data = await apiService.getProducts(params);
+          // Normal fetch with enhanced caching
+          data = await apiService.getProducts(params, {
+            ttl: isInitialLoad ? 3 * 60 * 1000 : 10 * 60 * 1000, // Longer cache for subsequent loads
+            useSessionCache: true,
+          });
         }
 
         setAllProducts(data.products || []);
+
+        // Extract unique farmers for filter options
+        const uniqueFarmers = [
+          ...new Set(
+            data.products
+              .map((p) => p.farmer?.name || p.farmerName)
+              .filter(Boolean),
+          ),
+        ].sort();
+        setAvailableFarmers(uniqueFarmers);
       } catch (error) {
         console.error("Error fetching products:", error);
         setError(error.message);
         setAllProducts([]);
       } finally {
         setLoading(false);
+        setIsInitialLoad(false);
       }
     },
-    [filters.searchTerm, filters.selectedCategory],
+    [filters.searchTerm, filters.selectedCategory, isInitialLoad],
   );
 
   // Initial fetch and URL sync
@@ -252,46 +304,42 @@ export default function Products() {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Listen for custom review update events (from useReviewsQuery)
+  // Simplified event listeners - only for critical updates that actually require refresh
   useEffect(() => {
-    console.log("🔧 Products page: Setting up custom review event listener");
-
-    const handleReviewUpdate = (event) => {
-      // Skip test events
-      if (event.detail.test) {
-        console.log("🧪 Products page: Skipping test event");
-        return;
+    const handleCriticalUpdate = (event) => {
+      // Only force refresh for critical updates that affect product data
+      if (event.detail?.requiresRefresh !== false) {
+        setTimeout(() => fetchProducts(true), 100);
       }
-
-      console.log(
-        "🔄 Products page: Custom review update event detected:",
-        event.detail,
-      );
-
-      // Immediately clear API service cache
-      console.log("🧹 Products page: Clearing API service cache...");
-      if (window.apiService) {
-        window.apiService.clearProductsCache();
-        console.log("✅ Products page: API service cache cleared");
-      } else {
-        console.warn("⚠️ Products page: window.apiService not available");
-      }
-
-      // Force refresh products data to show updated ratings
-      setTimeout(() => {
-        console.log(
-          "🔄 Products page: Force refreshing products after review update",
-        );
-        fetchProducts(true); // Force refresh bypasses all caches
-      }, 100); // Reduced timeout for faster response
     };
 
-    // Listen for custom review update events
-    window.addEventListener("reviewUpdated", handleReviewUpdate);
+    // Listen only for critical product updates that require immediate refresh
+    window.addEventListener("productsBulkUpdated", handleCriticalUpdate);
+    window.addEventListener("productDeleted", handleCriticalUpdate);
+
+    // Listen for storage changes from other tabs for critical updates only
+    const handleStorageChange = (event) => {
+      if (
+        event.key === "productsBulkUpdated" ||
+        event.key === "productDeleted"
+      ) {
+        try {
+          const data = JSON.parse(event.newValue || "{}");
+          if (Date.now() - data.timestamp < 30000) {
+            fetchProducts(true);
+          }
+        } catch (e) {
+          // Invalid data, ignore
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
 
     return () => {
-      console.log("🔧 Products page: Cleaning up custom review event listener");
-      window.removeEventListener("reviewUpdated", handleReviewUpdate);
+      window.removeEventListener("productsBulkUpdated", handleCriticalUpdate);
+      window.removeEventListener("productDeleted", handleCriticalUpdate);
+      window.removeEventListener("storage", handleStorageChange);
     };
   }, [fetchProducts]);
 
@@ -510,7 +558,13 @@ export default function Products() {
   // Fetch available farmers using cached API
   const fetchAvailableFarmers = useCallback(async () => {
     try {
-      const data = await apiService.getProducts({ limit: 1000 });
+      const data = await apiService.getProducts(
+        { limit: 1000 },
+        {
+          ttl: 15 * 60 * 1000, // Longer cache for farmers data
+          useSessionCache: true,
+        },
+      );
       const uniqueFarmers = [
         ...new Set(
           data.products
@@ -525,11 +579,10 @@ export default function Products() {
     }
   }, []);
 
-  // Initial data fetch
+  // Simplified initial data fetch - removed duplicate fetchAvailableFarmers call
   useEffect(() => {
     fetchProducts();
-    fetchAvailableFarmers();
-  }, [fetchProducts, fetchAvailableFarmers]);
+  }, [fetchProducts]);
 
   // Update URL when filters change (with debouncing)
   const updateURL = useCallback(

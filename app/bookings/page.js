@@ -7,7 +7,7 @@ import Link from "next/link";
 import Footer from "@/components/Footer";
 import ReorderModal from "@/components/ReorderModal";
 import { useReorder } from "@/hooks/useReorder";
-import { sessionCache } from "@/lib/cache";
+import { apiService } from "@/lib/api-service";
 
 // Constants for better maintainability
 const ORDER_STATUSES = {
@@ -43,10 +43,11 @@ const useOrdersData = (session, status) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const abortControllerRef = useRef(null);
 
   const fetchOrders = useCallback(
-    async (showLoading = true, forceRefresh = false) => {
+    async (forceRefresh = false) => {
       if (status !== "authenticated" || !session?.user) return;
 
       // Only allow customers to fetch orders here
@@ -58,16 +59,33 @@ const useOrdersData = (session, status) => {
       }
 
       const userId = session.user.userId || session.user.id;
-      const cacheKey = `orders_${userId}`;
 
-      // Check cache first (unless force refresh)
-      if (!forceRefresh) {
-        const cachedOrders = sessionCache.get(cacheKey);
-        if (cachedOrders) {
-          console.log("Loading orders from cache");
-          setOrders(cachedOrders);
-          setLoading(false);
-          return;
+      // For subsequent navigations, check cache first to avoid showing loading
+      if (!isInitialLoad && !forceRefresh) {
+        try {
+          // Quick cache check without loading state - using same pattern as farmers/products
+          const ordersData = await apiService.getOrders(
+            { userId },
+            {
+              ttl: 10 * 60 * 1000, // Longer cache for subsequent loads
+              useSessionCache: true, // Match products/farmers pages
+            },
+          );
+
+          if (ordersData && ordersData.orders) {
+            // Filter to ensure we only get customer orders
+            const customerOrders = ordersData.orders.filter((order) => {
+              const orderUserId = order.userId || order.customerId;
+              const sessionUserId = session.user.userId || session.user.id;
+              return orderUserId === sessionUserId;
+            });
+
+            setOrders(customerOrders);
+            setIsInitialLoad(false);
+            return; // Exit early if cache hit
+          }
+        } catch (error) {
+          // If cache fails, continue to normal fetch with loading
         }
       }
 
@@ -79,36 +97,48 @@ const useOrdersData = (session, status) => {
       abortControllerRef.current = new AbortController();
 
       try {
-        if (showLoading) setLoading(true);
+        setLoading(true);
         setError(null);
 
         console.log("Fetching orders from API");
-        // Fetch ONLY customer orders (not farmer orders)
-        const response = await fetch(`/api/orders?userId=${userId}`, {
-          signal: abortControllerRef.current.signal,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch orders: ${response.status}`);
+        let ordersData;
+
+        if (forceRefresh) {
+          // Force refresh bypasses all caches - same pattern as farmers/products
+          const response = await fetch(`/api/orders?userId=${userId}`, {
+            signal: abortControllerRef.current.signal,
+            headers: {
+              "Content-Type": "application/json",
+              "Cache-Control": "no-cache",
+              Pragma: "no-cache",
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to fetch orders: ${response.status}`);
+          }
+
+          ordersData = await response.json();
+        } else {
+          // Normal fetch with enhanced caching - matching products/farmers pattern
+          ordersData = await apiService.getOrders(
+            { userId },
+            {
+              ttl: isInitialLoad ? 5 * 60 * 1000 : 10 * 60 * 1000, // Longer cache for subsequent loads
+              useSessionCache: true, // Enable session cache like products/farmers
+            },
+          );
         }
 
-        const data = await response.json();
-
         // Filter to ensure we only get customer orders
-        const customerOrders = (data.orders || []).filter((order) => {
-          // Make sure this order belongs to the current customer
+        const customerOrders = (ordersData.orders || []).filter((order) => {
           const orderUserId = order.userId || order.customerId;
           const sessionUserId = session.user.userId || session.user.id;
           return orderUserId === sessionUserId;
         });
 
         setOrders(customerOrders);
-        // Cache the orders for 5 minutes
-        sessionCache.set(cacheKey, customerOrders, 5 * 60 * 1000);
-        console.log("Orders cached for 5 minutes");
       } catch (error) {
         if (error.name === "AbortError") {
           console.log("Request was cancelled");
@@ -119,20 +149,19 @@ const useOrdersData = (session, status) => {
         setError(error.message || "Failed to fetch orders");
         setOrders([]);
       } finally {
-        if (showLoading) setLoading(false);
+        setLoading(false);
+        setIsInitialLoad(false);
       }
     },
-    [session, status],
+    [session, status, isInitialLoad],
   );
 
   // Return refresh function for manual cache invalidation
   const refreshOrders = useCallback(() => {
     const userId = session?.user?.userId || session?.user?.id;
     if (userId) {
-      const cacheKey = `orders_${userId}`;
-      sessionCache.delete(cacheKey);
       console.log("Orders cache invalidated");
-      fetchOrders(true, true);
+      fetchOrders(true);
     }
   }, [session, fetchOrders]);
 
@@ -594,21 +623,17 @@ export default function Bookings() {
   // Initial data fetch
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
-      fetchOrders();
+      // Use the same pattern as products/farmers - let the hook handle caching
+      fetchOrders(false);
     }
   }, [session, status, fetchOrders]);
 
-  // Handle navigation loading state
+  // Handle navigation loading state - simplified to match products/farmers
   useEffect(() => {
-    if (status === "authenticated" && session?.user) {
-      // Show loading for a brief moment to display skeleton when navigating
-      const timer = setTimeout(() => {
-        setNavigationLoading(false);
-      }, 800); // Adjust timing as needed
-
-      return () => clearTimeout(timer);
-    } else if (status === "loading") {
+    if (status === "loading") {
       setNavigationLoading(true);
+    } else if (status === "authenticated" && session?.user) {
+      setNavigationLoading(false);
     }
   }, [status, session]);
 
@@ -1938,7 +1963,6 @@ export default function Bookings() {
           loading={reorderLoading}
         />
       )}
-
       <Footer />
     </>
   );
