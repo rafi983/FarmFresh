@@ -521,3 +521,112 @@ export async function GET(request) {
     );
   }
 }
+
+export async function POST(request) {
+  try {
+    const { productId, reviewData } = await request.json();
+
+    if (!productId || !reviewData) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
+    }
+
+    const client = await clientPromise;
+    const db = client.db("farmfresh");
+
+    // Get product details to get farmer information
+    const product = await db.collection("products").findOne({
+      _id: new ObjectId(productId),
+    });
+
+    if (!product) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    // Create the review document
+    const reviewDoc = {
+      productId: productId,
+      farmerId: product.farmer?.id || product.farmerId,
+      userId: reviewData.userId,
+      rating: reviewData.rating,
+      comment: reviewData.comment,
+      title: reviewData.title || "",
+      pros: reviewData.pros || [],
+      cons: reviewData.cons || [],
+      wouldRecommend: reviewData.wouldRecommend || false,
+      isAnonymous: reviewData.isAnonymous || false,
+      tags: reviewData.tags || [],
+      reviewer: reviewData.isAnonymous
+        ? "Anonymous"
+        : reviewData.userName || reviewData.reviewerName || "Anonymous",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const result = await db.collection("reviews").insertOne(reviewDoc);
+
+    return NextResponse.json({
+      success: true,
+      reviewId: result.insertedId,
+      message: "Review submitted successfully",
+    });
+  } catch (error) {
+    console.error("Error creating review:", error);
+    return NextResponse.json(
+      { error: "Failed to create review" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PATCH(request) {
+  try {
+    const { reviewId, reviewData } = await request.json();
+
+    if (!reviewId || !reviewData) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
+    }
+
+    const client = await clientPromise;
+    const db = client.db("farmfresh");
+
+    // Update the review
+    const updateDoc = {
+      $set: {
+        rating: reviewData.rating,
+        comment: reviewData.comment,
+        title: reviewData.title || "",
+        pros: reviewData.pros || [],
+        cons: reviewData.cons || [],
+        wouldRecommend: reviewData.wouldRecommend || false,
+        isAnonymous: reviewData.isAnonymous || false,
+        tags: reviewData.tags || [],
+        updatedAt: new Date(),
+      },
+    };
+
+    const result = await db
+      .collection("reviews")
+      .updateOne({ _id: new ObjectId(reviewId) }, updateDoc);
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: "Review not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Review updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updating review:", error);
+    return NextResponse.json(
+      { error: "Failed to update review" },
+      { status: 500 },
+    );
+  }
+}

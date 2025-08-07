@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useCart } from "@/contexts/CartContext";
 import Footer from "@/components/Footer";
 import { debounce } from "@/utils/debounce";
@@ -140,9 +139,22 @@ export default function Cart() {
     };
   }, []);
 
-  // Optimized quantity change handler
+  // Optimized quantity change handler with stock validation
   const handleQuantityChange = useCallback(
     (productId, newQuantity) => {
+      // Find the product to check stock
+      const cartItem = items.find((item) => item.id === productId);
+      if (!cartItem) return;
+
+      // Validate stock before making changes
+      if (newQuantity > cartItem.stock) {
+        addNotification(
+          `Cannot set quantity to ${newQuantity}. Only ${cartItem.stock} ${cartItem.unit || "units"} available for ${cartItem.name}.`,
+          "error",
+        );
+        return; // Don't proceed with the update
+      }
+
       // Immediate UI update for better UX
       setLocalQuantities((prev) => ({
         ...prev,
@@ -152,7 +164,7 @@ export default function Cart() {
       // Debounced API call
       debouncedQuantityUpdate(productId, newQuantity);
     },
-    [debouncedQuantityUpdate],
+    [debouncedQuantityUpdate, items, addNotification],
   );
 
   // Enhanced remove item handler

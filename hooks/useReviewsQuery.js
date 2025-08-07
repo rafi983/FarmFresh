@@ -1,9 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
 
 // API functions
 const fetchReviews = async (productId, page = 1, userId = null) => {
-  const url = `/api/products/${productId}/reviews?page=${page}${userId ? `&userId=${userId}` : ""}`;
+  // Ensure productId is a valid string
+  const validProductId =
+    productId && typeof productId === "object"
+      ? productId._id || productId.id || String(productId)
+      : String(productId || "");
+
+  if (
+    !validProductId ||
+    validProductId === "undefined" ||
+    validProductId === "null"
+  ) {
+    throw new Error("Invalid product ID");
+  }
+
+  const url = `/api/products/${validProductId}/reviews?page=${page}${userId ? `&userId=${userId}` : ""}`;
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error("Failed to fetch reviews");
@@ -29,14 +42,17 @@ const submitReview = async ({ productId, reviewData }) => {
 };
 
 const updateReview = async ({ reviewId, reviewData, userId }) => {
-  const response = await fetch(`/api/reviews/${reviewId}`, {
-    method: "PUT",
+  const response = await fetch(`/api/reviews`, {
+    method: "PATCH",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      ...reviewData,
-      userId: userId,
+      reviewId,
+      reviewData: {
+        ...reviewData,
+        userId: userId,
+      },
     }),
   });
 

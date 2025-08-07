@@ -267,13 +267,15 @@ export async function GET(request) {
 
     // Execute optimized query
     const startTime = Date.now();
-    const [orders, totalCount] = await Promise.all([
-      cachedOrdersCollection.aggregate(pipeline).toArray(),
-      // Only count if we need pagination
+
+    // First get the orders
+    const orders = await cachedOrdersCollection.aggregate(pipeline).toArray();
+
+    // Then get the total count
+    const totalCount =
       limit < 1000
-        ? cachedOrdersCollection.countDocuments(query)
-        : Promise.resolve(orders.length),
-    ]);
+        ? await cachedOrdersCollection.countDocuments(query)
+        : orders.length;
 
     const queryTime = Date.now() - startTime;
     console.log(
@@ -391,6 +393,43 @@ export async function POST(request) {
       await db.collection("products").bulkWrite(stockUpdates);
     }
 
+    // FOR TESTING: Increment purchase count immediately when order is created (pending status)
+    // This allows quick testing without waiting for delivery status - same logic as stock updates
+    const purchaseCountUpdates = [];
+    for (const item of orderData.items) {
+      const product = productMap.get(item.productId);
+      if (product) {
+        purchaseCountUpdates.push({
+          updateOne: {
+            filter: { _id: new ObjectId(item.productId) },
+            update: {
+              $inc: {
+                purchaseCount: item.quantity, // Increment by quantity ordered
+              },
+              $set: {
+                updatedAt: new Date(),
+              },
+            },
+          },
+        });
+      }
+    }
+
+    // Perform bulk purchase count updates for testing
+    if (purchaseCountUpdates.length > 0) {
+      try {
+        await db.collection("products").bulkWrite(purchaseCountUpdates);
+        console.log(
+          `🔥 TEST MODE: Updated purchase counts for ${purchaseCountUpdates.length} products on order creation`,
+        );
+      } catch (error) {
+        console.error(
+          "Error updating purchase counts on order creation:",
+          error,
+        );
+      }
+    }
+
     // Enrich order items with product data including images
     const enrichedItems = orderData.items.map((item) => {
       const product = productMap.get(item.productId);
@@ -451,13 +490,30 @@ export async function POST(request) {
     // Create the order
     const result = await db.collection("orders").insertOne(newOrder);
 
-    // Clear cache after creating new order to ensure fresh data
+    // Clear ALL caches after creating new order to ensure fresh data
     responseCache.clear();
+
+    // Clear products cache immediately after purchase count update
+    try {
+      // Import and clear products cache
+      const { responseCache: productsCache } = await import(
+        "@/app/api/products/route"
+      );
+      if (productsCache && productsCache.clear) {
+        productsCache.clear();
+        console.log(
+          "🧹 Products cache cleared after purchase count update on order creation",
+        );
+      }
+    } catch (error) {
+      console.log("Note: Could not clear products cache:", error.message);
+    }
 
     return NextResponse.json({
       message: "Order created successfully",
       orderId: result.insertedId,
       order: { ...newOrder, _id: result.insertedId },
+      testMode: "Purchase counts updated immediately for testing",
     });
   } catch (error) {
     console.error("Create order error:", error);
@@ -498,35 +554,86 @@ export async function PATCH(request) {
       currentOrder.status !== "cancelled" &&
       currentOrder.status !== "returned";
 
+    // Check if order status is being changed to delivered (purchase completed)
+    const isBeingDelivered =
+      updateData.status &&
+      updateData.status === "delivered" &&
+      currentOrder.status !== "delivered";
+
+    // If order is being delivered, increment purchase count for each product
+    if (isBeingDelivered && currentOrder.items) {
+      console.log(
+        `Order ${orderId} is being delivered, updating purchase counts...`,
+      );
+
+      const purchaseCountUpdates = [];
+      for (const item of currentOrder.items) {
+        const productId = item.productId;
+        const orderQuantity = item.quantity;
+
+        purchaseCountUpdates.push({
+          updateOne: {
+            filter: { _id: new ObjectId(productId) },
+            update: {
+              $inc: {
+                purchaseCount: orderQuantity, // Increment by the quantity purchased
+              },
+              $set: {
+                updatedAt: new Date(),
+              },
+            },
+          },
+        });
+      }
+
+      // Perform bulk purchase count updates for better performance
+      if (purchaseCountUpdates.length > 0) {
+        try {
+          await db.collection("products").bulkWrite(purchaseCountUpdates);
+          console.log(
+            `Updated purchase counts for ${purchaseCountUpdates.length} products`,
+          );
+        } catch (error) {
+          console.error("Error updating purchase counts:", error);
+        }
+      }
+    }
+
     // If order is being cancelled, restore stock
     if (isBeingCancelled && currentOrder.items) {
       console.log(
         `Order ${orderId} is being cancelled/returned, restoring stock...`,
       );
 
+      const stockRestoreUpdates = [];
       for (const item of currentOrder.items) {
         const productId = item.productId;
         const orderQuantity = item.quantity;
 
-        // Get current product
-        const product = await db
-          .collection("products")
-          .findOne({ _id: new ObjectId(productId) });
-
-        if (product) {
-          // Restore product stock
-          const newStock = product.stock + orderQuantity;
-          await db.collection("products").updateOne(
-            { _id: new ObjectId(productId) },
-            {
+        stockRestoreUpdates.push({
+          updateOne: {
+            filter: { _id: new ObjectId(productId) },
+            update: {
+              $inc: {
+                stock: orderQuantity, // Restore the stock
+              },
               $set: {
-                stock: newStock,
                 updatedAt: new Date(),
               },
             },
+          },
+        });
+      }
+
+      // Perform bulk stock restore updates for better performance
+      if (stockRestoreUpdates.length > 0) {
+        try {
+          await db.collection("products").bulkWrite(stockRestoreUpdates);
+          console.log(
+            `Restored stock for ${stockRestoreUpdates.length} products`,
           );
-        } else {
-          console.warn(`Product ${productId} not found when restoring stock`);
+        } catch (error) {
+          console.error("Error restoring stock:", error);
         }
       }
     }
@@ -546,6 +653,25 @@ export async function PATCH(request) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
+    // Clear caches after updating order to ensure fresh data
+    responseCache.clear();
+
+    // Also clear products cache if purchase count was updated
+    if (isBeingDelivered) {
+      try {
+        // Import and clear products cache
+        const { responseCache: productsCache } = await import(
+          "@/app/api/products/route"
+        );
+        if (productsCache) {
+          productsCache.clear();
+          console.log("🧹 Products cache cleared after purchase count update");
+        }
+      } catch (error) {
+        console.log("Note: Could not clear products cache:", error.message);
+      }
+    }
+
     // Get the updated order
     const updatedOrder = await db
       .collection("orders")
@@ -554,6 +680,9 @@ export async function PATCH(request) {
     return NextResponse.json({
       message: "Order updated successfully",
       order: updatedOrder,
+      purchaseCountUpdated: isBeingDelivered
+        ? "Purchase counts have been updated for delivered products"
+        : undefined,
     });
   } catch (error) {
     console.error("Update order error:", error);

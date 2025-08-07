@@ -45,6 +45,29 @@ export default function Success() {
       if (response.ok) {
         const data = await response.json();
         setOrder(data.order);
+
+        // Dispatch order completion event for automatic purchase count updates
+        if (data.order && data.order.items) {
+          console.log(
+            "🎉 Order details loaded, dispatching completion event:",
+            {
+              orderId: data.order._id || orderId,
+              items: data.order.items,
+            },
+          );
+
+          window.dispatchEvent(
+            new CustomEvent("orderCompleted", {
+              detail: {
+                orderId: data.order._id || orderId,
+                items: data.order.items.map((item) => ({
+                  productId: item.productId || item._id,
+                  quantity: item.quantity,
+                })),
+              },
+            }),
+          );
+        }
       } else {
         console.error("Failed to fetch order details");
         // Keep the placeholder data if API fails

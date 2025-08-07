@@ -2,21 +2,23 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
-import { apiService } from "@/lib/api-service";
+import { useHomeQuery } from "@/hooks/useHomeQuery";
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
-  const [featuredProducts, setFeaturedProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [categoryData, setCategoryData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [error, setError] = useState(null);
   const router = useRouter();
+
+  // Use React Query for consistent data fetching like bookings page
+  const { data: homeData, isLoading: loading, error } = useHomeQuery();
+
+  // Extract data from React Query response with fallbacks
+  const featuredProducts = homeData?.featuredProducts || [];
+  const categories = homeData?.categories || [];
+  const categoryData = homeData?.categoryData || [];
 
   const categoryOptions = [
     "All Categories",
@@ -27,58 +29,6 @@ export default function Home() {
     "Honey",
     "Herbs",
   ];
-
-  // Optimized data fetching with caching
-  const fetchHomeData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Fetch all home page data in parallel using cached API service
-      const [featuredData, categoriesData] = await Promise.all([
-        // Get featured products with smaller limit for home page
-        apiService.getProducts({
-          sortBy: "popular",
-          limit: 8,
-        }),
-        // Get categories data
-        apiService.getCategories(),
-      ]);
-
-      // Set featured products
-      const products = featuredData.products || [];
-      if (products.length === 0 || !products.some((p) => p.purchaseCount > 0)) {
-        // Fallback to newest products if no popular ones
-        const newestData = await apiService.getProducts({
-          sortBy: "newest",
-          limit: 8,
-        });
-        setFeaturedProducts(newestData.products || []);
-      } else {
-        setFeaturedProducts(products);
-      }
-
-      // Set categories
-      setCategoryData(categoriesData.categories || []);
-
-      // Extract unique categories from products for search
-      const uniqueCategories = [
-        ...new Set(products.map((p) => p.category).filter(Boolean)),
-      ];
-      setCategories(uniqueCategories);
-    } catch (error) {
-      console.error("Error fetching home data:", error);
-      setError("Failed to load home page data");
-    } finally {
-      setLoading(false);
-      setCategoriesLoading(false);
-    }
-  }, []);
-
-  // Initial data fetch
-  useEffect(() => {
-    fetchHomeData();
-  }, [fetchHomeData]);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -217,18 +167,7 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            {categoriesLoading ? (
-              // Loading skeleton for categories
-              [...Array(6)].map((_, index) => (
-                <div key={index} className="animate-pulse">
-                  <div className="bg-gray-200 dark:bg-gray-700 rounded-2xl p-6 text-center">
-                    <div className="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded mb-3 mx-auto"></div>
-                    <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded mb-2"></div>
-                    <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-16 mx-auto"></div>
-                  </div>
-                </div>
-              ))
-            ) : categoryData.length > 0 ? (
+            {categoryData.length > 0 ? (
               categoryData.map((category) => {
                 const classes = getCategoryClasses(category.bgColor);
                 return (

@@ -15,6 +15,7 @@ import EnhancedReviewModal from "@/components/EnhancedReviewModal";
 import useProductData from "@/hooks/useProductData";
 import useOwnership from "@/hooks/useOwnership";
 import { useReviewsQuery } from "@/hooks/useReviewsQuery";
+import { apiService } from "@/lib/api-service";
 
 import Loading from "@/components/Loading";
 import NotFound from "@/components/NotFound";
@@ -397,7 +398,7 @@ export default function ProductDetails() {
       try {
         if (editingReview) {
           console.log("📝 Updating existing review...");
-          // Update existing review
+          // Update existing review using React Query mutation
           await updateReview({
             reviewId: editingReview._id,
             reviewData: {
@@ -417,13 +418,13 @@ export default function ProductDetails() {
           alert("Review updated successfully!");
         } else {
           console.log("➕ Creating new review...");
-          // Create new review
-          const result = await submitReview({
+          // Create new review using React Query mutation
+          await submitReview({
             productId,
             reviewData,
           });
 
-          console.log("✅ Review submitted successfully!", result);
+          console.log("✅ Review submitted successfully!");
 
           // Update user review states
           setHasReviewedProduct(true);
@@ -441,10 +442,10 @@ export default function ProductDetails() {
 
         console.log("🎯 Modal closed and form reset");
 
-        // The React Query mutations will automatically handle cache invalidation
-        // and trigger the necessary updates, so we don't need to manually refresh
+        // React Query mutations automatically handle cache invalidation
+        // so we don't need to manually refresh
         console.log(
-          "✅ Review operation completed - React Query will handle updates",
+          "✅ Review operation completed - React Query handled updates",
         );
       } catch (error) {
         console.error(
@@ -456,7 +457,7 @@ export default function ProductDetails() {
         );
       }
     },
-    [productId, submitReview, updateReview, editingReview],
+    [productId, editingReview, submitReview, updateReview],
   );
 
   const handleUpdateReview = useCallback(async () => {

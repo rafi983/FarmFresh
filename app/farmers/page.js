@@ -1,277 +1,38 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import Footer from "@/components/Footer";
-import { apiService } from "@/lib/api-service";
+import { useFarmersQuery, useProductsQuery } from "@/hooks/useProductsQuery";
 
 export default function FarmersPage() {
-  // Core data states with smart caching initialization
-  const [farmers, setFarmers] = useState([]);
-  const [displayedFarmers, setDisplayedFarmers] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [reviews, setReviews] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState(null);
+  // UI state
   const [showAllFarmers, setShowAllFarmers] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const abortControllerRef = useRef(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  // Optimized cache-first fetch with smart loading states
-  const fetchData = useCallback(
-    async (forceRefresh = false) => {
-      // For subsequent navigations, check cache first to avoid showing loading
-      if (!isInitialLoad && !forceRefresh) {
-        try {
-          // Quick cache check without loading state
-          const [farmersData, productsData, reviewsData] = await Promise.all([
-            apiService.getFarmers(
-              {},
-              {
-                ttl: 10 * 60 * 1000, // Longer cache for subsequent loads
-                useSessionCache: true,
-              },
-            ),
-            apiService.getProducts(
-              { limit: 1000 },
-              {
-                ttl: 10 * 60 * 1000,
-                useSessionCache: true,
-              },
-            ),
-            apiService
-              .getReviews(
-                { limit: 5000 },
-                {
-                  ttl: 10 * 60 * 1000,
-                  useSessionCache: true,
-                },
-              )
-              .catch(() => ({ reviews: [] })), // Handle reviews API failure gracefully
-          ]);
-
-          if (farmersData && farmersData.farmers) {
-            const allFarmers = farmersData.farmers || [];
-            const allProducts = productsData.products || [];
-            const allReviews = reviewsData.reviews || [];
-
-            setFarmers(allFarmers);
-            setProducts(allProducts);
-            setReviews(allReviews);
-            setDisplayedFarmers(allFarmers.slice(0, 6));
-            setIsInitialLoad(false);
-            return; // Exit early if cache hit
-          }
-        } catch (error) {
-          // If cache fails, continue to normal fetch with loading
-        }
-      }
-
-      // Cancel previous request if still pending
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      abortControllerRef.current = new AbortController();
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        console.log("Fetching farmers data from API");
-
-        let farmersData, productsData, reviewsData;
-
-        if (forceRefresh) {
-          // Force refresh bypasses all caches
-          const [farmersResponse, productsResponse, reviewsResponse] =
-            await Promise.all([
-              fetch("/api/farmers", {
-                signal: abortControllerRef.current.signal,
-                headers: {
-                  "Cache-Control": "no-cache",
-                  Pragma: "no-cache",
-                },
-              }),
-              fetch("/api/products?limit=1000", {
-                signal: abortControllerRef.current.signal,
-                headers: {
-                  "Cache-Control": "no-cache",
-                  Pragma: "no-cache",
-                },
-              }),
-              fetch("/api/reviews?limit=5000", {
-                signal: abortControllerRef.current.signal,
-                headers: {
-                  "Cache-Control": "no-cache",
-                  Pragma: "no-cache",
-                },
-              }),
-            ]);
-
-          if (!farmersResponse.ok) {
-            throw new Error(
-              `Failed to fetch farmers: ${farmersResponse.status}`,
-            );
-          }
-          if (!productsResponse.ok) {
-            throw new Error(
-              `Failed to fetch products: ${productsResponse.status}`,
-            );
-          }
-
-          farmersData = await farmersResponse.json();
-          productsData = await productsResponse.json();
-
-          if (reviewsResponse.ok) {
-            reviewsData = await reviewsResponse.json();
-          } else {
-            console.warn("Failed to fetch reviews from separate collection");
-            reviewsData = { reviews: [] };
-          }
-        } else {
-          // Normal fetch with enhanced caching
-          [farmersData, productsData, reviewsData] = await Promise.all([
-            apiService.getFarmers(
-              {},
-              {
-                ttl: isInitialLoad ? 5 * 60 * 1000 : 10 * 60 * 1000, // Longer cache for subsequent loads
-                useSessionCache: true,
-              },
-            ),
-            apiService.getProducts(
-              { limit: 1000 },
-              {
-                ttl: isInitialLoad ? 5 * 60 * 1000 : 10 * 60 * 1000,
-                useSessionCache: true,
-              },
-            ),
-            apiService
-              .getReviews(
-                { limit: 5000 },
-                {
-                  ttl: isInitialLoad ? 5 * 60 * 1000 : 10 * 60 * 1000,
-                  useSessionCache: true,
-                },
-              )
-              .catch(() => ({ reviews: [] })), // Handle reviews API failure gracefully
-          ]);
-        }
-
-        const allFarmers = farmersData.farmers || [];
-        const allProducts = productsData.products || [];
-        const allReviews = reviewsData.reviews || [];
-
-        console.log(
-          `Fetched ${allFarmers.length} farmers, ${allProducts.length} products, and ${allReviews.length} reviews`,
-        );
-
-        setFarmers(allFarmers);
-        setProducts(allProducts);
-        setReviews(allReviews);
-        setDisplayedFarmers(allFarmers.slice(0, 6));
-      } catch (error) {
-        if (error.name === "AbortError") {
-          console.log("Request was cancelled");
-          return;
-        }
-
-        console.error("Error fetching farmers data:", error);
-        setError("Failed to load farmers. Please try again later.");
-        setFarmers([]);
-        setProducts([]);
-        setReviews([]);
-        setDisplayedFarmers([]);
-      } finally {
-        setLoading(false);
-        setIsInitialLoad(false);
-      }
-    },
-    [isInitialLoad],
+  // React Query data fetching
+  const {
+    data: farmersData,
+    isLoading: farmersLoading,
+    error: farmersError,
+  } = useFarmersQuery();
+  const { data: productsData, isLoading: productsLoading } = useProductsQuery(
+    {},
+    { enabled: true },
   );
 
-  // Initial data fetch
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  // Extract data from React Query responses
+  const farmers = farmersData?.farmers || [];
+  const products = productsData?.products || [];
 
-  // Simplified event listeners - only for critical updates that actually require refresh
-  useEffect(() => {
-    const handleCriticalUpdate = (event) => {
-      // Only force refresh for critical updates that affect farmer data
-      if (event.detail?.requiresRefresh !== false) {
-        setTimeout(() => fetchData(true), 100);
-      }
-    };
-
-    // Listen only for critical farmer updates that require immediate refresh
-    window.addEventListener("farmersBulkUpdated", handleCriticalUpdate);
-    window.addEventListener("farmerDeleted", handleCriticalUpdate);
-    window.addEventListener("productsBulkUpdated", handleCriticalUpdate); // Products affect farmer stats
-
-    // Listen for storage changes from other tabs for critical updates only
-    const handleStorageChange = (event) => {
-      if (
-        event.key === "farmersBulkUpdated" ||
-        event.key === "farmerDeleted" ||
-        event.key === "productsBulkUpdated"
-      ) {
-        try {
-          const data = JSON.parse(event.newValue || "{}");
-          if (Date.now() - data.timestamp < 30000) {
-            fetchData(true);
-          }
-        } catch (e) {
-          // Invalid data, ignore
-        }
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-
-    return () => {
-      window.removeEventListener("farmersBulkUpdated", handleCriticalUpdate);
-      window.removeEventListener("farmerDeleted", handleCriticalUpdate);
-      window.removeEventListener("productsBulkUpdated", handleCriticalUpdate);
-      window.removeEventListener("storage", handleStorageChange);
-    };
-  }, [fetchData]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
+  // Loading state - show loading if any essential data is loading
+  const loading = farmersLoading || productsLoading;
+  const error = farmersError;
 
   // Calculate dynamic stats based on farmers and products data
   const getStats = () => {
     const totalFarmers = farmers.length;
     const totalProducts = products.length;
-
-    console.log("Stats calculation:");
-    console.log("- Total products from state:", totalProducts);
-    console.log(
-      "- Products status breakdown:",
-      products.reduce((acc, p) => {
-        const status = p.status || "undefined";
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
-      }, {}),
-    );
-    console.log(
-      "- Products with stock info:",
-      products
-        .map((p) => ({
-          name: p.name,
-          stock: p.stock,
-          status: p.status,
-        }))
-        .slice(0, 5),
-    );
 
     // Filter active/available products with more detailed logging
     const activeProducts = products.filter((product) => {
@@ -290,22 +51,6 @@ export default function FarmersPage() {
       return hasStock;
     });
 
-    console.log("- Active products count:", activeProducts.length);
-    console.log(
-      "- Filtered out products:",
-      products
-        .filter(
-          (p) =>
-            p.status === "deleted" ||
-            p.status === "inactive" ||
-            (p.stock !== undefined &&
-              p.stock !== null &&
-              p.stock !== "" &&
-              parseInt(p.stock) <= 0),
-        )
-        .map((p) => ({ name: p.name, status: p.status, stock: p.stock })),
-    );
-
     // Get unique categories from products with better handling
     const categories = new Set();
     products.forEach((product) => {
@@ -316,9 +61,6 @@ export default function FarmersPage() {
     });
     const categoriesCount = categories.size;
 
-    console.log("- Categories found:", Array.from(categories));
-    console.log("- Categories count:", categoriesCount);
-
     return {
       totalFarmers,
       totalProducts,
@@ -328,18 +70,10 @@ export default function FarmersPage() {
   };
 
   const loadMoreFarmers = () => {
-    setLoadingMore(true);
-    setTimeout(() => {
-      setDisplayedFarmers(farmers);
-      setShowAllFarmers(true);
-      setLoadingMore(false);
-    }, 500);
+    setShowAllFarmers(true);
   };
 
   const getFarmerProductCount = (farmerId) => {
-    // Debug logging to understand the matching
-    console.log("Getting product count for farmer:", farmerId);
-
     const matchingProducts = products.filter((product) => {
       // Handle different farmer ID formats
       const productFarmerId =
@@ -359,20 +93,9 @@ export default function FarmersPage() {
 
       const isMatch = matchesById || matchesByObjectId || matchesByName;
 
-      if (isMatch) {
-        console.log("Found matching product:", {
-          productName: product.name,
-          productFarmerId,
-          productFarmerName,
-          farmerId,
-          farmerName,
-        });
-      }
-
       return isMatch;
     });
 
-    console.log(`Farmer ${farmerId} has ${matchingProducts.length} products`);
     return matchingProducts.length;
   };
 
@@ -471,12 +194,13 @@ export default function FarmersPage() {
       return !!relatedProduct;
     }).length;
 
-    console.log(
-      `Farmer ${farmerId} reviews: ${productReviewsCount} from products + ${separateReviewsCount} from reviews collection = ${productReviewsCount + separateReviewsCount} total`,
-    );
-
     return productReviewsCount + separateReviewsCount;
   };
+
+  // Display logic for farmers
+  const displayedFarmers = useMemo(() => {
+    return showAllFarmers ? farmers : farmers.slice(0, 6);
+  }, [farmers, showAllFarmers]);
 
   const stats = getStats();
 

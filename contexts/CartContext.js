@@ -111,6 +111,46 @@ export function CartProvider({ children }) {
       setAddingToCart(true);
       setAddingItemId(product.id);
 
+      // Stock validation logic
+      const currentStock = product.stock || 0;
+      const existingCartItem = cartItems.find((item) => item.id === product.id);
+      const currentCartQuantity = existingCartItem
+        ? existingCartItem.quantity
+        : 0;
+      const totalRequestedQuantity = currentCartQuantity + quantity;
+
+      // Check if there's enough stock available
+      if (totalRequestedQuantity > currentStock) {
+        const availableQuantity = Math.max(
+          0,
+          currentStock - currentCartQuantity,
+        );
+
+        if (availableQuantity === 0) {
+          throw new Error(
+            `${product.name} is out of stock. Cannot add more items to cart.`,
+          );
+        } else {
+          throw new Error(
+            `Only ${availableQuantity} ${product.unit || "units"} of ${product.name} available. You already have ${currentCartQuantity} in your cart.`,
+          );
+        }
+      }
+
+      // Check stock against purchase count validation for bundle/kg products
+      if (
+        product.unit &&
+        (product.unit.toLowerCase() === "bundle" ||
+          product.unit.toLowerCase() === "kg")
+      ) {
+        // For bundles and kg products, validate against exact stock numbers
+        if (quantity > currentStock) {
+          throw new Error(
+            `Cannot add ${quantity} ${product.unit}${quantity > 1 ? "s" : ""} of ${product.name}. Only ${currentStock} ${product.unit}${currentStock !== 1 ? "s" : ""} available.`,
+          );
+        }
+      }
+
       setCartItems((prevItems) => {
         const existingItem = prevItems.find((item) => item.id === product.id);
         let newItems;
@@ -131,7 +171,7 @@ export function CartProvider({ children }) {
 
         setCartMessage({
           type: "success",
-          message: `${product.name} has been added to your cart.`,
+          message: `${quantity} ${product.unit || "unit"}${quantity > 1 ? "s" : ""} of ${product.name} added to cart.`,
         });
 
         return newItems;
@@ -153,6 +193,16 @@ export function CartProvider({ children }) {
 
   const updateQuantity = (productId, quantity) => {
     setCartItems((prevItems) => {
+      // Find the product to validate stock
+      const cartItem = prevItems.find((item) => item.id === productId);
+      if (cartItem && quantity > cartItem.stock) {
+        setCartMessage({
+          type: "error",
+          message: `Cannot set quantity to ${quantity}. Only ${cartItem.stock} ${cartItem.unit || "units"} available.`,
+        });
+        return prevItems; // Return unchanged items
+      }
+
       const newItems = prevItems
         .map((item) =>
           item.id === productId

@@ -22,6 +22,21 @@ export function clearProductsCache() {
   console.log("Products cache cleared due to review update");
 }
 
+// Enhanced cache clearing function for purchase count updates
+export function clearAllProductsCaches() {
+  responseCache.clear();
+  // Also clear any session cache
+  if (typeof window !== "undefined") {
+    try {
+      sessionStorage.removeItem("products-cache");
+      sessionStorage.removeItem("farmfresh-products");
+    } catch (error) {
+      console.log("Could not clear session storage:", error.message);
+    }
+  }
+  console.log("🧹 All products caches cleared");
+}
+
 // Initialize indexes optimized for MongoDB Atlas performance
 async function initializeProductIndexes(db) {
   // Only initialize once per application lifecycle

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/contexts/CartContext";
+import { apiService } from "@/lib/api-service";
 import Link from "next/link";
 import Footer from "@/components/Footer";
 
@@ -60,8 +61,7 @@ export default function Payment() {
 
   const [editQuantities, setEditQuantities] = useState({});
   const [removedItems, setRemovedItems] = useState([]);
-  const scrollRef = useRef(null);
-
+  useRef(null);
   useEffect(() => {
     console.log("Payment - Session status:", status, "Session:", session);
 
@@ -372,47 +372,35 @@ export default function Payment() {
         newsletterSubscribe,
       };
 
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(orderData),
-      });
+      // Use apiService.createOrder instead of direct fetch for proper cache invalidation
+      const data = await apiService.createOrder(orderData);
+      const orderId = data.orderId || data.order?._id;
 
-      if (response.ok) {
-        const data = await response.json();
-        const orderId = data.orderId || data.order?._id;
+      if (orderId) {
+        setRedirectingToSuccess(true);
 
-        if (orderId) {
-          setRedirectingToSuccess(true);
+        // Immediately redirect to success page BEFORE clearing cart
+        window.location.href = `/success?orderId=${orderId}`;
 
-          // Immediately redirect to success page BEFORE clearing cart
-          window.location.href = `/success?orderId=${orderId}`;
-
-          // Clear cart in the background after redirect has started
-          setTimeout(async () => {
-            try {
-              await fetch(`/api/cart?userId=${encodeURIComponent(userId)}`, {
-                method: "DELETE",
-              });
-              clearCartAfterPayment();
-            } catch (cartError) {
-              console.error("Error clearing cart:", cartError);
-            }
-          }, 100);
-        } else {
-          addNotification(
-            "Order created successfully! Redirecting...",
-            "success",
-          );
-          setTimeout(() => {
-            router.push("/");
-          }, 100);
-        }
+        // Clear cart in the background after redirect has started
+        setTimeout(async () => {
+          try {
+            await fetch(`/api/cart?userId=${encodeURIComponent(userId)}`, {
+              method: "DELETE",
+            });
+            clearCartAfterPayment();
+          } catch (cartError) {
+            console.error("Error clearing cart:", cartError);
+          }
+        }, 100);
       } else {
-        const errorData = await response
-          .json()
-          .catch(() => ({ error: "Unknown error" }));
-        throw new Error(errorData.error || "Failed to create order");
+        addNotification(
+          "Order created successfully! Redirecting...",
+          "success",
+        );
+        setTimeout(() => {
+          router.push("/");
+        }, 100);
       }
     } catch (error) {
       console.error("Error processing payment:", error);

@@ -16,9 +16,11 @@ export default function Providers({ children }) {
         defaultOptions: {
           queries: {
             staleTime: 5 * 60 * 1000, // 5 minutes
-            cacheTime: 10 * 60 * 1000, // 10 minutes
+            gcTime: 10 * 60 * 1000, // 10 minutes (replaces cacheTime)
             refetchOnWindowFocus: false,
+            refetchOnReconnect: false, // Prevent refetch on network reconnect
             retry: 1,
+            // Remove refetchOnMount: false globally - let individual queries decide
           },
         },
       }),

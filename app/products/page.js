@@ -5,8 +5,11 @@ import { useSearchParams, useRouter } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import Footer from "@/components/Footer";
 import { debounce } from "@/utils/debounce";
-import { apiService } from "@/lib/api-service";
-import { useQueryClient } from "@tanstack/react-query";
+import {
+  useProductsQuery,
+  useFarmersQuery,
+  useProductsCache,
+} from "@/hooks/useProductsQuery";
 
 // Move constants outside component to prevent recreations
 const CATEGORY_OPTIONS = [
@@ -41,14 +44,9 @@ const ITEMS_PER_PAGE = 12;
 export default function Products() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const queryClient = useQueryClient();
 
-  // Core data states
-  const [allProducts, setAllProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [availableFarmers, setAvailableFarmers] = useState([]);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  // React Query integration for products and cache management
+  const productsCache = useProductsCache();
 
   // Filter states - Initialize from URL params
   const [filters, setFilters] = useState(() => ({
@@ -69,6 +67,64 @@ export default function Products() {
     Number(searchParams.get("page")) || 1,
   );
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  // Use React Query for products data
+  const {
+    data: productsData,
+    isLoading: loading,
+    error,
+    refetch: refetchProducts,
+  } = useProductsQuery(filters, {
+    enabled: true, // Always enabled
+  });
+
+  // Use React Query for farmers data
+  const { data: farmersData } = useFarmersQuery();
+
+  // Extract products and farmers from React Query data
+  const allProducts = useMemo(() => {
+    return productsData?.products || [];
+  }, [productsData]);
+
+  const availableFarmers = useMemo(() => {
+    const uniqueFarmers = [
+      ...new Set(
+        allProducts.map((p) => p.farmer?.name || p.farmerName).filter(Boolean),
+      ),
+    ].sort();
+    return uniqueFarmers;
+  }, [allProducts]);
+
+  // Listen for order completion events to refresh data
+  useEffect(() => {
+    const handleOrderComplete = (event) => {
+      const { orderId } = event.detail || {};
+      if (orderId) {
+        console.log("🎉 Order completed, refreshing product data");
+        // Simply refresh data since backend handles all updates
+        setTimeout(() => {
+          productsCache.invalidateProducts();
+        }, 1000);
+      }
+    };
+
+    const handleCartCheckout = (event) => {
+      console.log("🛒 Cart checkout completed, refreshing product data");
+      // Simply refresh data since backend handles all updates
+      setTimeout(() => {
+        productsCache.invalidateProducts();
+      }, 1000);
+    };
+
+    // Listen for order completion events
+    window.addEventListener("orderCompleted", handleOrderComplete);
+    window.addEventListener("cartCheckoutCompleted", handleCartCheckout);
+
+    return () => {
+      window.removeEventListener("orderCompleted", handleOrderComplete);
+      window.removeEventListener("cartCheckoutCompleted", handleCartCheckout);
+    };
+  }, [productsCache]);
 
   // Memoized filtered and sorted products
   const filteredProducts = useMemo(() => {
@@ -210,380 +266,6 @@ export default function Products() {
     };
   }, [filteredProducts, currentPage]);
 
-  // Optimized cache-first fetch with smart loading states
-  const fetchProducts = useCallback(
-    async (forceRefresh = false) => {
-      // For subsequent navigations, check cache first to avoid showing loading
-      if (!isInitialLoad && !forceRefresh) {
-        // Try to get cached data first to avoid loading state
-        try {
-          const params = {
-            limit: 1000,
-          };
-          if (filters.searchTerm) params.search = filters.searchTerm;
-          if (filters.selectedCategory !== "All Categories") {
-            params.category = filters.selectedCategory;
-          }
-
-          // Quick cache check without loading state
-          const cachedData = await apiService.getProducts(params, {
-            ttl: 10 * 60 * 1000, // Longer cache for subsequent loads
-            useSessionCache: true,
-          });
-
-          if (cachedData && cachedData.products) {
-            setAllProducts(cachedData.products || []);
-            // Extract farmers for filter options
-            const uniqueFarmers = [
-              ...new Set(
-                cachedData.products
-                  .map((p) => p.farmer?.name || p.farmerName)
-                  .filter(Boolean),
-              ),
-            ].sort();
-            setAvailableFarmers(uniqueFarmers);
-            setIsInitialLoad(false);
-            return; // Exit early if cache hit
-          }
-        } catch (error) {
-          // If cache fails, continue to normal fetch with loading
-        }
-      }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const params = {
-          limit: 1000, // Fetch more products for client-side filtering
-        };
-
-        // Add search/category filters for server-side optimization
-        if (filters.searchTerm) params.search = filters.searchTerm;
-        if (filters.selectedCategory !== "All Categories") {
-          params.category = filters.selectedCategory;
-        }
-
-        let data;
-        if (forceRefresh) {
-          // Use force refresh method that bypasses all caches
-          data = await apiService.forceRefreshProducts(params);
-        } else {
-          // Normal fetch with enhanced caching
-          data = await apiService.getProducts(params, {
-            ttl: isInitialLoad ? 3 * 60 * 1000 : 10 * 60 * 1000, // Longer cache for subsequent loads
-            useSessionCache: true,
-          });
-        }
-
-        setAllProducts(data.products || []);
-
-        // Extract unique farmers for filter options
-        const uniqueFarmers = [
-          ...new Set(
-            data.products
-              .map((p) => p.farmer?.name || p.farmerName)
-              .filter(Boolean),
-          ),
-        ].sort();
-        setAvailableFarmers(uniqueFarmers);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-        setError(error.message);
-        setAllProducts([]);
-      } finally {
-        setLoading(false);
-        setIsInitialLoad(false);
-      }
-    },
-    [filters.searchTerm, filters.selectedCategory, isInitialLoad],
-  );
-
-  // Initial fetch and URL sync
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
-  // Simplified event listeners - only for critical updates that actually require refresh
-  useEffect(() => {
-    const handleCriticalUpdate = (event) => {
-      // Only force refresh for critical updates that affect product data
-      if (event.detail?.requiresRefresh !== false) {
-        setTimeout(() => fetchProducts(true), 100);
-      }
-    };
-
-    // Listen only for critical product updates that require immediate refresh
-    window.addEventListener("productsBulkUpdated", handleCriticalUpdate);
-    window.addEventListener("productDeleted", handleCriticalUpdate);
-
-    // Listen for storage changes from other tabs for critical updates only
-    const handleStorageChange = (event) => {
-      if (
-        event.key === "productsBulkUpdated" ||
-        event.key === "productDeleted"
-      ) {
-        try {
-          const data = JSON.parse(event.newValue || "{}");
-          if (Date.now() - data.timestamp < 30000) {
-            fetchProducts(true);
-          }
-        } catch (e) {
-          // Invalid data, ignore
-        }
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-
-    return () => {
-      window.removeEventListener("productsBulkUpdated", handleCriticalUpdate);
-      window.removeEventListener("productDeleted", handleCriticalUpdate);
-      window.removeEventListener("storage", handleStorageChange);
-    };
-  }, [fetchProducts]);
-
-  // Listen for React Query cache invalidations
-  useEffect(() => {
-    console.log("🔧 Products page: Setting up React Query cache listener");
-
-    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
-      console.log("📡 Products page: Cache event detected:", {
-        type: event.type,
-        queryKey: event.query.queryKey,
-        state: event.query.state,
-      });
-
-      // Listen for cache invalidations and updates of product-related queries
-      if (event.query.queryKey) {
-        const queryKeyString = Array.isArray(event.query.queryKey)
-          ? event.query.queryKey.join(",").toLowerCase()
-          : String(event.query.queryKey).toLowerCase();
-
-        const isProductRelated =
-          queryKeyString.includes("products") ||
-          queryKeyString.includes("product") ||
-          queryKeyString.includes("reviews");
-
-        // Check for any type of query state change that might indicate data updates
-        const shouldRefresh =
-          isProductRelated &&
-          (event.type === "updated" ||
-            event.type === "observerAdded" ||
-            event.type === "observerRemoved" ||
-            (event.query.state && event.query.state.isInvalidated));
-
-        if (shouldRefresh) {
-          console.log(
-            "🔄 Products page: React Query cache change detected, refreshing products...",
-            {
-              queryKey: event.query.queryKey,
-              eventType: event.type,
-              isInvalidated: event.query.state?.isInvalidated,
-            },
-          );
-
-          // Add a small delay to ensure the cache has been fully updated
-          setTimeout(() => {
-            fetchProducts(true);
-          }, 100);
-        }
-      }
-    });
-
-    return () => {
-      console.log("🔧 Products page: Cleaning up React Query cache listener");
-      unsubscribe();
-    };
-  }, [fetchProducts, queryClient]);
-
-  // Additional listener for mutation cache events
-  useEffect(() => {
-    console.log("🔧 Products page: Setting up React Query mutation listener");
-
-    const unsubscribe = queryClient.getMutationCache().subscribe((event) => {
-      console.log("🔄 Products page: Mutation event detected:", {
-        type: event.type,
-        mutationKey: event.mutation?.options?.mutationKey,
-        variables: event.mutation?.state?.variables,
-        status: event.mutation?.state?.status,
-        data: event.mutation?.state?.data,
-      });
-
-      // Listen for review-related mutations
-      if (event.mutation?.state?.variables) {
-        const variables = event.mutation.state.variables;
-        const status = event.mutation.state.status;
-        const isMutationComplete =
-          event.type === "updated" && status === "success";
-
-        // Check if this is a review-related mutation
-        const isReviewMutation =
-          variables.productId || variables.reviewId || variables.reviewData;
-
-        if (isMutationComplete && isReviewMutation) {
-          console.log(
-            "🔄 Products page: Review mutation completed successfully, refreshing products...",
-            {
-              variables,
-              status,
-              eventType: event.type,
-            },
-          );
-          setTimeout(() => {
-            fetchProducts(true);
-          }, 200);
-        }
-      }
-    });
-
-    return () => {
-      console.log(
-        "🔧 Products page: Cleaning up React Query mutation listener",
-      );
-      unsubscribe();
-    };
-  }, [fetchProducts, queryClient]);
-
-  // Listen for bulk update events to refresh data
-  useEffect(() => {
-    const handleBulkUpdate = (event) => {
-      console.log("Products page: Bulk update detected", event.detail);
-      // Force refresh after bulk update
-      fetchProducts(true);
-    };
-
-    const handleStatusUpdate = (event) => {
-      console.log(
-        "Products page: Product status update detected",
-        event.detail,
-      );
-      // Force refresh after individual status change
-      fetchProducts(true);
-    };
-
-    const handleReviewUpdate = (event) => {
-      console.log("Products page: Review update detected", event.detail);
-      // Force refresh after review update to show updated ratings
-      fetchProducts(true);
-    };
-
-    const handleStorageChange = (event) => {
-      if (event.key === "productsBulkUpdated") {
-        console.log("Products page: Bulk update detected from storage");
-        // Force refresh after bulk update from another tab
-        fetchProducts(true);
-      } else if (event.key === "productStatusUpdated") {
-        console.log(
-          "Products page: Product status update detected from storage",
-        );
-        // Force refresh after status update from another tab
-        fetchProducts(true);
-      } else if (event.key === "reviewUpdated") {
-        console.log("Products page: Review update detected from storage");
-        // Force refresh after review update from another tab
-        fetchProducts(true);
-      }
-    };
-
-    // Listen for custom events from dashboard and details page
-    window.addEventListener("productsBulkUpdated", handleBulkUpdate);
-    window.addEventListener("productStatusUpdated", handleStatusUpdate);
-    window.addEventListener("reviewUpdated", handleReviewUpdate);
-
-    // Listen for localStorage changes (cross-tab communication)
-    window.addEventListener("storage", handleStorageChange);
-
-    // Check localStorage on mount in case we missed an update
-    const bulkUpdateData = localStorage.getItem("productsBulkUpdated");
-    const statusUpdateData = localStorage.getItem("productStatusUpdated");
-    const reviewUpdateData = localStorage.getItem("reviewUpdated");
-
-    if (bulkUpdateData) {
-      try {
-        const data = JSON.parse(bulkUpdateData);
-        // If the update was recent (within last 30 seconds), refresh
-        if (Date.now() - data.timestamp < 30000) {
-          console.log("Products page: Recent bulk update detected on mount");
-          fetchProducts(true);
-          // Clear the flag to prevent repeated refreshes
-          localStorage.removeItem("productsBulkUpdated");
-        }
-      } catch (e) {
-        // Invalid JSON, remove it
-        localStorage.removeItem("productsBulkUpdated");
-      }
-    }
-
-    if (statusUpdateData) {
-      try {
-        const data = JSON.parse(statusUpdateData);
-        // If the update was recent (within last 30 seconds), refresh
-        if (Date.now() - data.timestamp < 30000) {
-          console.log("Products page: Recent status update detected on mount");
-          fetchProducts(true);
-          // Clear the flag to prevent repeated refreshes
-          localStorage.removeItem("productStatusUpdated");
-        }
-      } catch (e) {
-        // Invalid JSON, remove it
-        localStorage.removeItem("productStatusUpdated");
-      }
-    }
-
-    if (reviewUpdateData) {
-      try {
-        const data = JSON.parse(reviewUpdateData);
-        // If the update was recent (within last 30 seconds), refresh
-        if (Date.now() - data.timestamp < 30000) {
-          console.log("Products page: Recent review update detected on mount");
-          fetchProducts(true);
-          // Clear the flag to prevent repeated refreshes
-          localStorage.removeItem("reviewUpdated");
-        }
-      } catch (e) {
-        // Invalid JSON, remove it
-        localStorage.removeItem("reviewUpdated");
-      }
-    }
-
-    return () => {
-      window.removeEventListener("productsBulkUpdated", handleBulkUpdate);
-      window.removeEventListener("productStatusUpdated", handleStatusUpdate);
-      window.removeEventListener("reviewUpdated", handleReviewUpdate);
-      window.removeEventListener("storage", handleStorageChange);
-    };
-  }, [fetchProducts]);
-
-  // Fetch available farmers using cached API
-  const fetchAvailableFarmers = useCallback(async () => {
-    try {
-      const data = await apiService.getProducts(
-        { limit: 1000 },
-        {
-          ttl: 15 * 60 * 1000, // Longer cache for farmers data
-          useSessionCache: true,
-        },
-      );
-      const uniqueFarmers = [
-        ...new Set(
-          data.products
-            .map((p) => p.farmer?.name || p.farmerName)
-            .filter(Boolean),
-        ),
-      ].sort();
-      setAvailableFarmers(uniqueFarmers);
-    } catch (error) {
-      console.error("Error fetching farmers:", error);
-      setAvailableFarmers([]);
-    }
-  }, []);
-
-  // Simplified initial data fetch - removed duplicate fetchAvailableFarmers call
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
   // Update URL when filters change (with debouncing)
   const updateURL = useCallback(
     debounce(() => {
@@ -708,8 +390,8 @@ export default function Products() {
 
   // Refresh data
   const refreshData = useCallback(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    refetchProducts();
+  }, [refetchProducts]);
 
   // Get active filter count
   const getActiveFilterCount = () => {
@@ -726,6 +408,29 @@ export default function Products() {
       count++;
     return count;
   };
+
+  // Handle error display
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <i className="fas fa-exclamation-triangle text-6xl text-red-500 mb-4"></i>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Error Loading Products
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            {error.message || "Something went wrong while loading products"}
+          </p>
+          <button
+            onClick={() => refetchProducts()}
+            className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Custom Loading Skeleton Components
   const ProductCardSkeleton = ({ index }) => (
@@ -1073,10 +778,10 @@ export default function Products() {
                       onChange={(e) =>
                         handleFilterChange("searchTerm", e.target.value)
                       }
-                      onKeyPress={(e) => e.key === "Enter" && fetchProducts()}
+                      onKeyPress={(e) => e.key === "Enter" && refetchProducts()}
                     />
                     <button
-                      onClick={fetchProducts}
+                      onClick={() => refetchProducts()}
                       className="px-4 py-2 bg-primary-500 hover:bg-primary-400 rounded-lg transition"
                     >
                       <i className="fas fa-search"></i>

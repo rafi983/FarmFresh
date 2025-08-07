@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Footer from "@/components/Footer";
 import ReorderModal from "@/components/ReorderModal";
 import { useReorder } from "@/hooks/useReorder";
-import { apiService } from "@/lib/api-service";
+import { useOrdersQuery, useOrdersCache } from "@/hooks/useOrdersQuery";
 
 // Constants for better maintainability
 const ORDER_STATUSES = {
@@ -39,142 +39,20 @@ const VIEW_MODES = {
 };
 
 // Custom hooks for better code organization
-const useOrdersData = (session, status) => {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const abortControllerRef = useRef(null);
+const useOrderStats = (orders) => {
+  return useMemo(() => {
+    const total = orders.length;
+    const delivered = orders.filter(
+      (order) => order.status === "delivered",
+    ).length;
+    const pending = orders.filter((order) => order.status === "pending").length;
+    const totalSpent = orders.reduce(
+      (sum, order) => sum + (order.total || 0),
+      0,
+    );
 
-  const fetchOrders = useCallback(
-    async (forceRefresh = false) => {
-      if (status !== "authenticated" || !session?.user) return;
-
-      // Only allow customers to fetch orders here
-      const userType = session.user.userType || session.user.role || "customer";
-      if (userType !== "customer") {
-        setOrders([]);
-        setLoading(false);
-        return;
-      }
-
-      const userId = session.user.userId || session.user.id;
-
-      // For subsequent navigations, check cache first to avoid showing loading
-      if (!isInitialLoad && !forceRefresh) {
-        try {
-          // Quick cache check without loading state - using same pattern as farmers/products
-          const ordersData = await apiService.getOrders(
-            { userId },
-            {
-              ttl: 10 * 60 * 1000, // Longer cache for subsequent loads
-              useSessionCache: true, // Match products/farmers pages
-            },
-          );
-
-          if (ordersData && ordersData.orders) {
-            // Filter to ensure we only get customer orders
-            const customerOrders = ordersData.orders.filter((order) => {
-              const orderUserId = order.userId || order.customerId;
-              const sessionUserId = session.user.userId || session.user.id;
-              return orderUserId === sessionUserId;
-            });
-
-            setOrders(customerOrders);
-            setIsInitialLoad(false);
-            return; // Exit early if cache hit
-          }
-        } catch (error) {
-          // If cache fails, continue to normal fetch with loading
-        }
-      }
-
-      // Cancel previous request if still pending
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      abortControllerRef.current = new AbortController();
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        console.log("Fetching orders from API");
-
-        let ordersData;
-
-        if (forceRefresh) {
-          // Force refresh bypasses all caches - same pattern as farmers/products
-          const response = await fetch(`/api/orders?userId=${userId}`, {
-            signal: abortControllerRef.current.signal,
-            headers: {
-              "Content-Type": "application/json",
-              "Cache-Control": "no-cache",
-              Pragma: "no-cache",
-            },
-          });
-
-          if (!response.ok) {
-            throw new Error(`Failed to fetch orders: ${response.status}`);
-          }
-
-          ordersData = await response.json();
-        } else {
-          // Normal fetch with enhanced caching - matching products/farmers pattern
-          ordersData = await apiService.getOrders(
-            { userId },
-            {
-              ttl: isInitialLoad ? 5 * 60 * 1000 : 10 * 60 * 1000, // Longer cache for subsequent loads
-              useSessionCache: true, // Enable session cache like products/farmers
-            },
-          );
-        }
-
-        // Filter to ensure we only get customer orders
-        const customerOrders = (ordersData.orders || []).filter((order) => {
-          const orderUserId = order.userId || order.customerId;
-          const sessionUserId = session.user.userId || session.user.id;
-          return orderUserId === sessionUserId;
-        });
-
-        setOrders(customerOrders);
-      } catch (error) {
-        if (error.name === "AbortError") {
-          console.log("Request was cancelled");
-          return;
-        }
-
-        console.error("Error fetching customer orders:", error);
-        setError(error.message || "Failed to fetch orders");
-        setOrders([]);
-      } finally {
-        setLoading(false);
-        setIsInitialLoad(false);
-      }
-    },
-    [session, status, isInitialLoad],
-  );
-
-  // Return refresh function for manual cache invalidation
-  const refreshOrders = useCallback(() => {
-    const userId = session?.user?.userId || session?.user?.id;
-    if (userId) {
-      console.log("Orders cache invalidated");
-      fetchOrders(true);
-    }
-  }, [session, fetchOrders]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-
-  return { orders, loading, error, fetchOrders, refreshOrders };
+    return { total, delivered, pending, totalSpent };
+  }, [orders]);
 };
 
 const useOrderFilters = (orders) => {
@@ -186,64 +64,63 @@ const useOrderFilters = (orders) => {
   const filteredOrders = useMemo(() => {
     let filtered = [...orders];
 
-    // Status filter
+    // Filter by status
     if (statusFilter !== ORDER_STATUSES.ALL) {
+      filtered = filtered.filter((order) => order.status === statusFilter);
+    }
+
+    // Filter by search term
+    if (searchTerm) {
       filtered = filtered.filter(
-        (order) => order.status?.toLowerCase() === statusFilter.toLowerCase(),
+        (order) =>
+          order._id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          order.items?.some(
+            (item) =>
+              item.productName
+                ?.toLowerCase()
+                .includes(searchTerm.toLowerCase()) ||
+              item.farmerName?.toLowerCase().includes(searchTerm.toLowerCase()),
+          ),
       );
     }
 
-    // Search filter
-    if (searchTerm.trim()) {
-      const searchText = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter((order) => {
-        return (
-          order._id?.toLowerCase().includes(searchText) ||
-          order.customerName?.toLowerCase().includes(searchText) ||
-          order.items?.some(
-            (item) =>
-              item.productName?.toLowerCase().includes(searchText) ||
-              item.farmerName?.toLowerCase().includes(searchText),
-          )
-        );
-      });
-    }
-
-    // Date filter
+    // Filter by date
     if (dateFilter !== DATE_FILTERS.ALL) {
       const now = new Date();
-      filtered = filtered.filter((order) => {
-        const orderDate = new Date(order.createdAt);
-        switch (dateFilter) {
-          case DATE_FILTERS.TODAY:
-            return orderDate.toDateString() === now.toDateString();
-          case DATE_FILTERS.WEEK:
-            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            return orderDate >= weekAgo;
-          case DATE_FILTERS.MONTH:
-            const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-            return orderDate >= monthAgo;
-          default:
-            return true;
-        }
-      });
+      const filterDate = new Date();
+
+      switch (dateFilter) {
+        case DATE_FILTERS.TODAY:
+          filterDate.setHours(0, 0, 0, 0);
+          break;
+        case DATE_FILTERS.WEEK:
+          filterDate.setDate(now.getDate() - 7);
+          break;
+        case DATE_FILTERS.MONTH:
+          filterDate.setMonth(now.getMonth() - 1);
+          break;
+      }
+
+      filtered = filtered.filter(
+        (order) => new Date(order.createdAt) >= filterDate,
+      );
     }
 
     // Sort orders
-    filtered.sort((a, b) => {
-      switch (sortOrder) {
-        case SORT_OPTIONS.NEWEST:
-          return new Date(b.createdAt) - new Date(a.createdAt);
-        case SORT_OPTIONS.OLDEST:
-          return new Date(a.createdAt) - new Date(b.createdAt);
-        case SORT_OPTIONS.HIGHEST:
-          return (b.total || 0) - (a.total || 0);
-        case SORT_OPTIONS.LOWEST:
-          return (a.total || 0) - (b.total || 0);
-        default:
-          return 0;
-      }
-    });
+    switch (sortOrder) {
+      case SORT_OPTIONS.NEWEST:
+        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        break;
+      case SORT_OPTIONS.OLDEST:
+        filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        break;
+      case SORT_OPTIONS.HIGHEST:
+        filtered.sort((a, b) => (b.total || 0) - (a.total || 0));
+        break;
+      case SORT_OPTIONS.LOWEST:
+        filtered.sort((a, b) => (a.total || 0) - (b.total || 0));
+        break;
+    }
 
     return filtered;
   }, [orders, statusFilter, searchTerm, dateFilter, sortOrder]);
@@ -259,53 +136,6 @@ const useOrderFilters = (orders) => {
     sortOrder,
     setSortOrder,
   };
-};
-
-const useOrderStats = (orders) => {
-  return useMemo(() => {
-    if (!orders.length) {
-      return {
-        total: 0,
-        pending: 0,
-        confirmed: 0,
-        shipped: 0,
-        delivered: 0,
-        cancelled: 0,
-        totalSpent: 0,
-        averageOrderValue: 0,
-      };
-    }
-
-    const stats = orders.reduce(
-      (acc, order) => {
-        const status = order.status?.toLowerCase();
-        const total = order.total || 0;
-
-        acc.total++;
-        acc.totalSpent += total;
-
-        if (status in acc) {
-          acc[status]++;
-        }
-
-        return acc;
-      },
-      {
-        total: 0,
-        pending: 0,
-        confirmed: 0,
-        shipped: 0,
-        delivered: 0,
-        cancelled: 0,
-        totalSpent: 0,
-      },
-    );
-
-    stats.averageOrderValue =
-      stats.total > 0 ? stats.totalSpent / stats.total : 0;
-
-    return stats;
-  }, [orders]);
 };
 
 // Enhanced loading skeleton with modern animations that matches actual order structure
@@ -560,26 +390,101 @@ const InitialLoadingScreen = () => (
   </div>
 );
 
-export default function Bookings() {
-  const { data: session, status } = useSession();
+export default function BookingsPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
 
-  // Enhanced reorder functionality
+  // Add mount/unmount debugging
+  useEffect(() => {
+    console.log("🔄 BookingsPage MOUNTED - Status:", status);
+    return () => {
+      console.log("🔄 BookingsPage UNMOUNTED");
+    };
+  }, []);
+
+  // Debug session changes
+  useEffect(() => {
+    console.log("📝 BookingsPage session changed:", {
+      status,
+      userId: session?.user?.userId || session?.user?.id,
+      hasSession: !!session,
+      userType: session?.user?.userType || session?.user?.role,
+    });
+  }, [session, status]);
+
+  // More aggressive userId stabilization with additional checks
+  const userId = useMemo(() => {
+    const id = session?.user?.userId || session?.user?.id;
+    const result = status === "authenticated" && id ? id : null;
+    console.log("🔑 BookingsPage userId computed:", {
+      status,
+      rawId: id,
+      result,
+      sessionExists: !!session,
+      userExists: !!session?.user,
+    });
+    return result;
+  }, [session?.user?.userId, session?.user?.id, status]);
+
+  // Stabilize the enabled condition to prevent unnecessary re-renders
+  const queryEnabled = useMemo(() => {
+    return !!userId && status === "authenticated";
+  }, [userId, status]);
+
+  // React Query data fetching with very aggressive caching for bookings
   const {
-    loading: reorderLoading,
-    validationResult,
-    showReorderModal,
-    validateReorder,
-    proceedWithAvailableItems,
-    cancelReorder,
-    setShowReorderModal,
-  } = useReorder();
+    data: ordersData,
+    isLoading: loading,
+    error,
+    refetch: refetchOrders,
+    isFetching,
+    isStale,
+  } = useOrdersQuery(userId, {
+    enabled: queryEnabled, // Use stabilized enabled condition
+    staleTime: 15 * 60 * 1000, // 15 minutes - very aggressive
+    gcTime: 60 * 60 * 1000, // 1 hour cache
+    refetchOnMount: false, // Specifically for bookings page
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
 
-  // Custom hooks
-  const { orders, loading, error, fetchOrders, refreshOrders } = useOrdersData(
-    session,
-    status,
-  );
+  // Debug React Query state changes - FINAL FIX: Handle all edge cases for stable array
+  useEffect(() => {
+    console.log("📊 BookingsPage React Query state:", {
+      loading: Boolean(loading),
+      isFetching: Boolean(isFetching),
+      isStale: Boolean(isStale),
+      hasData: Boolean(ordersData),
+      dataCount: ordersData?.orders?.length || 0,
+      errorMessage: error?.message || null,
+      enabled: Boolean(queryEnabled),
+      userId: userId || null,
+    });
+  }, [
+    Boolean(loading),
+    Boolean(isFetching),
+    Boolean(isStale),
+    Boolean(ordersData),
+    Number(ordersData?.orders?.length || 0),
+    String(error?.message || ""),
+    Boolean(queryEnabled),
+    String(userId || ""),
+  ]); // FINAL FIX: Use explicit type conversions to ensure all values are always present and of consistent type
+
+  const ordersCache = useOrdersCache();
+
+  // Extract orders from React Query response with better error handling
+  const orders = useMemo(() => {
+    if (!ordersData?.orders) return [];
+
+    // Filter to ensure we only get customer orders (same logic as your previous code)
+    return ordersData.orders.filter((order) => {
+      const orderUserId = order.userId || order.customerId;
+      return orderUserId === userId;
+    });
+  }, [ordersData, userId]);
+
+  // Custom hooks for better code organization
   const orderStats = useOrderStats(orders);
   const {
     filteredOrders,
@@ -602,6 +507,15 @@ export default function Bookings() {
   const [actionLoading, setActionLoading] = useState(new Set());
   const [navigationLoading, setNavigationLoading] = useState(true); // Add navigation loading state
 
+  // Reorder modal states
+  const [showReorderModal, setShowReorderModal] = useState(false);
+  const [validationResult, setValidationResult] = useState(null);
+  const [reorderLoading, setReorderLoading] = useState(false);
+
+  // Reorder hook
+  const { validateReorder, proceedWithAvailableItems, cancelReorder } =
+    useReorder();
+
   const ordersPerPage = viewMode === VIEW_MODES.LIST ? 10 : 6;
 
   // Authentication and role-based access check
@@ -620,15 +534,7 @@ export default function Bookings() {
     }
   }, [status, session, router]);
 
-  // Initial data fetch
-  useEffect(() => {
-    if (status === "authenticated" && session?.user) {
-      // Use the same pattern as products/farmers - let the hook handle caching
-      fetchOrders(false);
-    }
-  }, [session, status, fetchOrders]);
-
-  // Handle navigation loading state - simplified to match products/farmers
+  // Handle navigation loading state - simplified
   useEffect(() => {
     if (status === "loading") {
       setNavigationLoading(true);
@@ -646,11 +552,15 @@ export default function Bookings() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await fetchOrders(false);
+      await refetchOrders();
+      // Also invalidate cache to ensure fresh data
+      if (userId) {
+        ordersCache.invalidateOrders(userId);
+      }
     } finally {
       setRefreshing(false);
     }
-  }, [fetchOrders]);
+  }, [refetchOrders, ordersCache, userId]);
 
   const handleCancelOrder = useCallback(
     async (orderId) => {
@@ -681,7 +591,7 @@ export default function Bookings() {
         alert("Order cancelled successfully");
 
         // Refresh orders
-        await fetchOrders(false);
+        await refetchOrders();
       } catch (error) {
         console.error("Error cancelling order:", error);
         alert(`Error cancelling order: ${error.message}`);
@@ -693,7 +603,7 @@ export default function Bookings() {
         });
       }
     },
-    [fetchOrders],
+    [refetchOrders],
   );
 
   // Enhanced reorder handler
@@ -1124,9 +1034,79 @@ export default function Bookings() {
     status === "loading" ||
     loading ||
     navigationLoading ||
-    (status === "authenticated" && !orders.length && !error)
+    (status === "authenticated" && !orders.length && !error && !ordersData)
   ) {
     return <InitialLoadingScreen />;
+  }
+
+  // Show error state if there's an error
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <div className="text-center p-8">
+          <div className="text-red-600 text-6xl mb-4">
+            <i className="fas fa-exclamation-triangle"></i>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Failed to Load Orders
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            {error?.message || "An error occurred while fetching your orders"}
+          </p>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all duration-200 disabled:opacity-50"
+          >
+            <i
+              className={`fas fa-sync-alt mr-2 ${refreshing ? "animate-spin" : ""}`}
+            ></i>
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show empty state if no orders found
+  if (!loading && orders.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              My Orders
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 text-lg">
+              You haven't placed any orders yet
+            </p>
+          </div>
+
+          {/* Empty State */}
+          <div className="text-center py-16">
+            <div className="text-gray-400 text-8xl mb-8">
+              <i className="fas fa-shopping-bag"></i>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              No Orders Found
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+              Start exploring our fresh products and place your first order to
+              see it here.
+            </p>
+            <Link
+              href="/products"
+              className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all duration-200"
+            >
+              <i className="fas fa-shopping-cart mr-2"></i>
+              Browse Products
+            </Link>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
   }
 
   return (
@@ -1584,7 +1564,7 @@ export default function Bookings() {
                               </div>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h5 className="font-medium text-gray-900 dark:text-white text-sm mb-1 truncate">
+                              <h5 className="font-medium text-gray-900 dark:text-white">
                                 {item.productName}
                               </h5>
                               <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 flex items-center">

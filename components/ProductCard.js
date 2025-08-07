@@ -76,13 +76,16 @@ export default function ProductCard({ product, showAddToCart = true }) {
 
       const success = await addToCart(productForCart, 1);
       if (success !== false) {
-        alert("Product added to cart successfully!");
+        // Success message is handled by CartContext
       } else {
         alert("Failed to add product to cart. Please try again.");
       }
     } catch (error) {
       console.error("Error adding to cart:", error);
-      alert("Failed to add product to cart. Please try again.");
+      // Error message is handled by CartContext, but show user-friendly alert
+      alert(
+        error.message || "Failed to add product to cart. Please try again.",
+      );
     } finally {
       setIsAddingToCart(false);
     }
@@ -288,11 +291,11 @@ export default function ProductCard({ product, showAddToCart = true }) {
           </div>
         )}
 
-        {/* Purchase Count (for featured products) */}
-        {product.purchaseCount > 0 && (
+        {/* Purchase Count - Show for all products, handle missing field */}
+        {(product.purchaseCount || 0) >= 0 && (
           <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
             <i className="fas fa-shopping-bag mr-1"></i>
-            {product.purchaseCount} purchases
+            {product.purchaseCount || 0} purchases
           </div>
         )}
       </div>
