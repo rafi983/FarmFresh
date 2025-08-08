@@ -15,7 +15,22 @@ export function AuthProvider({ children }) {
     if (status === "loading") return;
 
     if (session) {
-      setUser(session.user);
+      // Check if we have stored extended user data
+      const storedUserData = localStorage.getItem("farmfresh_user");
+
+      if (storedUserData) {
+        try {
+          const parsedUserData = JSON.parse(storedUserData);
+          // Use stored extended data if available, fallback to session data
+          setUser(parsedUserData);
+        } catch (error) {
+          console.error("Error parsing stored user data:", error);
+          setUser(session.user);
+        }
+      } else {
+        setUser(session.user);
+      }
+
       setTokens({
         accessToken: session.accessToken,
         refreshToken: session.refreshToken,
@@ -26,6 +41,9 @@ export function AuthProvider({ children }) {
       if (storedTokens) {
         setTokens(JSON.parse(storedTokens));
       }
+
+      // Clear stored user data if no session
+      localStorage.removeItem("farmfresh_user");
     }
     setLoading(false);
   }, [session, status]);
@@ -57,12 +75,20 @@ export function AuthProvider({ children }) {
     setUser(userData);
     setTokens(userTokens);
     localStorage.setItem("farmfresh_tokens", JSON.stringify(userTokens));
+    localStorage.setItem("farmfresh_user", JSON.stringify(userData));
   };
 
   const logout = () => {
     setUser(null);
     setTokens(null);
     localStorage.removeItem("farmfresh_tokens");
+    localStorage.removeItem("farmfresh_user");
+  };
+
+  const updateUser = (updatedUserData) => {
+    setUser(updatedUserData);
+    // Persist updated user data to localStorage
+    localStorage.setItem("farmfresh_user", JSON.stringify(updatedUserData));
   };
 
   const value = {
@@ -71,6 +97,7 @@ export function AuthProvider({ children }) {
     loading,
     login,
     logout,
+    updateUser,
     refreshTokens,
     isAuthenticated: !!user,
   };

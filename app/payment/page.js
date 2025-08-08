@@ -4,12 +4,14 @@ import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { apiService } from "@/lib/api-service";
 import Link from "next/link";
 import Footer from "@/components/Footer";
 
 export default function Payment() {
   const { data: session, status } = useSession();
+  const { updateUser } = useAuth();
   const router = useRouter();
   const {
     items: cartItems,
@@ -75,17 +77,86 @@ export default function Payment() {
     }
 
     if (status === "authenticated" && session?.user) {
-      if (session.user) {
-        setDeliveryAddress((prev) => ({
-          ...prev,
-          name: session.user.name || "",
-          phone: session.user.phone || "",
-        }));
-        setPaymentForm((prev) => ({
-          ...prev,
-          cardName: session.user.name || "",
-        }));
-      }
+      // Fetch user profile data to get saved address
+      const fetchUserProfile = async () => {
+        try {
+          const response = await fetch("/api/auth/users");
+          if (response.ok) {
+            const userData = await response.json();
+            const currentUser = userData.users?.find(
+              (u) => u.email === session.user.email,
+            );
+
+            if (currentUser) {
+              // Update the user context with complete profile data
+              const extendedUserData = {
+                ...session.user,
+                ...currentUser,
+                // Ensure we don't lose session-specific data
+                email: session.user.email,
+                id: session.user.id || currentUser._id,
+              };
+
+              // Update context with extended data (this will also persist to localStorage)
+              updateUser(extendedUserData);
+
+              // Populate delivery address with saved profile data
+              if (currentUser.address) {
+                setDeliveryAddress((prev) => ({
+                  ...prev,
+                  name: currentUser.name || session.user.name || "",
+                  phone: currentUser.phone || session.user.phone || "",
+                  address: currentUser.address?.street || "",
+                  city: currentUser.address?.city || "",
+                  postalCode: currentUser.address?.zipCode || "",
+                  // Keep existing fields that aren't in profile
+                  instructions: prev.instructions,
+                  addressType: prev.addressType,
+                  landmark: prev.landmark,
+                  alternatePhone: prev.alternatePhone,
+                }));
+              } else {
+                // No saved address, just populate name and phone
+                setDeliveryAddress((prev) => ({
+                  ...prev,
+                  name: currentUser.name || session.user.name || "",
+                  phone: currentUser.phone || session.user.phone || "",
+                }));
+              }
+            } else {
+              // Fallback to session data if profile not found
+              setDeliveryAddress((prev) => ({
+                ...prev,
+                name: session.user.name || "",
+                phone: session.user.phone || "",
+              }));
+            }
+          } else {
+            // Fallback to session data if API call fails
+            setDeliveryAddress((prev) => ({
+              ...prev,
+              name: session.user.name || "",
+              phone: session.user.phone || "",
+            }));
+          }
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+          // Fallback to session data on error
+          setDeliveryAddress((prev) => ({
+            ...prev,
+            name: session.user.name || "",
+            phone: session.user.phone || "",
+          }));
+        }
+      };
+
+      // Fetch user profile for saved address
+      fetchUserProfile();
+
+      setPaymentForm((prev) => ({
+        ...prev,
+        cardName: session.user.name || "",
+      }));
 
       if (cartItems && cartItems.length > 0) {
         const quantities = {};

@@ -450,7 +450,6 @@ export default function FarmerOrders() {
     return summary;
   };
 
-
   if (status === "loading" || loading) {
     return <FarmerOrdersLoadingSkeleton />;
   }
