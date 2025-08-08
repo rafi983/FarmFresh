@@ -13,23 +13,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/categories/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/categories/route.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/api/orders/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/products/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/reviews/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/reviews/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/bookings/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/bookings/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/cart/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/cart/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/details/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/details/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/farmers/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmers/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/farmer-orders/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmer-orders/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/manage/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/manage/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/payment/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/payment/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/products/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/products/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/success/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/success/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/ProductCard.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/ProductCard.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/contexts/CartContext.js" beforeDir="false" afterPath="$PROJECT_DIR$/contexts/CartContext.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hooks/useReviewsQuery.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useReviewsQuery.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/api-service.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/api-service.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/providers/Providers.js" beforeDir="false" afterPath="$PROJECT_DIR$/providers/Providers.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useHomeQuery.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useHomeQuery.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -130,7 +121,8 @@
       <workItem from="1754381330831" duration="24000" />
       <workItem from="1754381403912" duration="23480000" />
       <workItem from="1754473092855" duration="15630000" />
-      <workItem from="1754553001457" duration="24783000" />
+      <workItem from="1754553001457" duration="25111000" />
+      <workItem from="1754653762732" duration="3648000" />
     </task>
     <servers />
   </component>

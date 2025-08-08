@@ -133,33 +133,33 @@ export async function GET() {
     // Define category icons and colors for consistent UI
     const categoryDetails = {
       Vegetables: {
-        icon: "fas fa-carrot",
+        icon: "🥕",
         bgColor: "green",
         count: 0,
       },
       Fruits: {
-        icon: "fas fa-apple-alt",
+        icon: "🍎",
         bgColor: "red",
         count: 0,
       },
       Grains: {
-        icon: "fas fa-seedling",
+        icon: "🌾",
         bgColor: "yellow",
         count: 0,
       },
       Dairy: {
-        icon: "fas fa-cheese",
+        icon: "🥛",
         bgColor: "blue",
         count: 0,
       },
       Honey: {
-        icon: "fas fa-jar",
-        bgColor: "purple",
+        icon: "🍯",
+        bgColor: "orange",
         count: 0,
       },
       Herbs: {
-        icon: "fas fa-leaf",
-        bgColor: "orange",
+        icon: "🌿",
+        bgColor: "green",
         count: 0,
       },
     };

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import Footer from "@/components/Footer";
+import FarmerOrdersLoadingSkeleton from "@/components/FarmerOrdersLoadingSkeleton";
 import { debounce } from "@/utils/debounce";
 import { useOrderStatusUpdate } from "@/hooks/useOrderStatusUpdate";
 import { useFarmerOrders } from "@/hooks/useFarmerOrders";
@@ -450,16 +451,7 @@ export default function FarmerOrders() {
   };
 
   if (status === "loading" || loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400 text-lg">
-            Loading your enhanced orders dashboard...
-          </p>
-        </div>
-      </div>
-    );
+    return <FarmerOrdersLoadingSkeleton />;
   }
 
   const orderSummary = getOrderSummary();
@@ -1185,7 +1177,6 @@ export default function FarmerOrders() {
           )}
         </div>
       </div>
-
       <Footer />
     </>
   );

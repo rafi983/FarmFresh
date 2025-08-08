@@ -393,43 +393,6 @@ export async function POST(request) {
       await db.collection("products").bulkWrite(stockUpdates);
     }
 
-    // FOR TESTING: Increment purchase count immediately when order is created (pending status)
-    // This allows quick testing without waiting for delivery status - same logic as stock updates
-    const purchaseCountUpdates = [];
-    for (const item of orderData.items) {
-      const product = productMap.get(item.productId);
-      if (product) {
-        purchaseCountUpdates.push({
-          updateOne: {
-            filter: { _id: new ObjectId(item.productId) },
-            update: {
-              $inc: {
-                purchaseCount: item.quantity, // Increment by quantity ordered
-              },
-              $set: {
-                updatedAt: new Date(),
-              },
-            },
-          },
-        });
-      }
-    }
-
-    // Perform bulk purchase count updates for testing
-    if (purchaseCountUpdates.length > 0) {
-      try {
-        await db.collection("products").bulkWrite(purchaseCountUpdates);
-        console.log(
-          `🔥 TEST MODE: Updated purchase counts for ${purchaseCountUpdates.length} products on order creation`,
-        );
-      } catch (error) {
-        console.error(
-          "Error updating purchase counts on order creation:",
-          error,
-        );
-      }
-    }
-
     // Enrich order items with product data including images
     const enrichedItems = orderData.items.map((item) => {
       const product = productMap.get(item.productId);

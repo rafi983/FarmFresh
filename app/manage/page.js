@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
+import ManagePageLoadingSkeleton from "@/components/ManagePageLoadingSkeleton";
 import { useDashboardData } from "@/hooks/useDashboardData";
 
 // Component imports
@@ -512,18 +513,9 @@ export default function FarmerDashboard() {
     getProductStatusBadge,
   };
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">
-            Loading dashboard...
-          </p>
-        </div>
-      </div>
-    );
+  // Loading state - Use dedicated manage page skeleton
+  if (isLoading || status === "loading") {
+    return <ManagePageLoadingSkeleton />;
   }
 
   // Error state

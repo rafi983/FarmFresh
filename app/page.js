@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -137,15 +136,15 @@ export default function Home() {
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-8 max-w-md mx-auto">
-              <div className="text-center">
+              <div key="farmers-stat" className="text-center">
                 <div className="text-3xl font-bold">500+</div>
                 <div className="text-green-200">Local Farmers</div>
               </div>
-              <div className="text-center">
+              <div key="products-stat" className="text-center">
                 <div className="text-3xl font-bold">2000+</div>
                 <div className="text-green-200">Fresh Products</div>
               </div>
-              <div className="text-center">
+              <div key="customers-stat" className="text-center">
                 <div className="text-3xl font-bold">10k+</div>
                 <div className="text-green-200">Happy Customers</div>
               </div>
@@ -179,9 +178,8 @@ export default function Home() {
                     <div
                       className={`${classes.bg} ${classes.hover} rounded-2xl p-6 text-center transition`}
                     >
-                      <i
-                        className={`${category.icon} ${classes.icon} text-3xl mb-3`}
-                      ></i>
+                      {/* Use emoji directly for better visibility */}
+                      <div className="text-3xl mb-3">{category.emoji}</div>
                       <h3 className="font-semibold text-gray-900 dark:text-white">
                         {category.name}
                       </h3>
@@ -194,8 +192,11 @@ export default function Home() {
                 );
               })
             ) : (
-              // Fallback to show message when no categories are available
-              <div className="col-span-full text-center py-8">
+              // Fallback to show message when no categories are available - add explicit key
+              <div
+                key="no-categories"
+                className="col-span-full text-center py-8"
+              >
                 <p className="text-gray-600 dark:text-gray-400">
                   No categories available at the moment.
                 </p>
@@ -274,7 +275,7 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
+            <div key="fast-delivery" className="text-center">
               <div className="bg-primary-100 dark:bg-primary-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i className="fas fa-truck text-2xl text-primary-600 dark:text-primary-400"></i>
               </div>
@@ -285,7 +286,7 @@ export default function Home() {
                 Fresh produce delivered within 24 hours of harvest
               </p>
             </div>
-            <div className="text-center">
+            <div key="quality-guaranteed" className="text-center">
               <div className="bg-primary-100 dark:bg-primary-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i className="fas fa-shield-alt text-2xl text-primary-600 dark:text-primary-400"></i>
               </div>
@@ -296,7 +297,7 @@ export default function Home() {
                 100% organic and pesticide-free produce
               </p>
             </div>
-            <div className="text-center">
+            <div key="support-local" className="text-center">
               <div className="bg-primary-100 dark:bg-primary-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i className="fas fa-handshake text-2xl text-primary-600 dark:text-primary-400"></i>
               </div>
@@ -336,7 +337,7 @@ export default function Home() {
       <footer className="bg-gray-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
+            <div key="company-info">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="bg-primary-500 p-2 rounded-lg">
                   <i className="fas fa-seedling text-white text-xl"></i>
@@ -351,19 +352,31 @@ export default function Home() {
                 farmers.
               </p>
               <div className="flex space-x-4">
-                <a href="#" className="text-gray-400 hover:text-white">
+                <a
+                  key="facebook"
+                  href="#"
+                  className="text-gray-400 hover:text-white"
+                >
                   <i className="fab fa-facebook"></i>
                 </a>
-                <a href="#" className="text-gray-400 hover:text-white">
+                <a
+                  key="twitter"
+                  href="#"
+                  className="text-gray-400 hover:text-white"
+                >
                   <i className="fab fa-twitter"></i>
                 </a>
-                <a href="#" className="text-gray-400 hover:text-white">
+                <a
+                  key="instagram"
+                  href="#"
+                  className="text-gray-400 hover:text-white"
+                >
                   <i className="fab fa-instagram"></i>
                 </a>
               </div>
             </div>
 
-            <div>
+            <div key="quick-links">
               <h4 className="font-semibold mb-4">Quick Links</h4>
               <ul className="space-y-2 text-gray-400">
                 <li>
@@ -389,7 +402,7 @@ export default function Home() {
               </ul>
             </div>
 
-            <div>
+            <div key="for-farmers">
               <h4 className="font-semibold mb-4">For Farmers</h4>
               <ul className="space-y-2 text-gray-400">
                 <li>
@@ -415,7 +428,7 @@ export default function Home() {
               </ul>
             </div>
 
-            <div>
+            <div key="support">
               <h4 className="font-semibold mb-4">Support</h4>
               <ul className="space-y-2 text-gray-400">
                 <li>
