@@ -15,12 +15,10 @@
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/categories/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/categories/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/orders/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/bookings/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/bookings/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/farmer-orders/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmer-orders/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/manage/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/manage/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hooks/useHomeQuery.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useHomeQuery.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/EnhancedReviewModal.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/EnhancedReviewModal.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/dashboard/tabs/DashboardTab.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/dashboard/tabs/DashboardTab.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -122,7 +120,7 @@
       <workItem from="1754381403912" duration="23480000" />
       <workItem from="1754473092855" duration="15630000" />
       <workItem from="1754553001457" duration="25111000" />
-      <workItem from="1754653762732" duration="3648000" />
+      <workItem from="1754653762732" duration="5593000" />
     </task>
     <servers />
   </component>

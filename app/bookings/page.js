@@ -1778,155 +1778,371 @@ export default function BookingsPage() {
 
       {/* Enhanced Order Details Modal */}
       {showOrderDetails && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl">
-            {/* Modal Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-2xl font-bold mb-1">
-                    Order #{selectedOrder._id?.slice(-8)?.toUpperCase()}
-                  </h3>
-                  <p className="text-blue-100">
-                    Placed on {formatDate(selectedOrder.createdAt)}
-                  </p>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-6xl max-h-[95vh] overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 animate-in zoom-in duration-300">
+            {/* Enhanced Modal Header */}
+            <div className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white p-6">
+              <div className="absolute inset-0 bg-black/10"></div>
+              <div className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+                    <i className="fas fa-receipt text-2xl"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold mb-1">Order Details</h3>
+                    <div className="flex items-center space-x-4 text-blue-100">
+                      <span className="flex items-center">
+                        <i className="fas fa-hashtag mr-1 text-sm"></i>
+                        {selectedOrder._id?.slice(-8)?.toUpperCase()}
+                      </span>
+                      <span className="flex items-center">
+                        <i className="fas fa-calendar mr-1 text-sm"></i>
+                        {formatDate(selectedOrder.createdAt)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <button
-                  onClick={() => setShowOrderDetails(false)}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-colors duration-200"
-                >
-                  <i className="fas fa-times text-xl"></i>
-                </button>
+
+                <div className="flex items-center space-x-3">
+                  {/* Status Badge */}
+                  <div className="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full">
+                    {getStatusBadge(selectedOrder.status)}
+                  </div>
+                  <button
+                    onClick={() => setShowOrderDetails(false)}
+                    className="p-2 hover:bg-white/20 rounded-xl transition-colors duration-200"
+                  >
+                    <i className="fas fa-times text-xl"></i>
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Order Summary */}
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                      <i className="fas fa-clipboard-list mr-2 text-blue-600"></i>
+            {/* Enhanced Modal Body */}
+            <div className="p-8 overflow-y-auto max-h-[calc(95vh-200px)]">
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                {/* Left Column - Order Summary & Status */}
+                <div className="xl:col-span-1 space-y-6">
+                  {/* Order Summary Card */}
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl p-6 border border-blue-200 dark:border-blue-800">
+                    <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                      <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg mr-3">
+                        <i className="fas fa-chart-pie text-blue-600 dark:text-blue-300"></i>
+                      </div>
                       Order Summary
                     </h4>
-                    <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 space-y-3">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">
-                          Status:
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-xl">
+                        <span className="text-gray-600 dark:text-gray-400 flex items-center">
+                          <i className="fas fa-box text-blue-500 mr-2"></i>
+                          Items
                         </span>
-                        {getStatusBadge(selectedOrder.status)}
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">
-                          Total Amount:
-                        </span>
-                        <span className="text-xl font-bold text-gray-900 dark:text-white">
-                          {formatPrice(selectedOrder.total)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">
-                          Items:
-                        </span>
-                        <span className="font-medium text-gray-900 dark:text-white">
+                        <span className="font-semibold text-gray-900 dark:text-white">
                           {selectedOrder.items?.length} items
                         </span>
                       </div>
+
+                      <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-xl">
+                        <span className="text-gray-600 dark:text-gray-400 flex items-center">
+                          <i className="fas fa-credit-card text-green-500 mr-2"></i>
+                          Payment
+                        </span>
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          {selectedOrder.paymentMethod || "Cash on Delivery"}
+                        </span>
+                      </div>
+
+                      <div className="border-t border-blue-200 dark:border-blue-800 pt-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-lg font-medium text-gray-700 dark:text-gray-300">
+                            Total Amount
+                          </span>
+                          <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                            {formatPrice(selectedOrder.total)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Delivery Information */}
+                  {/* Delivery Information Card */}
                   {selectedOrder.deliveryAddress && (
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                        <i className="fas fa-map-marker-alt mr-2 text-green-600"></i>
-                        Delivery Information
-                      </h4>
-                      <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 space-y-2">
-                        <p className="text-gray-900 dark:text-white font-medium">
-                          {selectedOrder.deliveryAddress.name}
-                        </p>
-                        <p className="text-gray-600 dark:text-gray-400">
-                          {selectedOrder.deliveryAddress.address}
-                        </p>
-                        <p className="text-gray-600 dark:text-gray-400">
-                          {selectedOrder.deliveryAddress.city}
-                        </p>
-                        <p className="text-gray-600 dark:text-gray-400">
-                          <i className="fas fa-phone mr-2"></i>
-                          {selectedOrder.deliveryAddress.phone}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Order Items */}
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                    <i className="fas fa-box mr-2 text-purple-600"></i>
-                    Items Ordered
-                  </h4>
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {selectedOrder.items?.map((item, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl"
-                      >
-                        <img
-                          src={
-                            item.image ||
-                            item.productImage ||
-                            item.product?.image ||
-                            item.product?.images?.[0] ||
-                            "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=60&h=60&fit=crop"
-                          }
-                          alt={item.productName}
-                          className="w-16 h-16 rounded-lg object-cover"
-                        />
-                        <div className="flex-1">
-                          <h5 className="font-medium text-gray-900 dark:text-white">
-                            {item.productName}
-                          </h5>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            By {item.farmerName || "Local Farmer"}
-                          </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Quantity: {item.quantity} •{" "}
-                            {formatPrice(item.price)}/unit
-                          </p>
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-2xl p-6 border border-green-200 dark:border-green-800">
+                      <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                        <div className="p-2 bg-green-100 dark:bg-green-800 rounded-lg mr-3">
+                          <i className="fas fa-map-marker-alt text-green-600 dark:text-green-300"></i>
                         </div>
-                        <div className="text-right">
-                          <div className="font-semibold text-gray-900 dark:text-white">
-                            {formatPrice(item.price * item.quantity)}
+                        Delivery Address
+                      </h4>
+
+                      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 space-y-3">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-green-100 dark:bg-green-800 rounded-full flex items-center justify-center">
+                            <i className="fas fa-user text-green-600 dark:text-green-300"></i>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900 dark:text-white">
+                              {selectedOrder.deliveryAddress.name}
+                            </p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Recipient
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start space-x-3">
+                          <div className="w-10 h-10 bg-green-100 dark:bg-green-800 rounded-full flex items-center justify-center mt-1">
+                            <i className="fas fa-home text-green-600 dark:text-green-300"></i>
+                          </div>
+                          <div>
+                            <p className="text-gray-900 dark:text-white">
+                              {selectedOrder.deliveryAddress.address}
+                            </p>
+                            <p className="text-gray-600 dark:text-gray-400">
+                              {selectedOrder.deliveryAddress.city}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-green-100 dark:bg-green-800 rounded-full flex items-center justify-center">
+                            <i className="fas fa-phone text-green-600 dark:text-green-300"></i>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {selectedOrder.deliveryAddress.phone}
+                            </p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Contact number
+                            </p>
                           </div>
                         </div>
                       </div>
-                    ))}
+                    </div>
+                  )}
+
+                  {/* Order Timeline */}
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl p-6 border border-purple-200 dark:border-purple-800">
+                    <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+                      <div className="p-2 bg-purple-100 dark:bg-purple-800 rounded-lg mr-3">
+                        <i className="fas fa-clock text-purple-600 dark:text-purple-300"></i>
+                      </div>
+                      Order Timeline
+                    </h4>
+
+                    <div className="space-y-4">
+                      {[
+                        {
+                          status: "pending",
+                          label: "Order Placed",
+                          icon: "fa-plus-circle",
+                        },
+                        {
+                          status: "confirmed",
+                          label: "Order Confirmed",
+                          icon: "fa-check-circle",
+                        },
+                        {
+                          status: "shipped",
+                          label: "Order Shipped",
+                          icon: "fa-truck",
+                        },
+                        {
+                          status: "delivered",
+                          label: "Order Delivered",
+                          icon: "fa-home",
+                        },
+                      ].map((step, index) => {
+                        const isActive =
+                          [
+                            "pending",
+                            "confirmed",
+                            "shipped",
+                            "delivered",
+                          ].indexOf(selectedOrder.status) >= index;
+                        const isCurrent =
+                          ["pending", "confirmed", "shipped", "delivered"][
+                            index
+                          ] === selectedOrder.status;
+
+                        return (
+                          <div
+                            key={step.status}
+                            className="flex items-center space-x-4"
+                          >
+                            <div
+                              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                                isActive
+                                  ? isCurrent
+                                    ? "bg-purple-500 text-white shadow-lg scale-110"
+                                    : "bg-green-500 text-white"
+                                  : "bg-gray-200 dark:bg-gray-700 text-gray-400"
+                              }`}
+                            >
+                              <i
+                                className={`fas ${step.icon} ${isCurrent ? "animate-pulse" : ""}`}
+                              ></i>
+                            </div>
+                            <div className="flex-1">
+                              <p
+                                className={`font-medium ${isActive ? "text-gray-900 dark:text-white" : "text-gray-400"}`}
+                              >
+                                {step.label}
+                              </p>
+                              {isCurrent && (
+                                <p className="text-sm text-purple-600 dark:text-purple-400 font-medium">
+                                  Current Status
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column - Order Items */}
+                <div className="xl:col-span-2">
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 h-full">
+                    <div className="flex items-center justify-between mb-6">
+                      <h4 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
+                        <div className="p-2 bg-orange-100 dark:bg-orange-800 rounded-lg mr-3">
+                          <i className="fas fa-shopping-bag text-orange-600 dark:text-orange-300"></i>
+                        </div>
+                        Items Ordered ({selectedOrder.items?.length})
+                      </h4>
+                    </div>
+
+                    <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-track-gray-100 dark:scrollbar-track-gray-800 scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
+                      {selectedOrder.items?.map((item, index) => (
+                        <div
+                          key={index}
+                          className="group bg-gray-50 dark:bg-gray-700 rounded-2xl p-5 hover:shadow-lg transition-all duration-200 border border-gray-100 dark:border-gray-600"
+                        >
+                          <div className="flex items-center space-x-4">
+                            {/* Product Image */}
+                            <div className="relative">
+                              <img
+                                src={
+                                  item.image ||
+                                  item.productImage ||
+                                  item.product?.image ||
+                                  item.product?.images?.[0] ||
+                                  "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=80&h=80&fit=crop"
+                                }
+                                alt={item.productName}
+                                className="w-20 h-20 rounded-xl object-cover group-hover:scale-105 transition-transform duration-200"
+                              />
+                              <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                {item.quantity}
+                              </div>
+                            </div>
+
+                            {/* Product Details */}
+                            <div className="flex-1">
+                              <h5 className="font-bold text-gray-900 dark:text-white text-lg mb-1">
+                                {item.productName}
+                              </h5>
+                              <div className="flex items-center space-x-2 mb-2">
+                                <div className="flex items-center space-x-1">
+                                  <i className="fas fa-user-circle text-green-500 text-sm"></i>
+                                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                                    {item.farmerName || "Local Farmer"}
+                                  </span>
+                                </div>
+                                {item.category && (
+                                  <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium">
+                                    {item.category}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
+                                <span className="flex items-center">
+                                  <i className="fas fa-tag mr-1 text-green-500"></i>
+                                  {formatPrice(item.price)}/unit
+                                </span>
+                                <span className="flex items-center">
+                                  <i className="fas fa-weight mr-1 text-blue-500"></i>
+                                  Qty: {item.quantity}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Price */}
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                                {formatPrice(item.price * item.quantity)}
+                              </div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                Total
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Order Total Summary */}
+                    <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <i className="fas fa-receipt text-blue-500"></i>
+                            <span className="text-lg font-medium text-gray-700 dark:text-gray-300">
+                              Order Total
+                            </span>
+                          </div>
+                          <span className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                            {formatPrice(selectedOrder.total)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="border-t border-gray-200 dark:border-gray-600 p-6 bg-gray-50 dark:bg-gray-700">
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowOrderDetails(false)}
-                  className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-xl font-medium transition-all duration-200"
-                >
-                  Close
-                </button>
-                {selectedOrder.status === "delivered" && (
+            {/* Enhanced Modal Footer */}
+            <div className="bg-gray-50 dark:bg-gray-800/50 px-8 py-6 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <span className="flex items-center">
+                    <i className="fas fa-info-circle text-blue-500 mr-2"></i>
+                    Need help with your order? Contact our support team.
+                  </span>
+                </div>
+
+                <div className="flex space-x-3">
                   <button
-                    onClick={() => handleDownloadReceipt(selectedOrder)}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all duration-200"
+                    onClick={() => setShowOrderDetails(false)}
+                    className="px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl font-medium transition-all duration-200"
                   >
-                    <i className="fas fa-download mr-2"></i>
-                    Download Receipt
+                    <i className="fas fa-times mr-2"></i>
+                    Close
                   </button>
-                )}
+
+                  {selectedOrder.status === "delivered" && (
+                    <button
+                      onClick={() => handleDownloadReceipt(selectedOrder)}
+                      className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
+                    >
+                      <i className="fas fa-download mr-2"></i>
+                      Download Receipt
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => window.print()}
+                    className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-medium transition-all duration-200"
+                  >
+                    <i className="fas fa-print mr-2"></i>
+                    Print
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -380,7 +380,7 @@ export default function EnhancedReviewModal({
                     }`}
                   >
                     <i className="fas fa-thumbs-down mr-2"></i>
-                    No, I don't recommend
+                    No, I don&apos;t recommend
                   </button>
                 </div>
               </div>
@@ -520,8 +520,8 @@ export default function EnhancedReviewModal({
                         Post anonymously
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">
-                        Your name will be shown as "Anonymous" instead of your
-                        actual name
+                        Your name will be shown as &quot;Anonymous&quot; instead
+                        of your actual name
                       </div>
                     </div>
                   </label>
@@ -559,12 +559,12 @@ export default function EnhancedReviewModal({
 
         {/* Enhanced Footer */}
         <div className="bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 sm:gap-0 -mt-2">
+            <div className="flex items-center justify-start">
               {currentStep > 1 && (
                 <button
                   onClick={handlePrevious}
-                  className="px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-xl font-semibold transition-all duration-200 flex items-center"
+                  className="px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-xl font-semibold transition-all duration-200 flex items-center min-w-fit"
                 >
                   <i className="fas fa-arrow-left mr-2"></i>
                   Previous
@@ -572,10 +572,10 @@ export default function EnhancedReviewModal({
               )}
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center justify-end gap-4 flex-wrap">
               <button
                 onClick={onClose}
-                className="px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-xl font-semibold transition-all duration-200"
+                className="px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-xl font-semibold transition-all duration-200 min-w-fit"
               >
                 Cancel
               </button>
@@ -583,7 +583,7 @@ export default function EnhancedReviewModal({
               {currentStep < 3 ? (
                 <button
                   onClick={handleNext}
-                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all duration-200 flex items-center shadow-lg hover:shadow-xl"
+                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all duration-200 flex items-center shadow-lg hover:shadow-xl min-w-fit"
                 >
                   Next
                   <i className="fas fa-arrow-right ml-2"></i>
@@ -592,7 +592,7 @@ export default function EnhancedReviewModal({
                 <button
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 flex items-center shadow-lg hover:shadow-xl"
+                  className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 flex items-center shadow-lg hover:shadow-xl min-w-fit whitespace-nowrap"
                 >
                   {isSubmitting && (
                     <i className="fas fa-spinner fa-spin mr-2"></i>

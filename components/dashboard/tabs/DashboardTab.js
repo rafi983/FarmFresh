@@ -645,217 +645,510 @@ export default function DashboardTab({
         </div>
       </div>
 
-      {/* Bulk Update Modal */}
+      {/* Enhanced Bulk Update Modal */}
       {bulkUpdateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Bulk Update Products
-                </h3>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-5xl max-h-[95vh] overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 animate-in zoom-in duration-300">
+            {/* Enhanced Header */}
+            <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
+              <div className="absolute inset-0 bg-black/10"></div>
+              <div className="relative flex justify-between items-center">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                    <i className="fas fa-layer-group text-2xl"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold">Bulk Update Products</h3>
+                    <p className="text-blue-100 mt-1">
+                      Update multiple products at once to save time
+                    </p>
+                  </div>
+                </div>
                 <button
                   onClick={() => setBulkUpdateModal(false)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="p-2 hover:bg-white/20 rounded-xl transition-colors"
                 >
                   <i className="fas fa-times text-xl"></i>
                 </button>
               </div>
             </div>
 
-            <div className="p-6 max-h-[calc(90vh-200px)] overflow-y-auto">
-              {/* Product Selection */}
-              <div className="mb-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Select Products ({selectedProducts.length} selected)
-                  </h4>
-                  <button
-                    onClick={selectAllProducts}
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+            <div className="p-8 max-h-[calc(95vh-200px)] overflow-y-auto space-y-8">
+              {/* Step Indicator */}
+              <div className="flex items-center justify-center space-x-4 mb-8">
+                <div
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all ${
+                    selectedProducts.length > 0
+                      ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-500"
+                  }`}
+                >
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                      selectedProducts.length > 0
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400"
+                    }`}
                   >
-                    {selectedProducts.length === products.length
-                      ? "Deselect All"
-                      : "Select All"}
-                  </button>
+                    1
+                  </div>
+                  <span className="text-sm font-medium">Select Products</span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-60 overflow-y-auto">
-                  {products.map((product) => (
-                    <div
-                      key={product._id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                        selectedProducts.includes(product._id)
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                          : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
-                      }`}
-                      onClick={() => toggleProductSelection(product._id)}
+                <div
+                  className={`w-8 h-0.5 transition-all ${
+                    selectedProducts.length > 0 && bulkAction
+                      ? "bg-green-500"
+                      : "bg-gray-300 dark:bg-gray-600"
+                  }`}
+                ></div>
+
+                <div
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all ${
+                    selectedProducts.length > 0 && bulkAction
+                      ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-500"
+                  }`}
+                >
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                      selectedProducts.length > 0 && bulkAction
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400"
+                    }`}
+                  >
+                    2
+                  </div>
+                  <span className="text-sm font-medium">Choose Action</span>
+                </div>
+
+                <div
+                  className={`w-8 h-0.5 transition-all ${
+                    selectedProducts.length > 0 &&
+                    bulkAction &&
+                    (bulkValues.price ||
+                      bulkValues.stock ||
+                      bulkValues.status ||
+                      bulkValues.category)
+                      ? "bg-green-500"
+                      : "bg-gray-300 dark:bg-gray-600"
+                  }`}
+                ></div>
+
+                <div
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all ${
+                    selectedProducts.length > 0 &&
+                    bulkAction &&
+                    (bulkValues.price ||
+                      bulkValues.stock ||
+                      bulkValues.status ||
+                      bulkValues.category)
+                      ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-500"
+                  }`}
+                >
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                      selectedProducts.length > 0 &&
+                      bulkAction &&
+                      (bulkValues.price ||
+                        bulkValues.stock ||
+                        bulkValues.status ||
+                        bulkValues.category)
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400"
+                    }`}
+                  >
+                    3
+                  </div>
+                  <span className="text-sm font-medium">Set Values</span>
+                </div>
+              </div>
+
+              {/* Enhanced Product Selection */}
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <i className="fas fa-boxes text-blue-600 dark:text-blue-400"></i>
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-bold text-gray-900 dark:text-white">
+                        Select Products
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {selectedProducts.length} of {products.length} products
+                        selected
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    {selectedProducts.length > 0 && (
+                      <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
+                        {selectedProducts.length} selected
+                      </div>
+                    )}
+                    <button
+                      onClick={selectAllProducts}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors flex items-center space-x-2"
                     >
-                      <div className="flex items-center space-x-3">
+                      <i
+                        className={`fas ${
+                          selectedProducts.length === products.length
+                            ? "fa-minus"
+                            : "fa-check-double"
+                        }`}
+                      ></i>
+                      <span>
+                        {selectedProducts.length === products.length
+                          ? "Deselect All"
+                          : "Select All"}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Products Grid Container with proper spacing and no horizontal scroll */}
+                <div className="mt-8">
+                  <div className="max-h-80 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-track-gray-100 dark:scrollbar-track-gray-800 scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-400 dark:hover:scrollbar-thumb-gray-500">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
+                      {products.map((product) => (
+                        <div
+                          key={product._id}
+                          className={`group relative p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                            selectedProducts.includes(product._id)
+                              ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md scale-[1.02]"
+                              : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600"
+                          }`}
+                          onClick={() => toggleProductSelection(product._id)}
+                        >
+                          {/* Selection indicator */}
+                          <div
+                            className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                              selectedProducts.includes(product._id)
+                                ? "bg-blue-500 text-white scale-110"
+                                : "bg-gray-200 dark:bg-gray-600 text-gray-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-900"
+                            }`}
+                          >
+                            <i
+                              className={`fas ${
+                                selectedProducts.includes(product._id)
+                                  ? "fa-check"
+                                  : "fa-plus"
+                              } text-xs`}
+                            ></i>
+                          </div>
+
+                          <div className="flex items-center space-x-3">
+                            <div
+                              className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                                selectedProducts.includes(product._id)
+                                  ? "bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300"
+                                  : "bg-gray-100 dark:bg-gray-700 text-gray-400 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30"
+                              }`}
+                            >
+                              <i className="fas fa-box text-lg"></i>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-gray-900 dark:text-white truncate text-sm">
+                                {product.name}
+                              </p>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                    product.stock > 10
+                                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                                      : product.stock > 0
+                                        ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
+                                        : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                                  }`}
+                                >
+                                  {product.stock} in stock
+                                </span>
+                                <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                                  {formatPrice(product.price)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Enhanced Bulk Action Selection */}
+              {selectedProducts.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center space-x-3 mb-6">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                      <i className="fas fa-magic text-purple-600 dark:text-purple-400"></i>
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-bold text-gray-900 dark:text-white">
+                        Choose Action
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Select what you want to update
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                      {
+                        value: "price",
+                        label: "Update Price",
+                        icon: "fas fa-dollar-sign",
+                        color: "green",
+                        description: "Change product prices",
+                      },
+                      {
+                        value: "stock",
+                        label: "Update Stock",
+                        icon: "fas fa-box",
+                        color: "blue",
+                        description: "Adjust inventory levels",
+                      },
+                      {
+                        value: "status",
+                        label: "Update Status",
+                        icon: "fas fa-toggle-on",
+                        color: "purple",
+                        description: "Enable/disable products",
+                      },
+                      {
+                        value: "category",
+                        label: "Update Category",
+                        icon: "fas fa-tags",
+                        color: "orange",
+                        description: "Change product categories",
+                      },
+                    ].map((action) => (
+                      <button
+                        key={action.value}
+                        onClick={() => setBulkAction(action.value)}
+                        className={`group relative p-6 border-2 rounded-2xl text-center transition-all duration-200 hover:shadow-lg ${
+                          bulkAction === action.value
+                            ? `border-${action.color}-500 bg-${action.color}-50 dark:bg-${action.color}-900/20 shadow-md scale-[1.02]`
+                            : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                        }`}
+                      >
+                        {/* Selection indicator */}
+                        <div
+                          className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                            bulkAction === action.value
+                              ? `bg-${action.color}-500 text-white scale-110`
+                              : "bg-gray-200 dark:bg-gray-600 text-gray-400 group-hover:scale-110"
+                          }`}
+                        >
+                          <i
+                            className={`fas ${
+                              bulkAction === action.value
+                                ? "fa-check"
+                                : "fa-plus"
+                            } text-xs`}
+                          ></i>
+                        </div>
+
+                        <div
+                          className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center transition-all ${
+                            bulkAction === action.value
+                              ? `bg-${action.color}-100 dark:bg-${action.color}-800 text-${action.color}-600 dark:text-${action.color}-300`
+                              : "bg-gray-100 dark:bg-gray-700 text-gray-400 group-hover:bg-gray-200 dark:group-hover:bg-gray-600"
+                          }`}
+                        >
+                          <i className={`${action.icon} text-2xl`}></i>
+                        </div>
+                        <h5 className="font-bold text-gray-900 dark:text-white mb-2">
+                          {action.label}
+                        </h5>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          {action.description}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Enhanced Input Fields */}
+              {bulkAction && selectedProducts.length > 0 && (
+                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-2xl p-6 border border-indigo-200 dark:border-indigo-800">
+                  <div className="flex items-center space-x-3 mb-6">
+                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                      <i className="fas fa-edit text-indigo-600 dark:text-indigo-400"></i>
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-bold text-gray-900 dark:text-white">
+                        Set New Value
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        This will be applied to all {selectedProducts.length}{" "}
+                        selected products
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="max-w-md">
+                    {bulkAction === "price" && (
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                          <i className="fas fa-dollar-sign"></i>
+                        </div>
                         <input
-                          type="checkbox"
-                          checked={selectedProducts.includes(product._id)}
-                          onChange={() => toggleProductSelection(product._id)}
-                          className="w-4 h-4 text-blue-600"
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={bulkValues.price}
+                          onChange={(e) =>
+                            setBulkValues((prev) => ({
+                              ...prev,
+                              price: e.target.value,
+                            }))
+                          }
+                          className="w-full pl-10 pr-4 py-4 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-800 dark:text-white text-lg font-semibold transition-all"
                         />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 dark:text-white truncate">
-                            {product.name}
-                          </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Stock: {product.stock} •{" "}
-                            {formatPrice(product.price)}
-                          </p>
+                        <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                          Enter the new price for all selected products
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                    )}
 
-              {/* Bulk Action Selection */}
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Choose Action
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[
-                    {
-                      value: "price",
-                      label: "Update Price",
-                      icon: "fas fa-dollar-sign",
-                    },
-                    {
-                      value: "stock",
-                      label: "Update Stock",
-                      icon: "fas fa-box",
-                    },
-                    {
-                      value: "status",
-                      label: "Update Status",
-                      icon: "fas fa-toggle-on",
-                    },
-                    {
-                      value: "category",
-                      label: "Update Category",
-                      icon: "fas fa-tags",
-                    },
-                  ].map((action) => (
-                    <button
-                      key={action.value}
-                      onClick={() => setBulkAction(action.value)}
-                      className={`p-4 border rounded-lg text-center transition-all ${
-                        bulkAction === action.value
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600"
-                          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 text-gray-700 dark:text-gray-300"
-                      }`}
-                    >
-                      <i className={`${action.icon} text-xl mb-2`}></i>
-                      <p className="text-sm font-medium">{action.label}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
+                    {bulkAction === "stock" && (
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                          <i className="fas fa-box"></i>
+                        </div>
+                        <input
+                          type="number"
+                          placeholder="0"
+                          value={bulkValues.stock}
+                          onChange={(e) =>
+                            setBulkValues((prev) => ({
+                              ...prev,
+                              stock: e.target.value,
+                            }))
+                          }
+                          className="w-full pl-10 pr-4 py-4 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-800 dark:text-white text-lg font-semibold transition-all"
+                        />
+                        <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                          Enter the new stock quantity for all selected products
+                        </div>
+                      </div>
+                    )}
 
-              {/* Input Fields Based on Selected Action */}
-              {bulkAction && (
-                <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                    Enter New Value
-                  </h4>
+                    {bulkAction === "status" && (
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                          <i className="fas fa-toggle-on"></i>
+                        </div>
+                        <select
+                          value={bulkValues.status}
+                          onChange={(e) =>
+                            setBulkValues((prev) => ({
+                              ...prev,
+                              status: e.target.value,
+                            }))
+                          }
+                          className="w-full pl-10 pr-4 py-4 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-800 dark:text-white text-lg font-semibold transition-all"
+                        >
+                          <option value="">Select status</option>
+                          <option value="active">🟢 Active</option>
+                          <option value="inactive">🔴 Inactive</option>
+                        </select>
+                        <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                          Choose the new status for all selected products
+                        </div>
+                      </div>
+                    )}
 
-                  {bulkAction === "price" && (
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="Enter new price"
-                      value={bulkValues.price}
-                      onChange={(e) =>
-                        setBulkValues((prev) => ({
-                          ...prev,
-                          price: e.target.value,
-                        }))
-                      }
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                    />
-                  )}
-
-                  {bulkAction === "stock" && (
-                    <input
-                      type="number"
-                      placeholder="Enter new stock quantity"
-                      value={bulkValues.stock}
-                      onChange={(e) =>
-                        setBulkValues((prev) => ({
-                          ...prev,
-                          stock: e.target.value,
-                        }))
-                      }
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                    />
-                  )}
-
-                  {bulkAction === "status" && (
-                    <select
-                      value={bulkValues.status}
-                      onChange={(e) =>
-                        setBulkValues((prev) => ({
-                          ...prev,
-                          status: e.target.value,
-                        }))
-                      }
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                    >
-                      <option value="">Select status</option>
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
-                  )}
-
-                  {bulkAction === "category" && (
-                    <input
-                      type="text"
-                      placeholder="Enter new category"
-                      value={bulkValues.category}
-                      onChange={(e) =>
-                        setBulkValues((prev) => ({
-                          ...prev,
-                          category: e.target.value,
-                        }))
-                      }
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                    />
-                  )}
+                    {bulkAction === "category" && (
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                          <i className="fas fa-tags"></i>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Category name"
+                          value={bulkValues.category}
+                          onChange={(e) =>
+                            setBulkValues((prev) => ({
+                              ...prev,
+                              category: e.target.value,
+                            }))
+                          }
+                          className="w-full pl-10 pr-4 py-4 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-800 dark:text-white text-lg font-semibold transition-all"
+                        />
+                        <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                          Enter the new category for all selected products
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-4">
-              <button
-                onClick={() => setBulkUpdateModal(false)}
-                className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleBulkUpdate}
-                disabled={
-                  !selectedProducts.length || !bulkAction || bulkLoading
-                }
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
-              >
-                {bulkLoading ? (
-                  <>
-                    <i className="fas fa-spinner fa-spin mr-2"></i>
-                    Updating...
-                  </>
-                ) : (
-                  <>
-                    <i className="fas fa-check mr-2"></i>
-                    Update Products
-                  </>
-                )}
-              </button>
+            {/* Enhanced Footer */}
+            <div className="bg-gray-50 dark:bg-gray-800/50 px-8 py-6 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {selectedProducts.length > 0 &&
+                  bulkAction &&
+                  (bulkValues.price ||
+                    bulkValues.stock ||
+                    bulkValues.status ||
+                    bulkValues.category) ? (
+                    <span className="flex items-center space-x-2">
+                      <i className="fas fa-info-circle text-blue-500"></i>
+                      <span>
+                        Ready to update {selectedProducts.length} products
+                      </span>
+                    </span>
+                  ) : (
+                    <span>Complete all steps to proceed with bulk update</span>
+                  )}
+                </div>
+
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setBulkUpdateModal(false)}
+                    className="px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleBulkUpdate}
+                    disabled={
+                      !selectedProducts.length ||
+                      !bulkAction ||
+                      bulkLoading ||
+                      !(
+                        bulkValues.price ||
+                        bulkValues.stock ||
+                        bulkValues.status ||
+                        bulkValues.category
+                      )
+                    }
+                    className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold shadow-lg hover:shadow-xl disabled:shadow-none flex items-center space-x-2"
+                  >
+                    {bulkLoading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>Updating Products...</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-magic"></i>
+                        <span>Update {selectedProducts.length} Products</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
