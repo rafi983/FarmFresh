@@ -16,9 +16,10 @@ import useProductData from "@/hooks/useProductData";
 import useOwnership from "@/hooks/useOwnership";
 import { useReviewsQuery } from "@/hooks/useReviewsQuery";
 import { apiService } from "@/lib/api-service";
-
 import Loading from "@/components/Loading";
 import NotFound from "@/components/NotFound";
+import FarmerDetailsLoading from "@/components/FarmerDetailsLoading";
+import CustomerDetailsLoading from "@/components/CustomerDetailsLoading";
 
 // Move constants outside component to prevent recreations
 const TAB_OPTIONS = [
@@ -29,6 +30,15 @@ const TAB_OPTIONS = [
   "farmer",
 ];
 const DEFAULT_REVIEW_FORM = { rating: 5, comment: "" };
+
+// Currency formatting function
+const formatPrice = (price) => {
+  return new Intl.NumberFormat("en-BD", {
+    style: "currency",
+    currency: "BDT",
+    minimumFractionDigits: 0,
+  }).format(price);
+};
 
 export default function ProductDetails() {
   const searchParams = useSearchParams();
@@ -807,7 +817,44 @@ export default function ProductDetails() {
 
   // Render components based on state
   if (loading) {
-    return <Loading />;
+    // Use the same ownership logic as the actual content to determine loading skeleton
+    // The content logic is: isOwner && viewMode !== "customer"
+    // We need to replicate this logic during loading
+
+    const checkPotentialOwnership = () => {
+      // If explicit customer view, always show customer skeleton
+      if (viewMode === "customer") {
+        return false;
+      }
+
+      // If no session or not a farmer, show customer skeleton
+      if (!session?.user || session?.user?.userType !== "farmer") {
+        return false;
+      }
+
+      // For farmers, we need to make an educated guess about ownership
+      // Since we don't have product data yet, we can:
+      // 1. Check if they came from /manage page (referrer)
+      // 2. Check if the productId might belong to them (requires API call)
+      // 3. Use a heuristic based on navigation patterns
+
+      // For now, let's show farmer skeleton for farmers by default
+      // and let it switch to customer view if they're not the owner
+      // This provides better UX for farmers viewing their own products
+      if (productId && session?.user?.userType === "farmer") {
+        return true; // Show farmer skeleton, will switch if not owner
+      }
+
+      return false;
+    };
+
+    const showFarmerSkeleton = checkPotentialOwnership();
+
+    return showFarmerSkeleton ? (
+      <FarmerDetailsLoading />
+    ) : (
+      <CustomerDetailsLoading />
+    );
   }
 
   if (responseType === "farmer" && farmer) {
@@ -997,7 +1044,7 @@ export default function ProductDetails() {
                             Price
                           </span>
                           <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                            ${product.price?.toFixed(2)} per{" "}
+                            {formatPrice(product.price)} per{" "}
                             {product.unit || "kg"}
                           </p>
                         </div>
@@ -1129,10 +1176,9 @@ export default function ProductDetails() {
                       {/* Total Revenue */}
                       <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
                         <div className="text-2xl font-bold text-green-600">
-                          $
-                          {(
-                            product.performanceMetrics?.totalRevenue || 0
-                          ).toFixed(2)}
+                          {formatPrice(
+                            product.performanceMetrics?.totalRevenue || 0,
+                          )}
                         </div>
                         <div className="text-sm text-gray-600 dark:text-gray-400">
                           Total Revenue
@@ -1169,9 +1215,8 @@ export default function ProductDetails() {
                       {product.performanceMetrics?.averageOrderValue > 0 && (
                         <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
                           <div className="text-2xl font-bold text-orange-600">
-                            $
-                            {product.performanceMetrics.averageOrderValue.toFixed(
-                              2,
+                            {formatPrice(
+                              product.performanceMetrics.averageOrderValue,
                             )}
                           </div>
                           <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -1437,7 +1482,7 @@ export default function ProductDetails() {
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <span className="text-3xl font-bold text-primary-600 dark:text-primary-400">
-                          ${product.price?.toFixed(2)}
+                          {formatPrice(product.price)}
                         </span>
                         <span className="text-lg text-gray-500 dark:text-gray-400">
                           /{product.unit || "kg"}
@@ -2406,7 +2451,7 @@ export default function ProductDetails() {
                             <div className="flex items-center justify-between mb-4">
                               <div>
                                 <span className="text-xl font-bold text-primary-600 dark:text-primary-400">
-                                  ${(relatedProduct.price || 0).toFixed(2)}
+                                  {formatPrice(relatedProduct.price || 0)}
                                 </span>
                                 <span className="text-sm text-gray-500 dark:text-gray-400">
                                   /{relatedProduct.unit || "kg"}

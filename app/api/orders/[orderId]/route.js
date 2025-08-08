@@ -179,6 +179,44 @@ export async function PATCH(request, { params }) {
       existingOrder.status !== "cancelled" &&
       existingOrder.status !== "returned";
 
+    // Check if order status is being changed to delivered
+    const isBeingDelivered =
+      updateData.status &&
+      updateData.status === "delivered" &&
+      existingOrder.status !== "delivered";
+
+    // If order is being delivered, increment purchase count for each product
+    if (isBeingDelivered && existingOrder.items) {
+      console.log(
+        `Order ${orderId} is being delivered, updating purchase counts...`,
+      );
+
+      const purchaseCountUpdates = existingOrder.items.map((item) => ({
+        updateOne: {
+          filter: { _id: new ObjectId(item.productId) },
+          update: {
+            $inc: {
+              purchaseCount: item.quantity, // Increment by the quantity purchased
+            },
+            $set: {
+              updatedAt: new Date(),
+            },
+          },
+        },
+      }));
+
+      if (purchaseCountUpdates.length > 0) {
+        try {
+          await db.collection("products").bulkWrite(purchaseCountUpdates);
+          console.log(
+            `Updated purchase counts for ${purchaseCountUpdates.length} products`,
+          );
+        } catch (error) {
+          console.error("Error updating purchase counts:", error);
+        }
+      }
+    }
+
     // If order is being cancelled, restore stock using bulk operations
     if (isBeingCancelled && existingOrder.items) {
       const stockRestoreOperations = existingOrder.items.map((item) => ({

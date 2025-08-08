@@ -432,11 +432,10 @@ export default function FarmerDashboard() {
 
   // Utility functions
   const formatPrice = useCallback((price) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-BD", {
       style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      currency: "BDT",
+      minimumFractionDigits: 0,
     }).format(price || 0);
   }, []);
 

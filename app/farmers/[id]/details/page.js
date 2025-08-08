@@ -6,7 +6,7 @@ import Link from "next/link";
 import Footer from "@/components/Footer";
 
 // Compact List Row (Table-like)
-const CompactListRow = ({ product, index }) => {
+const CompactListRow = ({ product, index, formatPrice }) => {
   return (
     <div
       className="group flex items-center py-4 px-6 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
@@ -66,7 +66,7 @@ const CompactListRow = ({ product, index }) => {
 
       {/* Price */}
       <div className="font-bold text-lg text-emerald-600 dark:text-emerald-400 mr-4">
-        ${product.price}
+        {formatPrice(product.price)}
       </div>
 
       {/* Action Button */}
@@ -85,7 +85,7 @@ const CompactListRow = ({ product, index }) => {
 };
 
 // Grid Tile (Instagram-like squares)
-const GridTile = ({ product, index }) => {
+const GridTile = ({ product, index, formatPrice }) => {
   return (
     <div
       className="group relative aspect-square overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800 hover:shadow-lg transition-all duration-300"
@@ -129,7 +129,9 @@ const GridTile = ({ product, index }) => {
               ({product.reviews?.length || 0})
             </span>
           </div>
-          <span className="font-bold text-xl">${product.price}</span>
+          <span className="font-bold text-xl">
+            {formatPrice(product.price)}
+          </span>
         </div>
 
         <button
@@ -160,7 +162,7 @@ const GridTile = ({ product, index }) => {
 };
 
 // Non-Card Alternative Layout (Replacing Complex Card Layout)
-const AlternativeProductLayout = ({ product, index }) => {
+const AlternativeProductLayout = ({ product, index, formatPrice }) => {
   const layoutVariants = [
     "floating-panel",
     "magazine-spread",
@@ -422,7 +424,7 @@ const AlternativeProductLayout = ({ product, index }) => {
                           : "text-gray-800"
               }`}
             >
-              ${product.price}
+              {formatPrice(product.price)}
             </div>
             <button
               className={`px-6 py-3 font-bold text-sm transition-all duration-300 transform hover:scale-105 ${
@@ -764,6 +766,15 @@ export default function FarmerDetailsPage() {
 
     return { totalProducts, activeProducts, averageRating };
   }, [products]);
+
+  // Format price function for Bangladeshi Taka
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat("en-BD", {
+      style: "currency",
+      currency: "BDT",
+      minimumFractionDigits: 0,
+    }).format(price || 0);
+  };
 
   if (loading) {
     return (
