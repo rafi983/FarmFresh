@@ -15,10 +15,14 @@
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/auth/users/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/users/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/farmer-orders/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmer-orders/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/payment/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/payment/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/contexts/AuthContext.js" beforeDir="false" afterPath="$PROJECT_DIR$/contexts/AuthContext.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/farmers/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/farmers/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/farmers/[id]/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmers/[id]/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/farmers/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmers/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/layout.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/layout.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/products/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/products/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/profile/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/profile/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/EnhancedReviewModal.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/EnhancedReviewModal.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useProductsQuery.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useProductsQuery.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -46,34 +50,34 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.RadMigrateCodeStyle&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;js.debugger.nextJs.config.created.client&quot;: &quot;true&quot;,
-    &quot;js.debugger.nextJs.config.created.server&quot;: &quot;true&quot;,
-    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/ACER/Desktop/FarmFresh&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;prettierjs.PrettierConfiguration.Package&quot;: &quot;C:\\Users\\ACER\\Desktop\\FarmFresh\\node_modules\\prettier&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;,
-    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;C:\\Program Files\\JetBrains\\CLion 2025.1.3\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.RadMigrateCodeStyle": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "git-widget-placeholder": "main",
+    "js.debugger.nextJs.config.created.client": "true",
+    "js.debugger.nextJs.config.created.server": "true",
+    "junie.onboarding.icon.badge.shown": "true",
+    "last_opened_file_path": "C:/Users/ACER/Desktop/FarmFresh",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "prettierjs.PrettierConfiguration.Package": "C:\\Users\\ACER\\Desktop\\FarmFresh\\node_modules\\prettier",
+    "settings.editor.selected.configurable": "preferences.lookFeel",
+    "to.speed.mode.migration.done": "true",
+    "ts.external.directory.path": "C:\\Program Files\\JetBrains\\PyCharm 2025.1.3.1\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RunManager" selected="npm.Next.js: server-side">
     <configuration name="Next.js: debug client-side" type="JavascriptDebugType" uri="http://localhost:3000/">
       <method v="2" />
@@ -92,8 +96,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-09060db00ec0-JavaScript-PS-251.26927.60" />
-        <option value="bundled-php-predefined-a98d8de5180a-e5747d4f5a45-com.jetbrains.php.sharedIndexes-PS-251.26927.60" />
+        <option value="bundled-js-predefined-d6986cc7102b-09060db00ec0-JavaScript-PY-251.26927.90" />
+        <option value="bundled-python-sdk-41e8cd69c857-64d779b69b7a-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.26927.90" />
       </set>
     </attachedChunks>
   </component>
@@ -121,7 +125,10 @@
       <workItem from="1754473092855" duration="15630000" />
       <workItem from="1754553001457" duration="25111000" />
       <workItem from="1754653762732" duration="5784000" />
-      <workItem from="1754665304470" duration="9679000" />
+      <workItem from="1754665304470" duration="9968000" />
+      <workItem from="1754733411646" duration="327000" />
+      <workItem from="1754733759288" duration="262000" />
+      <workItem from="1754734043492" duration="8413000" />
     </task>
     <servers />
   </component>

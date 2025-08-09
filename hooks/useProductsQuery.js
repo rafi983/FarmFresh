@@ -3,7 +3,6 @@ import { apiService } from "@/lib/api-service";
 
 // Query keys for React Query
 export const PRODUCTS_QUERY_KEY = ["products"];
-export const FARMERS_QUERY_KEY = ["farmers"];
 
 // Custom hook for products with React Query
 export function useProductsQuery(filters = {}, options = {}) {
@@ -47,23 +46,7 @@ export function useProductsQuery(filters = {}, options = {}) {
   });
 }
 
-// Custom hook for farmers data
-export function useFarmersQuery(options = {}) {
-  return useQuery({
-    queryKey: FARMERS_QUERY_KEY,
-    queryFn: async () => {
-      const data = await apiService.getFarmers();
-      return data;
-    },
-    staleTime: 15 * 60 * 1000, // 15 minutes
-    gcTime: 30 * 60 * 1000, // 30 minutes
-    refetchOnWindowFocus: false,
-    retry: 2,
-    ...options,
-  });
-}
-
-// Utility functions for cache management
+// Utility functions for products cache management
 export function useProductsCache() {
   const queryClient = useQueryClient();
 
@@ -85,6 +68,22 @@ export function useProductsCache() {
     // Clear products cache
     removeProducts: () => {
       queryClient.removeQueries({ queryKey: PRODUCTS_QUERY_KEY });
+    },
+
+    // Update product data in cache
+    updateProductInCache: (productId, updatedData) => {
+      queryClient.setQueryData(PRODUCTS_QUERY_KEY, (oldData) => {
+        if (!oldData?.products) return oldData;
+
+        return {
+          ...oldData,
+          products: oldData.products.map((product) =>
+            product._id === productId
+              ? { ...product, ...updatedData }
+              : product,
+          ),
+        };
+      });
     },
   };
 }

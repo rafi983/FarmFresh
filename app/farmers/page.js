@@ -3,19 +3,22 @@
 import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import Footer from "@/components/Footer";
-import { useFarmersQuery, useProductsQuery } from "@/hooks/useProductsQuery";
+import { useFarmersQuery } from "@/hooks/useFarmersQuery";
+import { useProductsQuery } from "@/hooks/useProductsQuery";
 
 export default function FarmersPage() {
   // UI state
   const [showAllFarmers, setShowAllFarmers] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // React Query data fetching
+  // React Query data fetching (consistent with products page)
   const {
     data: farmersData,
     isLoading: farmersLoading,
     error: farmersError,
+    refetch: refetchFarmers,
   } = useFarmersQuery();
+
   const { data: productsData, isLoading: productsLoading } = useProductsQuery(
     {},
     { enabled: true },
@@ -28,6 +31,11 @@ export default function FarmersPage() {
   // Loading state - show loading if any essential data is loading
   const loading = farmersLoading || productsLoading;
   const error = farmersError;
+
+  // Refresh function for error retry
+  const fetchData = useCallback(() => {
+    refetchFarmers();
+  }, [refetchFarmers]);
 
   // Calculate dynamic stats based on farmers and products data
   const getStats = () => {
@@ -610,9 +618,11 @@ export default function FarmersPage() {
                       <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                         <i className="fas fa-map-marker-alt mr-2 text-primary-600"></i>
                         <span>
-                          {farmer.location ||
-                            farmer.address ||
-                            "Location not specified"}
+                          {farmer.address?.city && farmer.address?.state
+                            ? `${farmer.address.city}, ${farmer.address.state}${farmer.address.country ? `, ${farmer.address.country}` : ""}`
+                            : farmer.location ||
+                              farmer.address ||
+                              "Location not specified"}
                         </span>
                       </div>
                       <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">

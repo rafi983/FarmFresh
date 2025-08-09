@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "../auth/[...nextauth]/route";
 
 // Track if indexes have been initialized to avoid repeated calls
 let farmersIndexesInitialized = false;
@@ -548,6 +550,121 @@ export async function GET(request) {
     console.error("Error fetching farmers:", error);
     return NextResponse.json(
       { error: "Failed to fetch farmers" },
+      { status: 500 },
+    );
+  }
+}
+
+// PUT method to update farmer profile
+export async function PUT(request) {
+  try {
+    // Get the session to verify user authentication
+    const session = await getServerSession(authOptions);
+
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if user is a farmer
+    if (session.user.userType !== "farmer") {
+      return NextResponse.json(
+        { error: "Access denied. Farmers only." },
+        { status: 403 },
+      );
+    }
+
+    const body = await request.json();
+    const client = await clientPromise;
+    const db = client.db("farmfresh");
+
+    // Find the farmer by email (session email)
+    const farmer = await db
+      .collection("farmers")
+      .findOne({ email: session.user.email });
+
+    if (!farmer) {
+      return NextResponse.json({ error: "Farmer not found" }, { status: 404 });
+    }
+
+    // Prepare update data - only include fields that can be updated
+    const updateData = {
+      updatedAt: new Date(),
+    };
+
+    // Update basic profile fields
+    if (body.name) updateData.name = body.name;
+    if (body.phone) updateData.phone = body.phone;
+
+    // Update farm information
+    if (body.farmInfo) {
+      updateData.farmInfo = {
+        ...farmer.farmInfo, // Keep existing farm info
+        ...body.farmInfo, // Override with new data
+      };
+    }
+
+    // Update address
+    if (body.address) {
+      updateData.address = {
+        ...farmer.address, // Keep existing address
+        ...body.address, // Override with new data
+      };
+    }
+
+    // Update business information
+    if (body.businessInfo) {
+      updateData.businessInfo = {
+        ...farmer.businessInfo, // Keep existing business info
+        ...body.businessInfo, // Override with new data
+      };
+    }
+
+    // Update preferences
+    if (body.preferences) {
+      updateData.preferences = {
+        ...farmer.preferences, // Keep existing preferences
+        ...body.preferences, // Override with new data
+      };
+    }
+
+    console.log("Updating farmer profile:", {
+      farmerId: farmer._id,
+      email: farmer.email,
+      updateFields: Object.keys(updateData),
+    });
+
+    // Update farmer in database
+    const result = await db
+      .collection("farmers")
+      .updateOne({ _id: farmer._id }, { $set: updateData });
+
+    if (result.modifiedCount === 0) {
+      return NextResponse.json(
+        { error: "No changes made to farmer profile" },
+        { status: 400 },
+      );
+    }
+
+    // Fetch updated farmer data
+    const updatedFarmer = await db.collection("farmers").findOne(
+      { _id: farmer._id },
+      { projection: { password: 0 } }, // Exclude password
+    );
+
+    console.log("Farmer profile updated successfully");
+
+    return NextResponse.json({
+      success: true,
+      message: "Farmer profile updated successfully",
+      farmer: updatedFarmer,
+    });
+  } catch (error) {
+    console.error("Error updating farmer profile:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to update farmer profile",
+        details: error.message,
+      },
       { status: 500 },
     );
   }

@@ -181,10 +181,14 @@ export default function FarmerPage() {
       setLoading(true);
       setError(null);
 
-      // First fetch farmer data
-      const farmerResponse = await fetch(`/api/farmers/${farmerId}`, {
-        headers: { "Cache-Control": "no-cache" },
-      });
+      // First fetch farmer data with cache-busting timestamp
+      const timestamp = new Date().getTime();
+      const farmerResponse = await fetch(
+        `/api/farmers/${farmerId}?t=${timestamp}`,
+        {
+          headers: { "Cache-Control": "no-cache" },
+        },
+      );
 
       if (!farmerResponse.ok) {
         throw new Error("Farmer not found");
@@ -193,9 +197,12 @@ export default function FarmerPage() {
       const farmerData = await farmerResponse.json();
 
       // Fetch all products to match with farmer
-      const productsResponse = await fetch("/api/products?limit=1000", {
-        headers: { "Cache-Control": "no-cache" },
-      });
+      const productsResponse = await fetch(
+        `/api/products?limit=1000&t=${timestamp}`,
+        {
+          headers: { "Cache-Control": "no-cache" },
+        },
+      );
 
       const productsData = await productsResponse.json();
       const allProducts = productsData.products || [];
@@ -608,11 +615,17 @@ export default function FarmerPage() {
                   {farmer.name}
                 </h1>
                 <p className="text-xl text-white/90 mb-4">
-                  {farmer.farmName || `${farmer.name}'s Farm`}
+                  {farmer.farmInfo?.farmName ||
+                    farmer.farmName ||
+                    `${farmer.name}'s Farm`}
                 </p>
                 <div className="flex items-center justify-center lg:justify-start text-white/80 mb-6">
                   <i className="fas fa-map-marker-alt mr-2 text-yellow-400"></i>
-                  <span className="text-lg">{farmer.location}</span>
+                  <span className="text-lg">
+                    {farmer.address?.city && farmer.address?.state
+                      ? `${farmer.address.city}, ${farmer.address.state}${farmer.address.country ? `, ${farmer.address.country}` : ""}`
+                      : farmer.location || "Location not specified"}
+                  </span>
                 </div>
 
                 {/* Dynamic Quick Stats - Use stats.yearsOfExperience instead of recalculating */}
@@ -742,16 +755,22 @@ export default function FarmerPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                   <div>
                     <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                      The Beginning
+                      {farmer.farmInfo?.farmName
+                        ? `About ${farmer.farmInfo.farmName}`
+                        : "The Beginning"}
                     </h3>
+
+                    {/* Dynamic Farm Description from Profile Settings */}
                     <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-6">
-                      {farmer.bio ||
+                      {farmer.farmInfo?.farmDescription ||
+                        farmer.bio ||
                         `${farmer.name} started their farming journey in ${new Date(
                           farmer.joinedDate || farmer.createdAt,
                         ).getFullYear()} with a simple dream: to grow the best produce possible while caring for the environment. What began as a small family operation has grown into a trusted source of fresh, healthy food for our community.`}
                     </p>
 
                     <div className="space-y-4">
+                      {/* Farm Established */}
                       <div className="flex items-center">
                         <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mr-4">
                           <i className="fas fa-calendar text-green-600 dark:text-green-400"></i>
@@ -761,16 +780,52 @@ export default function FarmerPage() {
                             Farm Established
                           </h4>
                           <p className="text-gray-600 dark:text-gray-400">
-                            {new Date(
-                              farmer.joinedDate || farmer.createdAt,
-                            ).getFullYear()}
+                            {farmer.farmInfo?.establishedYear ||
+                              new Date(
+                                farmer.joinedDate || farmer.createdAt,
+                              ).getFullYear()}
                           </p>
                         </div>
                       </div>
 
+                      {/* Farm Type */}
+                      {farmer.farmInfo?.farmType && (
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-4">
+                            <i className="fas fa-tractor text-blue-600 dark:text-blue-400"></i>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900 dark:text-white">
+                              Farm Type
+                            </h4>
+                            <p className="text-gray-600 dark:text-gray-400">
+                              {farmer.farmInfo.farmType}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Farm Size */}
+                      {farmer.farmInfo?.farmSize && (
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900 rounded-full flex items-center justify-center mr-4">
+                            <i className="fas fa-expand-arrows-alt text-yellow-600 dark:text-yellow-400"></i>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900 dark:text-white">
+                              Farm Size
+                            </h4>
+                            <p className="text-gray-600 dark:text-gray-400">
+                              {farmer.farmInfo.farmSize} acres
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Our Mission */}
                       <div className="flex items-center">
-                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-4">
-                          <i className="fas fa-heart text-blue-600 dark:text-blue-400"></i>
+                        <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mr-4">
+                          <i className="fas fa-heart text-purple-600 dark:text-purple-400"></i>
                         </div>
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white">
@@ -783,37 +838,82 @@ export default function FarmerPage() {
                         </div>
                       </div>
 
+                      {/* Farming Philosophy */}
                       <div className="flex items-center">
-                        <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mr-4">
-                          <i className="fas fa-leaf text-purple-600 dark:text-purple-400"></i>
+                        <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mr-4">
+                          <i className="fas fa-leaf text-green-600 dark:text-green-400"></i>
                         </div>
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white">
                             Farming Philosophy
                           </h4>
                           <p className="text-gray-600 dark:text-gray-400">
-                            {stats.farmingMethods?.length > 0
-                              ? `${stats.farmingMethods.join(", ")} practices`
-                              : "Sustainable and eco-friendly methods"}
+                            {farmer.farmInfo?.farmingMethods &&
+                            farmer.farmInfo.farmingMethods.length > 0
+                              ? `${farmer.farmInfo.farmingMethods.join(", ")} practices`
+                              : stats.farmingMethods?.length > 0
+                                ? `${stats.farmingMethods.join(", ")} practices`
+                                : "Sustainable and eco-friendly methods"}
                           </p>
                         </div>
                       </div>
                     </div>
+
+                    {/* Certifications Section */}
+                    {farmer.farmInfo?.certifications &&
+                      farmer.farmInfo.certifications.length > 0 && (
+                        <div className="mt-8">
+                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                            Our Certifications
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {farmer.farmInfo.certifications.map(
+                              (cert, index) => (
+                                <span
+                                  key={index}
+                                  className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-3 py-1 rounded-full text-sm font-medium border border-green-200 dark:border-green-800"
+                                >
+                                  <i className="fas fa-certificate mr-1"></i>
+                                  {cert}
+                                </span>
+                              ),
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                    {/* Farming Methods Section */}
+                    {farmer.farmInfo?.farmingMethods &&
+                      farmer.farmInfo.farmingMethods.length > 0 && (
+                        <div className="mt-8">
+                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                            Our Farming Methods
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {farmer.farmInfo.farmingMethods.map(
+                              (method, index) =>
+                                renderMethodCard(method, index),
+                            )}
+                          </div>
+                        </div>
+                      )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    {/* Show farming achievements and highlights instead of repeating stats */}
+                    {/* Show farming achievements and highlights */}
                     <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900 dark:to-emerald-900 p-6 rounded-xl">
                       <i className="fas fa-certificate text-3xl text-green-600 dark:text-green-400 mb-4"></i>
                       <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
                         {farmer.isCertified
                           ? "Certified Organic"
-                          : "Quality Farming"}
+                          : farmer.farmInfo?.farmType || "Quality Farming"}
                       </h4>
                       <p className="text-gray-600 dark:text-gray-400 text-sm">
                         {farmer.isCertified
                           ? "Officially certified organic farming"
-                          : "Committed to quality and safety standards"}
+                          : farmer.farmInfo?.farmType
+                            ? `Specialized in ${farmer.farmInfo.farmType.toLowerCase()} farming`
+                            : "Committed to quality and safety standards"}
                       </p>
                     </div>
 
@@ -823,8 +923,11 @@ export default function FarmerPage() {
                         Community Impact
                       </h4>
                       <p className="text-gray-600 dark:text-gray-400 text-sm">
-                        Serving {farmer.location} with {stats.totalProducts}{" "}
-                        quality products
+                        Serving{" "}
+                        {farmer.address?.city && farmer.address?.state
+                          ? `${farmer.address.city}, ${farmer.address.state}`
+                          : farmer.location || "the community"}{" "}
+                        with {stats.totalProducts} quality products
                       </p>
                     </div>
 
@@ -843,11 +946,14 @@ export default function FarmerPage() {
                     <div className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900 dark:to-orange-900 p-6 rounded-xl">
                       <i className="fas fa-seedling text-3xl text-yellow-600 dark:text-yellow-400 mb-4"></i>
                       <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
-                        Product Variety
+                        {farmer.farmInfo?.farmSize
+                          ? "Farm Size"
+                          : "Product Variety"}
                       </h4>
                       <p className="text-gray-600 dark:text-gray-400 text-sm">
-                        {stats.totalProducts} products across{" "}
-                        {stats.categories?.length || 0} categories
+                        {farmer.farmInfo?.farmSize
+                          ? `${farmer.farmInfo.farmSize} acres of sustainable farming`
+                          : `${stats.totalProducts} products across ${stats.categories?.length || 0} categories`}
                       </p>
                     </div>
                   </div>

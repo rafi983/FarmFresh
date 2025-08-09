@@ -5,11 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import Footer from "@/components/Footer";
 import { debounce } from "@/utils/debounce";
-import {
-  useProductsQuery,
-  useFarmersQuery,
-  useProductsCache,
-} from "@/hooks/useProductsQuery";
+import { useProductsQuery, useProductsCache } from "@/hooks/useProductsQuery";
+import { useFarmersQuery } from "@/hooks/useFarmersQuery";
 
 // Move constants outside component to prevent recreations
 const CATEGORY_OPTIONS = [
@@ -87,13 +84,73 @@ export default function Products() {
   }, [productsData]);
 
   const availableFarmers = useMemo(() => {
-    const uniqueFarmers = [
-      ...new Set(
-        allProducts.map((p) => p.farmer?.name || p.farmerName).filter(Boolean),
-      ),
-    ].sort();
-    return uniqueFarmers;
-  }, [allProducts]);
+    // Get farmers from the dedicated farmers query instead of product data
+    const farmers = farmersData?.farmers || [];
+
+    // Get unique farmer names from the farmers collection (fresh data)
+    const farmerNames = farmers
+      .map((farmer) => farmer.name)
+      .filter(Boolean)
+      .sort();
+
+    return farmerNames;
+  }, [farmersData]);
+
+  // Create a farmer lookup map for quick access
+  const farmerLookup = useMemo(() => {
+    const farmers = farmersData?.farmers || [];
+    const lookup = new Map();
+
+    // Create lookup by ID
+    farmers.forEach((farmer) => {
+      if (farmer._id) lookup.set(farmer._id, farmer);
+    });
+
+    // Also create lookup by email for additional matching
+    farmers.forEach((farmer) => {
+      if (farmer.email) lookup.set(farmer.email, farmer);
+    });
+
+    return lookup;
+  }, [farmersData]);
+
+  // Enhance products with fresh farmer data
+  const enhancedProducts = useMemo(() => {
+    return allProducts.map((product) => {
+      // Try to get fresh farmer data
+      const productFarmerId =
+        product.farmer?.id || product.farmer?._id || product.farmerId;
+      const productFarmerEmail = product.farmer?.email || product.farmerEmail;
+
+      // Look up fresh farmer data
+      let freshFarmer = null;
+      if (productFarmerId) {
+        freshFarmer = farmerLookup.get(productFarmerId);
+      }
+      if (!freshFarmer && productFarmerEmail) {
+        freshFarmer = farmerLookup.get(productFarmerEmail);
+      }
+
+      // If we found fresh farmer data, use it; otherwise keep original
+      if (freshFarmer) {
+        return {
+          ...product,
+          farmer: {
+            ...product.farmer,
+            name: freshFarmer.name,
+            email: freshFarmer.email,
+            phone: freshFarmer.phone,
+            id: freshFarmer._id,
+            _id: freshFarmer._id,
+          },
+          farmerName: freshFarmer.name,
+          farmerEmail: freshFarmer.email,
+        };
+      }
+
+      return product;
+    });
+  }, [allProducts, farmerLookup]);
 
   // Listen for order completion events to refresh data
   useEffect(() => {
@@ -128,7 +185,7 @@ export default function Products() {
 
   // Memoized filtered and sorted products
   const filteredProducts = useMemo(() => {
-    let filtered = [...allProducts];
+    let filtered = [...enhancedProducts];
 
     // Filter: Only show products that are available for purchase
     // More flexible filtering to handle different status values and stock levels
@@ -244,7 +301,7 @@ export default function Products() {
     }
 
     return filtered;
-  }, [allProducts, filters]);
+  }, [enhancedProducts, filters]);
 
   // Memoized pagination data
   const paginationData = useMemo(() => {

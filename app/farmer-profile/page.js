@@ -1,18 +1,73 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { useTheme } from "../../contexts/ThemeContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { FARMERS_QUERY_KEY, PRODUCTS_QUERY_KEY } from "@/hooks/useFarmersQuery";
 
-export default function ProfilePage() {
+export default function FarmerProfilePage() {
   const { user, isAuthenticated, updateUser } = useAuth();
   const { isDarkMode } = useTheme();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState("personal");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [profileData, setProfileData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    farmInfo: {
+      farmName: "",
+      farmDescription: "",
+      farmSize: "",
+      farmType: "",
+      certifications: [],
+      establishedYear: "",
+      farmingMethods: [],
+    },
+    address: {
+      street: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "",
+    },
+    businessInfo: {
+      businessLicense: "",
+      taxId: "",
+      deliveryRadius: "",
+      minimumOrder: "",
+      website: "",
+      socialMedia: {
+        facebook: "",
+        instagram: "",
+        twitter: "",
+      },
+    },
+    preferences: {
+      notifications: {
+        email: true,
+        sms: false,
+        orderUpdates: true,
+        lowStockAlerts: true,
+        customerMessages: true,
+        marketingUpdates: false,
+      },
+      language: "en",
+      currency: "USD",
+      autoAcceptOrders: false,
+      showFarmLocation: true,
+    },
+    security: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
 
   // Comprehensive countries list
   const countries = [
@@ -266,70 +321,36 @@ export default function ProfilePage() {
     { code: "ZW", name: "Zimbabwe" },
   ];
 
-  const [profileData, setProfileData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    address: {
-      street: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      country: "",
-    },
-    preferences: {
-      notifications: {
-        email: true,
-        sms: false,
-        orderUpdates: true,
-        promotions: true,
-      },
-      language: "en",
-      currency: "USD",
-    },
-    security: {
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    },
-  });
-
-  // Redirect if not authenticated
+  // Redirect if not authenticated or not a farmer
   useEffect(() => {
-    console.log("Profile page - User:", user);
-    console.log("Profile page - User role:", user?.role);
-    console.log("Profile page - User userType:", user?.userType);
-    console.log(
-      "Profile page - User keys:",
-      user ? Object.keys(user) : "No user",
-    );
-    console.log(
-      "Profile page - Full user object:",
-      JSON.stringify(user, null, 2),
-    );
-    console.log("Profile page - isAuthenticated:", isAuthenticated);
+    console.log("Farmer-profile page - User:", user);
+    console.log("Farmer-profile page - User role:", user?.role);
+    console.log("Farmer-profile page - User userType:", user?.userType);
+    console.log("Farmer-profile page - isAuthenticated:", isAuthenticated);
 
     if (!isAuthenticated) {
       router.push("/login");
       return;
     }
 
-    // Redirect farmers to farmer profile page (checking userType instead of role)
-    if (user && user.userType === "farmer") {
-      console.log("Redirecting farmer to farmer-profile page");
-      router.push("/farmer-profile");
+    // Check if user is a farmer, if not redirect to regular profile (checking userType instead of role)
+    if (user && user.userType !== "farmer") {
+      console.log("Non-farmer user, redirecting to regular profile");
+      router.push("/profile");
       return;
     }
 
-    // Initialize profile data with user data for customers
+    // Initialize profile data with user data
     if (user) {
-      console.log("Initializing customer profile data");
+      console.log("Initializing farmer profile data");
       setProfileData((prev) => ({
         ...prev,
         name: user.name || "",
         email: user.email || "",
         phone: user.phone || "",
         address: user.address || prev.address,
+        farmInfo: user.farmInfo || prev.farmInfo,
+        businessInfo: user.businessInfo || prev.businessInfo,
         preferences: user.preferences || prev.preferences,
       }));
     }
@@ -365,31 +386,59 @@ export default function ProfilePage() {
     }
   };
 
+  const handleArrayChange = (section, field, value) => {
+    const arrayValue = value
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item);
+    setProfileData((prev) => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [field]: arrayValue,
+      },
+    }));
+  };
+
   const handlePersonalInfoUpdate = async () => {
     try {
       setLoading(true);
       setMessage({ type: "", text: "" });
 
-      const response = await fetch("/api/auth/users", {
+      // Use the farmers API endpoint for farmer profile updates
+      const response = await fetch("/api/farmers", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: profileData.name,
           phone: profileData.phone,
           address: profileData.address,
+          farmInfo: profileData.farmInfo,
+          businessInfo: profileData.businessInfo,
           preferences: profileData.preferences,
         }),
       });
 
       if (response.ok) {
-        const updatedUser = await response.json();
-        updateUser(updatedUser.user);
+        const result = await response.json();
+        // Update the user context with the updated farmer data
+        updateUser({
+          ...user,
+          ...result.farmer,
+        });
         setMessage({ type: "success", text: "Profile updated successfully!" });
+
+        // Invalidate both farmers and products queries to refresh the data
+        queryClient.invalidateQueries({ queryKey: FARMERS_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
 
         // Also update localStorage to persist data
         localStorage.setItem(
           "farmfresh_user",
-          JSON.stringify(updatedUser.user),
+          JSON.stringify({
+            ...user,
+            ...result.farmer,
+          }),
         );
       } else {
         const errorData = await response.json();
@@ -467,6 +516,8 @@ export default function ProfilePage() {
 
   const tabs = [
     { id: "personal", label: "Personal Info", icon: "fas fa-user" },
+    { id: "farm", label: "Farm Info", icon: "fas fa-seedling" },
+    { id: "business", label: "Business", icon: "fas fa-building" },
     { id: "address", label: "Address", icon: "fas fa-map-marker-alt" },
     { id: "preferences", label: "Preferences", icon: "fas fa-cog" },
     { id: "security", label: "Security", icon: "fas fa-shield-alt" },
@@ -486,22 +537,22 @@ export default function ProfilePage() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Profile Settings
+            Farmer Profile Settings
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Manage your account settings and preferences
+            Manage your farmer account settings and farm information
           </p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
           {/* Tab Navigation */}
           <div className="border-b border-gray-200 dark:border-gray-700">
-            <nav className="flex space-x-8 px-6">
+            <nav className="flex space-x-8 px-6 overflow-x-auto">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
+                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 whitespace-nowrap ${
                     activeTab === tab.id
                       ? "border-primary-500 text-primary-600 dark:text-primary-400"
                       : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
@@ -590,11 +641,351 @@ export default function ProfilePage() {
               </div>
             )}
 
+            {/* Farm Information Tab */}
+            {activeTab === "farm" && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                  Farm Information
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Farm Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.farmInfo.farmName}
+                      onChange={(e) =>
+                        handleNestedChange(
+                          "farmInfo",
+                          "",
+                          "farmName",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="Green Valley Farm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Farm Type
+                    </label>
+                    <select
+                      value={profileData.farmInfo.farmType}
+                      onChange={(e) =>
+                        handleNestedChange(
+                          "farmInfo",
+                          "",
+                          "farmType",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                    >
+                      <option value="">Select Farm Type</option>
+                      <option value="organic">Organic Farm</option>
+                      <option value="conventional">Conventional Farm</option>
+                      <option value="hydroponic">Hydroponic Farm</option>
+                      <option value="greenhouse">Greenhouse Farm</option>
+                      <option value="mixed">Mixed Farm</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Farm Size (acres)
+                    </label>
+                    <input
+                      type="number"
+                      value={profileData.farmInfo.farmSize}
+                      onChange={(e) =>
+                        handleNestedChange(
+                          "farmInfo",
+                          "",
+                          "farmSize",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="10"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Established Year
+                    </label>
+                    <input
+                      type="number"
+                      value={profileData.farmInfo.establishedYear}
+                      onChange={(e) =>
+                        handleNestedChange(
+                          "farmInfo",
+                          "",
+                          "establishedYear",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="2020"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Farm Description
+                    </label>
+                    <textarea
+                      value={profileData.farmInfo.farmDescription}
+                      onChange={(e) =>
+                        handleNestedChange(
+                          "farmInfo",
+                          "",
+                          "farmDescription",
+                          e.target.value,
+                        )
+                      }
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="Tell customers about your farm, your farming philosophy, and what makes your products special..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Certifications (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.farmInfo.certifications.join(", ")}
+                      onChange={(e) =>
+                        handleArrayChange(
+                          "farmInfo",
+                          "certifications",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="Organic Certified, Non-GMO, USDA Organic"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Farming Methods (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.farmInfo.farmingMethods.join(", ")}
+                      onChange={(e) =>
+                        handleArrayChange(
+                          "farmInfo",
+                          "farmingMethods",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="Sustainable, Pesticide-free, Crop Rotation"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handlePersonalInfoUpdate}
+                  disabled={loading}
+                  className="bg-primary-600 text-white px-6 py-2 rounded-md hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? "Saving..." : "Save Farm Information"}
+                </button>
+              </div>
+            )}
+
+            {/* Business Information Tab */}
+            {activeTab === "business" && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                  Business Information
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Business License
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.businessInfo.businessLicense}
+                      onChange={(e) =>
+                        handleNestedChange(
+                          "businessInfo",
+                          "",
+                          "businessLicense",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Tax ID
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.businessInfo.taxId}
+                      onChange={(e) =>
+                        handleNestedChange(
+                          "businessInfo",
+                          "",
+                          "taxId",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Delivery Radius (miles)
+                    </label>
+                    <input
+                      type="number"
+                      value={profileData.businessInfo.deliveryRadius}
+                      onChange={(e) =>
+                        handleNestedChange(
+                          "businessInfo",
+                          "",
+                          "deliveryRadius",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="25"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Minimum Order ($)
+                    </label>
+                    <input
+                      type="number"
+                      value={profileData.businessInfo.minimumOrder}
+                      onChange={(e) =>
+                        handleNestedChange(
+                          "businessInfo",
+                          "",
+                          "minimumOrder",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="25"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Website
+                    </label>
+                    <input
+                      type="url"
+                      value={profileData.businessInfo.website}
+                      onChange={(e) =>
+                        handleNestedChange(
+                          "businessInfo",
+                          "",
+                          "website",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="https://yourfarm.com"
+                    />
+                  </div>
+
+                  {/* Social Media */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Facebook
+                    </label>
+                    <input
+                      type="url"
+                      value={profileData.businessInfo.socialMedia.facebook}
+                      onChange={(e) =>
+                        handleNestedChange(
+                          "businessInfo",
+                          "socialMedia",
+                          "facebook",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="https://facebook.com/yourfarm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Instagram
+                    </label>
+                    <input
+                      type="url"
+                      value={profileData.businessInfo.socialMedia.instagram}
+                      onChange={(e) =>
+                        handleNestedChange(
+                          "businessInfo",
+                          "socialMedia",
+                          "instagram",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="https://instagram.com/yourfarm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Twitter
+                    </label>
+                    <input
+                      type="url"
+                      value={profileData.businessInfo.socialMedia.twitter}
+                      onChange={(e) =>
+                        handleNestedChange(
+                          "businessInfo",
+                          "socialMedia",
+                          "twitter",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="https://twitter.com/yourfarm"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handlePersonalInfoUpdate}
+                  disabled={loading}
+                  className="bg-primary-600 text-white px-6 py-2 rounded-md hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? "Saving..." : "Save Business Information"}
+                </button>
+              </div>
+            )}
+
             {/* Address Tab */}
             {activeTab === "address" && (
               <div className="space-y-6">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  Address Information
+                  Farm Address
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -786,20 +1177,109 @@ export default function ProfilePage() {
                         <input
                           type="checkbox"
                           checked={
-                            profileData.preferences.notifications.promotions
+                            profileData.preferences.notifications.lowStockAlerts
                           }
                           onChange={(e) =>
                             handleNestedChange(
                               "preferences",
                               "notifications",
-                              "promotions",
+                              "lowStockAlerts",
                               e.target.checked,
                             )
                           }
                           className="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                          Promotional offers
+                          Low stock alerts
+                        </span>
+                      </label>
+
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={
+                            profileData.preferences.notifications
+                              .customerMessages
+                          }
+                          onChange={(e) =>
+                            handleNestedChange(
+                              "preferences",
+                              "notifications",
+                              "customerMessages",
+                              e.target.checked,
+                            )
+                          }
+                          className="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
+                        />
+                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                          Customer messages
+                        </span>
+                      </label>
+
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={
+                            profileData.preferences.notifications
+                              .marketingUpdates
+                          }
+                          onChange={(e) =>
+                            handleNestedChange(
+                              "preferences",
+                              "notifications",
+                              "marketingUpdates",
+                              e.target.checked,
+                            )
+                          }
+                          className="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
+                        />
+                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                          Marketing updates
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">
+                      Business Preferences
+                    </h4>
+                    <div className="space-y-3">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={profileData.preferences.autoAcceptOrders}
+                          onChange={(e) =>
+                            handleNestedChange(
+                              "preferences",
+                              "",
+                              "autoAcceptOrders",
+                              e.target.checked,
+                            )
+                          }
+                          className="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
+                        />
+                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                          Auto-accept orders
+                        </span>
+                      </label>
+
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={profileData.preferences.showFarmLocation}
+                          onChange={(e) =>
+                            handleNestedChange(
+                              "preferences",
+                              "",
+                              "showFarmLocation",
+                              e.target.checked,
+                            )
+                          }
+                          className="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50"
+                        />
+                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                          Show farm location to customers
                         </span>
                       </label>
                     </div>
@@ -871,7 +1351,7 @@ export default function ProfilePage() {
                   Security Settings
                 </h3>
 
-                <div className="space-y-6">
+                <div className="max-w-md space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Current Password
@@ -931,14 +1411,10 @@ export default function ProfilePage() {
 
                   <button
                     onClick={handlePasswordChange}
-                    disabled={
-                      loading ||
-                      !profileData.security.currentPassword ||
-                      !profileData.security.newPassword
-                    }
+                    disabled={loading}
                     className="bg-primary-600 text-white px-6 py-2 rounded-md hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? "Updating..." : "Change Password"}
+                    {loading ? "Updating..." : "Update Password"}
                   </button>
                 </div>
               </div>
