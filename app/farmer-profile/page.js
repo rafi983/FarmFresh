@@ -5,7 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useQueryClient } from "@tanstack/react-query";
-import { FARMERS_QUERY_KEY, PRODUCTS_QUERY_KEY } from "@/hooks/useFarmersQuery";
+import { apiService } from "@/lib/api-service";
+import { invalidateAllFarmerRelatedData } from "@/lib/cache-invalidation";
 
 export default function FarmerProfilePage() {
   const { user, isAuthenticated, updateUser } = useAuth();
@@ -405,52 +406,47 @@ export default function FarmerProfilePage() {
       setLoading(true);
       setMessage({ type: "", text: "" });
 
-      // Use the farmers API endpoint for farmer profile updates
-      const response = await fetch("/api/farmers", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: profileData.name,
-          phone: profileData.phone,
-          address: profileData.address,
-          farmInfo: profileData.farmInfo,
-          businessInfo: profileData.businessInfo,
-          preferences: profileData.preferences,
-        }),
+      // Use the API service method that automatically handles cache clearing
+      const result = await apiService.updateFarmer(user._id, {
+        name: profileData.name,
+        phone: profileData.phone,
+        address: profileData.address,
+        farmInfo: profileData.farmInfo,
+        businessInfo: profileData.businessInfo,
+        preferences: profileData.preferences,
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        // Update the user context with the updated farmer data
-        updateUser({
-          ...user,
-          ...result.farmer,
-        });
-        setMessage({ type: "success", text: "Profile updated successfully!" });
+      updateUser({
+        ...user,
+        ...result.farmer,
+      });
+      setMessage({ type: "success", text: "Profile updated successfully!" });
 
-        // Invalidate both farmers and products queries to refresh the data
-        queryClient.invalidateQueries({ queryKey: FARMERS_QUERY_KEY });
-        queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+      // CRITICAL: Use enhanced cache invalidation for farmer-related data
+      invalidateAllFarmerRelatedData(queryClient);
 
-        // Also update localStorage to persist data
-        localStorage.setItem(
-          "farmfresh_user",
-          JSON.stringify({
-            ...user,
-            ...result.farmer,
+      // Notify other components about the profile update
+      if (typeof window !== "undefined") {
+        console.log("🔔 Broadcasting farmer profile update");
+        window.dispatchEvent(
+          new CustomEvent("farmerProfileUpdated", {
+            detail: { timestamp: Date.now() },
           }),
         );
-      } else {
-        const errorData = await response.json();
-        setMessage({
-          type: "error",
-          text: errorData.error || "Failed to update profile",
-        });
+
+        // Also set a flag in localStorage for cross-tab communication
+        localStorage.setItem(
+          "farmerProfileUpdated",
+          JSON.stringify({
+            timestamp: Date.now(),
+          }),
+        );
       }
     } catch (error) {
+      console.error("Profile update error:", error);
       setMessage({
         type: "error",
-        text: "An error occurred while updating profile",
+        text: error.message || "Failed to update profile",
       });
     } finally {
       setLoading(false);

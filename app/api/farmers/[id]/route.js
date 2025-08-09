@@ -353,3 +353,201 @@ export async function GET(request, { params }) {
     );
   }
 }
+
+// Add PUT handler to update a specific farmer by ID
+export async function PUT(request, { params }) {
+  try {
+    const { id } = params;
+
+    if (!id) {
+      return NextResponse.json({ error: "Invalid farmer ID" }, { status: 400 });
+    }
+
+    console.log(`Updating farmer with ID: ${id}`);
+
+    // Parse the updated farmer data from the request body
+    const updatedFarmerData = await request.json();
+    console.log(
+      "Received farmer update data:",
+      JSON.stringify(updatedFarmerData, null, 2),
+    );
+
+    // Reuse database connections
+    if (!cachedDb) {
+      const client = await clientPromise;
+      cachedDb = client.db("farmfresh");
+      cachedFarmersCollection = cachedDb.collection("farmers");
+      cachedProductsCollection = cachedDb.collection("products");
+
+      // Initialize optimized indexes
+      await initializeFarmerIndexes(cachedDb);
+    }
+
+    // First, try to update the farmer by ObjectId (for MongoDB farmers)
+    if (ObjectId.isValid(id)) {
+      // Remove _id from the update data if present to avoid MongoDB errors
+      const { _id, ...updateData } = updatedFarmerData;
+
+      // Always update the updatedAt timestamp
+      updateData.updatedAt = new Date();
+
+      console.log("Original update data:", JSON.stringify(updateData, null, 2));
+
+      // Create a clean update object for MongoDB
+      // IMPORTANT: For MongoDB dot notation to work correctly, we need to start with a fresh object
+      const updateObj = {};
+
+      // Handle top-level fields
+      if (updateData.name) updateObj.name = updateData.name;
+      if (updateData.phone) updateObj.phone = updateData.phone;
+      if (updateData.location) updateObj.location = updateData.location;
+      if (updateData.email) updateObj.email = updateData.email;
+      if (updateData.bio) updateObj.bio = updateData.bio;
+
+      // IMPORTANT: For nested objects like address, we must update the entire object at once
+      // Do NOT use dot notation for these objects, as it will overwrite only specific fields
+      if (updateData.address) {
+        console.log(
+          "Updating entire address object:",
+          JSON.stringify(updateData.address),
+        );
+        updateObj.address = updateData.address;
+      }
+
+      // For farmInfo, also update the entire object to ensure all fields are saved
+      if (updateData.farmInfo) {
+        console.log(
+          "Updating entire farmInfo object:",
+          JSON.stringify(updateData.farmInfo),
+        );
+        updateObj.farmInfo = updateData.farmInfo;
+      }
+
+      // For businessInfo and preferences, update entire objects
+      if (updateData.businessInfo)
+        updateObj.businessInfo = updateData.businessInfo;
+      if (updateData.preferences)
+        updateObj.preferences = updateData.preferences;
+
+      // Handle top-level farmSize directly (some schemas have it at root level)
+      if (updateData.farmSize !== undefined) {
+        updateObj.farmSize = updateData.farmSize;
+        console.log("Updating root farmSize to:", updateData.farmSize);
+      }
+
+      // Handle farmSizeUnit directly (some schemas have it at root level)
+      if (updateData.farmSizeUnit !== undefined) {
+        updateObj.farmSizeUnit = updateData.farmSizeUnit;
+      }
+
+      // Handle specializations array
+      if (updateData.specializations) {
+        updateObj.specializations = updateData.specializations;
+      }
+
+      // Always update timestamp
+      updateObj.updatedAt = new Date();
+
+      console.log("Final update object keys:", Object.keys(updateObj));
+      console.log(
+        "Final update object content:",
+        JSON.stringify(updateObj, null, 2),
+      );
+
+      // Now perform the update with our carefully constructed object
+      // IMPORTANT: For MongoDB to correctly update nested objects, use $set with the entire object
+      // This ensures the update is atomic and replaces entire objects instead of patching fields
+      const updateResult = await cachedFarmersCollection.findOneAndUpdate(
+        { _id: new ObjectId(id) },
+        { $set: updateObj },
+        { returnDocument: "after" },
+      );
+
+      // If found and updated
+      if (updateResult) {
+        // Clear any caches
+        responseCache.clear();
+
+        console.log("Farmer updated successfully:", updateResult.name);
+
+        // Return the updated farmer
+        return NextResponse.json({
+          success: true,
+          farmer: updateResult,
+          message: "Farmer updated successfully",
+        });
+      } else {
+        console.log("No document found to update with ID:", id);
+      }
+    }
+
+    // For hardcoded farmers in the farmers array (legacy support)
+    // Use the arrayFilters to update a specific element in the farmers array
+    const result = await cachedFarmersCollection.findOneAndUpdate(
+      { "farmers._id": id },
+      {
+        $set: {
+          "farmers.$[elem].name": updatedFarmerData.name,
+          "farmers.$[elem].phone": updatedFarmerData.phone,
+          "farmers.$[elem].location": updatedFarmerData.location,
+          "farmers.$[elem].description": updatedFarmerData.description,
+          "farmers.$[elem].farmSize": updatedFarmerData.farmSize,
+          "farmers.$[elem].farmSizeUnit": updatedFarmerData.farmSizeUnit,
+          "farmers.$[elem].specializations": updatedFarmerData.specializations,
+          "farmers.$[elem].farmingMethods": updatedFarmerData.farmingMethods,
+          "farmers.$[elem].address": updatedFarmerData.address,
+          "farmers.$[elem].farmInfo": updatedFarmerData.farmInfo,
+          "farmers.$[elem].lastUpdated": new Date(),
+        },
+      },
+      {
+        arrayFilters: [{ "elem._id": id }],
+        returnDocument: "after",
+      },
+    );
+
+    if (result) {
+      // Get the updated farmer from the array
+      const updatedFarmer = result.farmers?.find((f) => f._id === id);
+
+      if (updatedFarmer) {
+        // Clear any caches
+        responseCache.clear();
+
+        // Update related products with the new farmer name for consistency
+        if (updatedFarmerData.name) {
+          await cachedProductsCollection.updateMany(
+            {
+              $or: [
+                { farmerId: id },
+                { "farmer._id": id },
+                { "farmer.id": id },
+              ],
+            },
+            {
+              $set: {
+                "farmer.name": updatedFarmerData.name,
+                lastUpdated: new Date(),
+              },
+            },
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          farmer: updatedFarmer,
+          message: "Farmer updated successfully",
+        });
+      }
+    }
+
+    // If we reach here, no farmer was found with the given ID
+    return NextResponse.json({ error: "Farmer not found" }, { status: 404 });
+  } catch (error) {
+    console.error("Error updating farmer:", error);
+    return NextResponse.json(
+      { error: "Failed to update farmer", details: error.message },
+      { status: 500 },
+    );
+  }
+}

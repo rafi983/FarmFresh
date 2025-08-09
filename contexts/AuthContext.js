@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateAllFarmerRelatedData } from "@/lib/cache-invalidation";
 
 const AuthContext = createContext();
 
@@ -10,9 +12,14 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tokens, setTokens] = useState(null);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (status === "loading") return;
+
+    const previousUser = user;
+    const hadSession = !!previousUser;
+    const hasSession = !!session;
 
     if (session) {
       // Check if we have stored extended user data
@@ -35,7 +42,31 @@ export function AuthProvider({ children }) {
         accessToken: session.accessToken,
         refreshToken: session.refreshToken,
       });
+
+      // If this is a new login (no previous session), invalidate all caches
+      if (!hadSession && hasSession) {
+        // Use our enhanced cache invalidation with the user's email
+        if (session.user?.email) {
+          invalidateAllFarmerRelatedData(queryClient, session.user.email);
+        } else {
+          invalidateAllFarmerRelatedData(queryClient);
+        }
+
+        // Also clear API service cache
+        if (typeof window !== "undefined" && window.apiService) {
+          window.apiService.clearAllCache();
+        }
+      }
     } else {
+      // User logged out - clear all caches and stored data
+      if (hadSession && !hasSession) {
+        queryClient.clear(); // Clear all React Query cache
+        // Also clear API service cache
+        if (typeof window !== "undefined" && window.apiService) {
+          window.apiService.clearAllCache();
+        }
+      }
+
       // Check for stored tokens
       const storedTokens = localStorage.getItem("farmfresh_tokens");
       if (storedTokens) {

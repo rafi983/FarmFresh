@@ -38,9 +38,10 @@ export function useProductsQuery(filters = {}, options = {}) {
 
       return data;
     },
-    staleTime: 3 * 60 * 1000, // 3 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (replaces cacheTime in newer versions)
-    refetchOnWindowFocus: false,
+    staleTime: 30 * 1000, // Reduced to 30 seconds for more responsive updates
+    gcTime: 5 * 60 * 1000, // Reduced to 5 minutes
+    refetchOnWindowFocus: true, // Enable refetch on window focus for consistency
+    refetchOnMount: true, // Always refetch when component mounts
     retry: 2,
     ...options,
   });

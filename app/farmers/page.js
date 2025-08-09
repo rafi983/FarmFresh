@@ -1,15 +1,19 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import Link from "next/link";
 import Footer from "@/components/Footer";
-import { useFarmersQuery } from "@/hooks/useFarmersQuery";
-import { useProductsQuery } from "@/hooks/useProductsQuery";
+import { useFarmersQuery, useFarmersCache } from "@/hooks/useFarmersQuery";
+import { useProductsQuery, useProductsCache } from "@/hooks/useProductsQuery";
 
 export default function FarmersPage() {
   // UI state
   const [showAllFarmers, setShowAllFarmers] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  // Cache management hooks
+  const farmersCache = useFarmersCache();
+  const productsCache = useProductsCache();
 
   // React Query data fetching (consistent with products page)
   const {
@@ -19,10 +23,28 @@ export default function FarmersPage() {
     refetch: refetchFarmers,
   } = useFarmersQuery();
 
-  const { data: productsData, isLoading: productsLoading } = useProductsQuery(
-    {},
-    { enabled: true },
-  );
+  const {
+    data: productsData,
+    isLoading: productsLoading,
+    refetch: refetchProducts,
+  } = useProductsQuery({}, { enabled: true });
+
+  // Auto-refresh data when page becomes visible (handles browser tab switching)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log(
+          "🔄 Page became visible, refreshing farmers and products data",
+        );
+        farmersCache.invalidateFarmers();
+        productsCache.invalidateProducts();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [farmersCache, productsCache]);
 
   // Extract data from React Query responses
   const farmers = farmersData?.farmers || [];
@@ -83,23 +105,25 @@ export default function FarmersPage() {
 
   const getFarmerProductCount = (farmerId) => {
     const matchingProducts = products.filter((product) => {
-      // Handle different farmer ID formats
+      // Get all possible farmer identifiers from product
       const productFarmerId =
         product.farmer?.id || product.farmer?._id || product.farmerId;
+      const productFarmerEmail = product.farmer?.email || product.farmerEmail;
       const productFarmerName = product.farmer?.name || product.farmerName;
 
-      // For old farmers (farmer_001 format), try matching by ID
+      // Try matching by ID first (most reliable)
       const matchesById = productFarmerId === farmerId;
 
-      // For new farmers, try matching by MongoDB ObjectId
-      const matchesByObjectId = productFarmerId === farmerId;
-
-      // Also try matching by farmer name for fallback
+      // For additional verification, also try matching by email
       const farmer = farmers.find((f) => f._id === farmerId);
+      const farmerEmail = farmer?.email;
+      const matchesByEmail = farmerEmail && productFarmerEmail === farmerEmail;
+
+      // As fallback, try matching by name
       const farmerName = farmer?.name;
       const matchesByName = farmerName && productFarmerName === farmerName;
 
-      const isMatch = matchesById || matchesByObjectId || matchesByName;
+      const isMatch = matchesById || matchesByEmail || matchesByName;
 
       return isMatch;
     });
@@ -176,33 +200,9 @@ export default function FarmersPage() {
       0,
     );
 
-    // Count reviews from separate reviews collection
-    const separateReviewsCount = reviews.filter((review) => {
-      // Match reviews by farmerId directly
-      if (review.farmerId === farmerId || review.farmer?._id === farmerId) {
-        return true;
-      }
-
-      // Match reviews by farmer email
-      if (
-        farmerEmail &&
-        (review.farmerEmail === farmerEmail ||
-          review.farmer?.email === farmerEmail)
-      ) {
-        return true;
-      }
-
-      // Match reviews by product association (if the review is for a product that belongs to this farmer)
-      const relatedProduct = farmerProducts.find(
-        (product) =>
-          product._id === review.productId ||
-          product._id === review.product?._id,
-      );
-
-      return !!relatedProduct;
-    }).length;
-
-    return productReviewsCount + separateReviewsCount;
+    // Note: We don't have access to separate reviews in this component
+    // This would need to be fetched separately if needed
+    return productReviewsCount;
   };
 
   // Display logic for farmers

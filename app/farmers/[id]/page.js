@@ -1834,7 +1834,10 @@ export default function FarmerPage() {
                           <i className="fas fa-map text-white text-lg"></i>
                         </div>
                         <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                          {stats.farmSize || "5"} {stats.farmSizeUnit}
+                          {farmer.farmInfo?.farmSize || stats.farmSize || "5"}{" "}
+                          {farmer.farmInfo?.farmSizeUnit ||
+                            stats.farmSizeUnit ||
+                            "acres"}
                         </div>
                       </div>
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">

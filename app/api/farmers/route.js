@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]/route";
 
@@ -627,12 +626,6 @@ export async function PUT(request) {
       };
     }
 
-    console.log("Updating farmer profile:", {
-      farmerId: farmer._id,
-      email: farmer.email,
-      updateFields: Object.keys(updateData),
-    });
-
     // Update farmer in database
     const result = await db
       .collection("farmers")
@@ -645,19 +638,56 @@ export async function PUT(request) {
       );
     }
 
+    if (body.name) {
+      try {
+        const productsUpdateResult = await db.collection("products").updateMany(
+          {
+            $or: [
+              { farmerId: farmer._id },
+              { farmerEmail: farmer.email },
+              { "farmer._id": farmer._id },
+              { "farmer.email": farmer.email },
+            ],
+          },
+          {
+            $set: {
+              "farmer.name": body.name,
+              farmerName: body.name, // Update if this field exists
+              updatedAt: new Date(),
+            },
+          },
+        );
+      } catch (error) {
+        console.error("Error updating farmer name in products:", error);
+        // Don't fail the whole request if product update fails
+      }
+    }
+
     // Fetch updated farmer data
     const updatedFarmer = await db.collection("farmers").findOne(
       { _id: farmer._id },
       { projection: { password: 0 } }, // Exclude password
     );
 
-    console.log("Farmer profile updated successfully");
+    // CRITICAL: Clear server-side response cache to prevent serving stale farmer data
+    responseCache.clear();
 
-    return NextResponse.json({
-      success: true,
-      message: "Farmer profile updated successfully",
-      farmer: updatedFarmer,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Farmer profile updated successfully",
+        farmer: updatedFarmer,
+      },
+      {
+        headers: {
+          "Cache-Control":
+            "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+          "Surrogate-Control": "no-store",
+        },
+      },
+    );
   } catch (error) {
     console.error("Error updating farmer profile:", error);
     return NextResponse.json(

@@ -1,22 +1,74 @@
 "use client";
 
 import Link from "next/link";
-import { useAuth } from "../contexts/AuthContext";
-import { useTheme } from "../contexts/ThemeContext";
-import { useFavorites } from "../contexts/FavoritesContext";
-import { useCart } from "../contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useFavorites } from "@/contexts/FavoritesContext";
+import { useCart } from "@/contexts/CartContext";
 import { signOut } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 export default function Navigation() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, updateUser } = useAuth();
   const { isDarkMode, toggleDarkMode } = useTheme();
   const { favorites } = useFavorites();
   const { cartItems, cartCount } = useCart();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [updatedUserName, setUpdatedUserName] = useState(user?.name || "");
   const pathname = usePathname();
   const router = useRouter();
+
+  // Fetch updated name from the database for farmers
+  useEffect(() => {
+    async function fetchUpdatedUserName() {
+      if (!user?.email || user?.userType !== "farmer") return;
+
+      try {
+        console.log("Navigation: Fetching updated name for:", user.email);
+
+        // Fetch the latest farmer data with cache busting
+        const response = await fetch(
+          `/api/farmers?email=${encodeURIComponent(user.email)}&exactMatch=true&_t=${Date.now()}`,
+          {
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+            },
+            cache: "no-store",
+          },
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+
+          if (data && data.farmers && data.farmers.length > 0) {
+            // Find the farmer with the matching email
+            const farmer = data.farmers.find((f) => f.email === user.email);
+            if (farmer && farmer.name !== user.name) {
+              console.log(
+                "Navigation: Updating user name from",
+                user.name,
+                "to",
+                farmer.name,
+              );
+              setUpdatedUserName(farmer.name);
+
+              // Also update the Auth context
+              updateUser({
+                ...user,
+                name: farmer.name,
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Navigation: Error fetching updated name:", error);
+      }
+    }
+
+    fetchUpdatedUserName();
+  }, [user?.email, user?.userType]);
 
   // Pages that should have simplified navigation (no search/cart)
   const simplifiedPages = [

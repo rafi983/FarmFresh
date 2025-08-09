@@ -6,7 +6,7 @@ import ProductCard from "@/components/ProductCard";
 import Footer from "@/components/Footer";
 import { debounce } from "@/utils/debounce";
 import { useProductsQuery, useProductsCache } from "@/hooks/useProductsQuery";
-import { useFarmersQuery } from "@/hooks/useFarmersQuery";
+import { useFarmersQuery, useFarmersCache } from "@/hooks/useFarmersQuery";
 
 // Move constants outside component to prevent recreations
 const CATEGORY_OPTIONS = [
@@ -42,8 +42,24 @@ export default function Products() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // React Query integration for products and cache management
+  // Cache management hooks
   const productsCache = useProductsCache();
+  const farmersCache = useFarmersCache();
+
+  // Auto-refresh data when page becomes visible (handles browser tab switching)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log("🔄 Products page became visible, refreshing data");
+        productsCache.invalidateProducts();
+        farmersCache.invalidateFarmers();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [productsCache, farmersCache]);
 
   // Filter states - Initialize from URL params
   const [filters, setFilters] = useState(() => ({
@@ -117,21 +133,32 @@ export default function Products() {
   // Enhance products with fresh farmer data
   const enhancedProducts = useMemo(() => {
     return allProducts.map((product) => {
-      // Try to get fresh farmer data
+      // Get all possible farmer identifiers from product
       const productFarmerId =
         product.farmer?.id || product.farmer?._id || product.farmerId;
       const productFarmerEmail = product.farmer?.email || product.farmerEmail;
+      const productFarmerName = product.farmer?.name || product.farmerName;
 
-      // Look up fresh farmer data
+      // Look up fresh farmer data by ID first (most reliable)
       let freshFarmer = null;
       if (productFarmerId) {
         freshFarmer = farmerLookup.get(productFarmerId);
       }
+
+      // If no match by ID, try email
       if (!freshFarmer && productFarmerEmail) {
         freshFarmer = farmerLookup.get(productFarmerEmail);
       }
 
-      // If we found fresh farmer data, use it; otherwise keep original
+      // If no match by ID or email, try finding by name (least reliable but necessary fallback)
+      if (!freshFarmer && productFarmerName) {
+        const farmers = farmersData?.farmers || [];
+        freshFarmer = farmers.find(
+          (farmer) => farmer.name === productFarmerName,
+        );
+      }
+
+      // If we found fresh farmer data, enhance the product; otherwise keep original
       if (freshFarmer) {
         return {
           ...product,
@@ -145,12 +172,22 @@ export default function Products() {
           },
           farmerName: freshFarmer.name,
           farmerEmail: freshFarmer.email,
+          farmerId: freshFarmer._id, // Ensure farmerId is set
         };
       }
 
-      return product;
+      // No fresh farmer data found, return product with normalized farmer info
+      return {
+        ...product,
+        // Ensure farmerName is always available for display
+        farmerName:
+          productFarmerName ||
+          (typeof product.farmer === "string"
+            ? product.farmer
+            : "Unknown Farmer"),
+      };
     });
-  }, [allProducts, farmerLookup]);
+  }, [allProducts, farmerLookup, farmersData]);
 
   // Listen for order completion events to refresh data
   useEffect(() => {

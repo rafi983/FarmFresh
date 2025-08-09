@@ -12,9 +12,10 @@ export function useFarmersQuery(options = {}) {
       const data = await apiService.getFarmers();
       return data;
     },
-    staleTime: 15 * 60 * 1000, // 15 minutes
-    gcTime: 30 * 60 * 1000, // 30 minutes
-    refetchOnWindowFocus: false,
+    staleTime: 2 * 60 * 1000, // Reduced to 2 minutes for more responsive updates
+    gcTime: 10 * 60 * 1000, // Reduced to 10 minutes
+    refetchOnWindowFocus: true, // Enable refetch on window focus to catch updates
+    refetchOnMount: true, // Always refetch on mount to ensure fresh data
     retry: 2,
     ...options,
   });
