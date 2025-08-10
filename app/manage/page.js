@@ -60,6 +60,7 @@ export default function FarmerDashboard() {
     refreshDashboard,
     updateProductInCache,
     updateBulkProductsInCache,
+    bulkUpdateProducts,
   } = useDashboardData();
 
   // UI state
@@ -311,9 +312,8 @@ export default function FarmerDashboard() {
       try {
         console.log("Sending status update:", { productId, status: newStatus });
 
-        // Use the same API service pattern as bulk update for consistency
-        const { apiService } = await import("@/lib/api-service");
-        const result = await apiService.bulkUpdateProducts(
+        // Use the bulkUpdateProducts from hook (includes cache invalidation like farmer updates)
+        const result = await bulkUpdateProducts(
           [productId], // Single product as array
           { status: newStatus },
         );
@@ -324,10 +324,10 @@ export default function FarmerDashboard() {
           throw new Error(result.error || `Failed to ${actionText} product`);
         }
 
-        // Update the React Query cache using the same pattern as bulk update
-        if (updateBulkProductsInCache) {
-          updateBulkProductsInCache([productId], { status: newStatus });
-        }
+        // No need for manual cache update - bulkUpdateProducts handles it automatically
+        // if (updateBulkProductsInCache) {
+        //   updateBulkProductsInCache([productId], { status: newStatus });
+        // }
 
         // Dispatch custom event to notify products page of status change
         window.dispatchEvent(
@@ -363,7 +363,7 @@ export default function FarmerDashboard() {
         setActionLoading((prev) => ({ ...prev, [productId]: null }));
       }
     },
-    [updateBulkProductsInCache],
+    [bulkUpdateProducts],
   );
 
   const handleDeleteProduct = useCallback(
@@ -493,6 +493,7 @@ export default function FarmerDashboard() {
     loading: isLoading,
     error,
     updateBulkProductsInCache,
+    bulkUpdateProducts, // Add this prop for DashboardTab
   };
 
   const productProps = {
@@ -510,6 +511,9 @@ export default function FarmerDashboard() {
     handleDeleteProduct,
     actionLoading,
     getProductStatusBadge,
+    // Add missing bulk update functionality for ProductsTab
+    updateBulkProductsInCache,
+    bulkUpdateProducts,
   };
 
   // Loading state - Use dedicated manage page skeleton

@@ -23,14 +23,36 @@ export function useDashboardData() {
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ["dashboard", userIds?.userId, userIds?.userEmail],
     queryFn: async () => {
-      if (!userIds?.userId && !userIds?.userEmail) {
-        throw new Error("No user identification found");
-      }
+      console.log("🔍 Dashboard query executing - fetching fresh data...");
+      const [productsData, ordersData] = await Promise.all([
+        apiService.getProducts({ includeInactive: true }),
+        apiService.getOrders(),
+      ]);
 
-      const dashboardData = await apiService.getDashboardData(
-        userIds.userId,
-        userIds.userEmail,
-        { forceRefresh: true },
+      const dashboardData = {
+        products: productsData?.products || [],
+        orders: ordersData?.orders || [],
+        analytics: ordersData?.analytics || {},
+        meta: productsData?.meta || {},
+      };
+
+      console.log("📊 Dashboard query result:", {
+        productsCount: dashboardData.products.length,
+        sampleProduct: dashboardData.products[0]
+          ? {
+              id: dashboardData.products[0]._id,
+              name: dashboardData.products[0].name,
+              stock: dashboardData.products[0].stock,
+              price: dashboardData.products[0].price,
+            }
+          : null,
+        timestamp: new Date().toISOString(),
+      });
+
+      // ADD DEBUG: Log ALL product data to see what we're actually getting
+      console.log(
+        "🔍 [DEBUG] ALL Dashboard products received from API:",
+        dashboardData.products,
       );
 
       return {
@@ -40,10 +62,27 @@ export function useDashboardData() {
         meta: dashboardData.meta || {},
       };
     },
-    enabled: !!session?.user && (!!userIds?.userId || !!userIds?.userEmail),
-    staleTime: 2 * 60 * 1000, // 2 minutes for dashboard data
-    cacheTime: 5 * 60 * 1000, // 5 minutes cache
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 0, // Don't cache results
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    retry: 3,
+    retryDelay: 1000,
   });
+
+  // Add debug logging for the returned data
+  console.log(
+    "🔍 [DEBUG] Dashboard hook returning products:",
+    data?.products?.length || 0,
+  );
+  if (data?.products?.length > 0) {
+    console.log("🔍 [DEBUG] First product in dashboard:", {
+      id: data.products[0]._id || data.products[0].id,
+      name: data.products[0].name,
+      stock: data.products[0].stock,
+      price: data.products[0].price,
+    });
+  }
 
   // Function to invalidate and refetch dashboard data
   const refreshDashboard = () => {
@@ -99,24 +138,18 @@ export function useDashboardData() {
     );
   };
 
-  // Function to bulk update multiple products in cache without full refetch
+  // Function to update multiple products in cache (bulk update)
   const updateBulkProductsInCache = (productIds, updateData) => {
     queryClient.setQueryData(
       ["dashboard", userIds?.userId, userIds?.userEmail],
       (oldData) => {
         if (!oldData) return oldData;
 
-        const updatedProducts = oldData.products.map((product) => {
-          const productId = product._id || product.id;
-          if (productIds.includes(productId)) {
-            return {
-              ...product,
-              ...updateData,
-              updatedAt: new Date().toISOString(),
-            };
-          }
-          return product;
-        });
+        const updatedProducts = oldData.products.map((product) =>
+          productIds.includes(product._id || product.id)
+            ? { ...product, ...updateData }
+            : product,
+        );
 
         return {
           ...oldData,
@@ -124,6 +157,54 @@ export function useDashboardData() {
         };
       },
     );
+  };
+
+  // Enhanced bulk update function - MINIMAL fix to match products page behavior
+  const bulkUpdateProducts = async (productIds, updateData) => {
+    try {
+      console.log("🔄 [Dashboard] Starting bulk product update...");
+
+      // Step 1: Call API service
+      const result = await apiService.bulkUpdateProducts(
+        productIds,
+        updateData,
+      );
+
+      // Step 2: Clear all caches immediately (same as products page)
+      apiService.clearProductsCache();
+      apiService.clearCache();
+
+      // Step 3: Force immediate refetch of dashboard data
+      console.log("🔄 [Dashboard] Forcing immediate data refetch...");
+      const freshData = await refetch();
+
+      // Step 4: Double-check the fresh data contains updated values
+      if (freshData?.data?.products?.length > 0) {
+        console.log("🔍 [Dashboard] Fresh data after refetch:", {
+          productCount: freshData.data.products.length,
+          firstProduct: {
+            id: freshData.data.products[0]._id,
+            name: freshData.data.products[0].name,
+            stock: freshData.data.products[0].stock,
+            price: freshData.data.products[0].price,
+          },
+        });
+      }
+
+      // Step 5: Also invalidate the dashboard query to trigger re-render
+      await queryClient.invalidateQueries({
+        queryKey: ["dashboard", userIds?.userId, userIds?.userEmail],
+        exact: true,
+      });
+
+      console.log(
+        "✅ [Dashboard] Bulk update completed with forced refetch and invalidation",
+      );
+      return result;
+    } catch (error) {
+      console.error("❌ [Dashboard] Bulk product update failed:", error);
+      throw error;
+    }
   };
 
   return {
@@ -139,5 +220,6 @@ export function useDashboardData() {
     updateOrderInCache,
     updateProductInCache,
     updateBulkProductsInCache,
+    bulkUpdateProducts,
   };
 }

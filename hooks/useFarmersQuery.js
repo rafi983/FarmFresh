@@ -12,16 +12,16 @@ export function useFarmersQuery(options = {}) {
       const data = await apiService.getFarmers();
       return data;
     },
-    staleTime: 2 * 60 * 1000, // Reduced to 2 minutes for more responsive updates
-    gcTime: 10 * 60 * 1000, // Reduced to 10 minutes
-    refetchOnWindowFocus: true, // Enable refetch on window focus to catch updates
-    refetchOnMount: true, // Always refetch on mount to ensure fresh data
+    staleTime: 1 * 60 * 1000, // Reduced to 1 minute for faster updates
+    gcTime: 5 * 60 * 1000, // Reduced to 5 minutes
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
     retry: 2,
     ...options,
   });
 }
 
-// Utility functions for farmers cache management
+// Enhanced utility functions for farmers cache management
 export function useFarmersCache() {
   const queryClient = useQueryClient();
 
@@ -29,24 +29,42 @@ export function useFarmersCache() {
     // Invalidate farmers cache to trigger refetch
     invalidateFarmers: () => {
       console.log("🔄 Invalidating farmers query");
+
+      // Clear API service cache first
+      apiService.clearFarmersCache();
+      apiService.clearProductsCache(); // Also clear products since they contain farmer info
+
+      // Then invalidate React Query cache
       queryClient.invalidateQueries({
         queryKey: FARMERS_QUERY_KEY,
         exact: false,
       });
     },
 
-    // Refresh farmers data
+    // Enhanced refresh with comprehensive cache clearing
     refetchFarmers: () => {
-      queryClient.refetchQueries({ queryKey: FARMERS_QUERY_KEY });
+      console.log("🔄 Refetching farmers with cache clearing");
+
+      // Clear all related caches
+      apiService.clearFarmersCache();
+      apiService.clearProductsCache();
+
+      // Force refetch
+      queryClient.refetchQueries({
+        queryKey: FARMERS_QUERY_KEY,
+        exact: false,
+      });
     },
 
-    // Clear farmers cache
+    // Clear farmers cache completely
     removeFarmers: () => {
+      apiService.clearFarmersCache();
       queryClient.removeQueries({ queryKey: FARMERS_QUERY_KEY });
     },
 
-    // Update farmer data in cache
+    // Update farmer data in cache and sync with products
     updateFarmerInCache: (farmerId, updatedData) => {
+      // Update in React Query cache
       queryClient.setQueryData(FARMERS_QUERY_KEY, (oldData) => {
         if (!oldData?.farmers) return oldData;
 
@@ -56,6 +74,35 @@ export function useFarmersCache() {
             farmer._id === farmerId ? { ...farmer, ...updatedData } : farmer,
           ),
         };
+      });
+
+      // CRITICAL: Also clear products cache since products display farmer names
+      apiService.clearProductsCache();
+      queryClient.invalidateQueries({
+        queryKey: ["products"],
+        exact: false,
+      });
+    },
+
+    // Force complete cache refresh - use this after farmer updates
+    forceRefreshFarmers: async () => {
+      console.log("🔄 Force refreshing farmers and related data");
+
+      // Step 1: Clear all caches
+      apiService.clearCache(); // Use the new clearCache method
+
+      // Step 2: Remove React Query data for both farmers and products
+      queryClient.removeQueries({ queryKey: FARMERS_QUERY_KEY });
+      queryClient.removeQueries({ queryKey: ["products"] });
+
+      // Step 3: Force fresh fetch
+      return queryClient.fetchQuery({
+        queryKey: FARMERS_QUERY_KEY,
+        queryFn: async () => {
+          const data = await apiService.getFarmers();
+          return data;
+        },
+        staleTime: 0, // Force fresh data
       });
     },
   };

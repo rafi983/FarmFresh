@@ -4,75 +4,67 @@ import { apiService } from "@/lib/api-service";
 // Query keys for React Query
 export const PRODUCTS_QUERY_KEY = ["products"];
 
-// Custom hook for products with React Query
+// Custom hook for products data
 export function useProductsQuery(filters = {}, options = {}) {
-  const { searchTerm, selectedCategory } = filters;
-
-  // Create query key based on filters for proper caching
-  const queryKey = [
-    ...PRODUCTS_QUERY_KEY,
-    {
-      search: searchTerm || undefined,
-      category:
-        selectedCategory !== "All Categories" ? selectedCategory : undefined,
-    },
-  ];
-
   return useQuery({
-    queryKey,
+    queryKey: [...PRODUCTS_QUERY_KEY, filters],
     queryFn: async () => {
-      const params = {
-        limit: 1000, // Fetch more products for client-side filtering
-      };
-
-      // Add search/category filters for server-side optimization
-      if (searchTerm) params.search = searchTerm;
-      if (selectedCategory !== "All Categories") {
-        params.category = selectedCategory;
-      }
-
-      const data = await apiService.getProducts(params, {
-        skipCache: true, // Let React Query handle caching
-        useSessionCache: false,
-      });
-
+      const data = await apiService.getProducts(filters);
       return data;
     },
-    staleTime: 30 * 1000, // Reduced to 30 seconds for more responsive updates
+    staleTime: 1 * 60 * 1000, // Reduced to 1 minute for faster updates
     gcTime: 5 * 60 * 1000, // Reduced to 5 minutes
-    refetchOnWindowFocus: true, // Enable refetch on window focus for consistency
-    refetchOnMount: true, // Always refetch when component mounts
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
     retry: 2,
     ...options,
   });
 }
 
-// Utility functions for products cache management
+// Enhanced utility functions for products cache management
 export function useProductsCache() {
   const queryClient = useQueryClient();
 
   return {
     // Invalidate products cache to trigger refetch
     invalidateProducts: () => {
-      console.log("🔄 Invalidating all product queries");
+      console.log("🔄 Invalidating products query");
+
+      // Clear API service cache first
+      apiService.clearProductsCache();
+      apiService.clearFarmersCache(); // Also clear farmers since products contain farmer info
+
+      // Then invalidate React Query cache
       queryClient.invalidateQueries({
         queryKey: PRODUCTS_QUERY_KEY,
         exact: false,
       });
     },
 
-    // Refresh products data
+    // Enhanced refresh with comprehensive cache clearing
     refetchProducts: () => {
-      queryClient.refetchQueries({ queryKey: PRODUCTS_QUERY_KEY });
+      console.log("🔄 Refetching products with cache clearing");
+
+      // Clear all related caches
+      apiService.clearProductsCache();
+      apiService.clearFarmersCache();
+
+      // Force refetch
+      queryClient.refetchQueries({
+        queryKey: PRODUCTS_QUERY_KEY,
+        exact: false,
+      });
     },
 
-    // Clear products cache
+    // Clear products cache completely
     removeProducts: () => {
+      apiService.clearProductsCache();
       queryClient.removeQueries({ queryKey: PRODUCTS_QUERY_KEY });
     },
 
-    // Update product data in cache
+    // Update product data in cache with farmer name sync
     updateProductInCache: (productId, updatedData) => {
+      // Update in React Query cache
       queryClient.setQueryData(PRODUCTS_QUERY_KEY, (oldData) => {
         if (!oldData?.products) return oldData;
 
@@ -85,6 +77,63 @@ export function useProductsCache() {
           ),
         };
       });
+
+      // Also clear API service cache to ensure consistency
+      apiService.clearProductsCache();
+    },
+
+    // Force complete cache refresh - use this after farmer updates
+    forceRefreshProducts: async (filters = {}) => {
+      console.log("🔄 Force refreshing products after farmer update");
+
+      // Step 1: Clear all caches
+      apiService.clearCache(); // Use the new clearCache method
+
+      // Step 2: Remove React Query data
+      queryClient.removeQueries({ queryKey: PRODUCTS_QUERY_KEY });
+
+      // Step 3: Force fresh fetch
+      return queryClient.fetchQuery({
+        queryKey: [...PRODUCTS_QUERY_KEY, filters],
+        queryFn: async () => {
+          const data = await apiService.getProducts(filters);
+          return data;
+        },
+        staleTime: 0, // Force fresh data
+      });
+    },
+
+    // Handle bulk product updates with comprehensive cache clearing
+    handleBulkUpdate: async (productIds, updateData) => {
+      console.log("🔄 Handling bulk product update from products page");
+
+      try {
+        // Use API service bulk update (already has comprehensive cache clearing)
+        const result = await apiService.bulkUpdateProducts(
+          productIds,
+          updateData,
+        );
+
+        // Additional React Query cache management
+        queryClient.clear();
+
+        // Force fresh data fetch for products
+        queryClient.invalidateQueries({
+          queryKey: PRODUCTS_QUERY_KEY,
+          refetchType: "all",
+        });
+
+        // Also invalidate dashboard data
+        queryClient.invalidateQueries({
+          queryKey: ["dashboard"],
+          refetchType: "all",
+        });
+
+        return result;
+      } catch (error) {
+        console.error("❌ Bulk update failed:", error);
+        throw error;
+      }
     },
   };
 }

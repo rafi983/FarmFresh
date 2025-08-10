@@ -10,6 +10,14 @@ export default function ProductCard({
   getProductStatusBadge,
   formatPrice,
 }) {
+  // Debug: Log when ProductCard renders with product data
+  console.log("🔍 Dashboard ProductCard rendering with product:", {
+    id: product._id,
+    name: product.name,
+    stock: product.stock,
+    timestamp: new Date().toISOString(),
+  });
+
   // Get farmer ID for the redirect
   const getFarmerId = () => {
     return product.farmerId || product.farmer?.id || product.farmer?._id;

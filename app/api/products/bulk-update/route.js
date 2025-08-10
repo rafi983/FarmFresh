@@ -295,36 +295,51 @@ export async function PUT(request) {
       },
     });
 
-    // Add comprehensive cache invalidation headers
+    // Add comprehensive cache invalidation headers for dashboard updates
     response.headers.set(
       "Cache-Control",
-      "no-store, no-cache, must-revalidate",
+      "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
     );
     response.headers.set("Pragma", "no-cache");
     response.headers.set("Expires", "0");
-    response.headers.set("X-Cache-Invalidate", "products");
-    response.headers.set("X-Bulk-Update", "true");
-    response.headers.set("X-Processing-Time", `${Date.now() - startTime}ms`);
+    response.headers.set("Surrogate-Control", "no-store");
+
+    // Custom headers to signal frontend cache invalidation
+    response.headers.set("X-Cache-Invalidate", "products,dashboard");
+    response.headers.set("X-Data-Updated", new Date().toISOString());
+    response.headers.set(
+      "X-Bulk-Update-Count",
+      result.modifiedCount.toString(),
+    );
 
     return response;
   } catch (error) {
-    console.error("Bulk update error:", {
-      message: error.message,
-      stack: error.stack,
-      processingTime: Date.now() - startTime,
-    });
+    console.error("Bulk update error:", error);
 
-    // Return detailed error response
+    // Handle specific MongoDB errors
+    if (error.name === "MongoError" || error.name === "MongoServerError") {
+      return NextResponse.json(
+        {
+          error: "Database operation failed",
+          details: "Please try again later",
+        },
+        { status: 503 },
+      );
+    }
+
+    // Handle validation errors
+    if (error.message.includes("validation")) {
+      return NextResponse.json(
+        { error: "Validation error", details: error.message },
+        { status: 400 },
+      );
+    }
+
+    // Generic error response
     return NextResponse.json(
       {
-        error: "Failed to update products",
-        message: error.message,
-        details:
-          process.env.NODE_ENV === "development" ? error.stack : undefined,
-        meta: {
-          timestamp: new Date().toISOString(),
-          processingTime: Date.now() - startTime,
-        },
+        error: "Internal server error",
+        details: "An unexpected error occurred during bulk update",
       },
       { status: 500 },
     );

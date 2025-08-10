@@ -10,7 +10,8 @@ export default function DashboardTab({
   formatPrice,
   formatDate,
   handleRefresh,
-  updateBulkProductsInCache, // Add this prop to receive the bulk update function
+  updateBulkProductsInCache,
+  bulkUpdateProducts, // Add this prop to receive the proper bulk update function
 }) {
   const router = useRouter();
   const [bulkUpdateModal, setBulkUpdateModal] = useState(false);
@@ -86,22 +87,67 @@ export default function DashboardTab({
           break;
       }
 
-      // Use the new API service method for bulk update with automatic cache clearing
-      const { apiService } = await import("@/lib/api-service");
-      const result = await apiService.bulkUpdateProducts(
-        selectedProducts,
-        updateData,
+      // Use the bulkUpdateProducts function from hook (includes cache invalidation like farmer updates)
+      console.log("🔄 [DashboardTab] Calling bulkUpdateProducts...");
+      console.log("📊 [DashboardTab] Selected products:", selectedProducts);
+      console.log("📊 [DashboardTab] Update data:", updateData);
+      console.log(
+        "📊 [DashboardTab] Current products before update:",
+        products.map((p) => ({
+          id: p._id,
+          name: p.name,
+          stock: p.stock,
+          price: p.price,
+          status: p.status,
+        })),
       );
 
+      const result = await bulkUpdateProducts(selectedProducts, updateData);
+
+      console.log("📊 [DashboardTab] Bulk update result:", result);
+
       if (result.success) {
+        console.log("✅ [DashboardTab] Bulk update API call successful");
+
         alert(
           `Successfully updated ${result.data.updatedCount || 1} products!`,
         );
 
-        // Update the React Query cache immediately instead of hard refresh
-        if (updateBulkProductsInCache) {
-          updateBulkProductsInCache(selectedProducts, updateData);
+        // FORCE immediate refresh to ensure dashboard updates
+        console.log(
+          "🔄 [DashboardTab] Forcing immediate refresh after bulk update...",
+        );
+        console.log(
+          "📊 [DashboardTab] handleRefresh function exists:",
+          !!handleRefresh,
+        );
+
+        if (handleRefresh) {
+          console.log("🔄 [DashboardTab] Calling handleRefresh...");
+          await handleRefresh(); // Force refresh dashboard data
+          console.log("✅ [DashboardTab] handleRefresh completed");
+        } else {
+          console.error(
+            "❌ [DashboardTab] handleRefresh function not available!",
+          );
         }
+
+        // Log products after refresh to see if they changed
+        console.log(
+          "📊 [DashboardTab] Products after refresh (should update via React state):",
+        );
+        setTimeout(() => {
+          console.log(
+            "📊 [DashboardTab] Products state after refresh:",
+            products.map((p) => ({
+              id: p._id,
+              name: p.name,
+              stock: p.stock,
+              price: p.price,
+              status: p.status,
+            })),
+          );
+        }, 1000);
 
         // Dispatch custom event to notify products page of bulk update
         window.dispatchEvent(
@@ -126,10 +172,10 @@ export default function DashboardTab({
           }),
         );
 
-        // Trigger page refresh to ensure latest data
-        if (handleRefresh) {
-          handleRefresh(true); // Force refresh
-        }
+        // No need to force refresh - cache invalidation handles it automatically
+        // if (handleRefresh) {
+        //   handleRefresh(true); // Force refresh
+        // }
 
         setBulkUpdateModal(false);
         setSelectedProducts([]);

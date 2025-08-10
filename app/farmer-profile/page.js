@@ -407,7 +407,7 @@ export default function FarmerProfilePage() {
       setMessage({ type: "", text: "" });
 
       // Use the API service method that automatically handles cache clearing
-      const result = await apiService.updateFarmer(user._id, {
+      const result = await apiService.updateFarmer(user.userId, {
         name: profileData.name,
         phone: profileData.phone,
         address: profileData.address,
