@@ -1,4 +1,3 @@
-// hooks/useDashboardData.js
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -24,9 +23,25 @@ export function useDashboardData() {
     queryKey: ["dashboard", userIds?.userId, userIds?.userEmail],
     queryFn: async () => {
       console.log("🔍 Dashboard query executing - fetching fresh data...");
+
+      // FIX: Pass farmer filtering parameters to get only THIS farmer's products AND orders
+      const productsParams = {
+        includeInactive: true,
+        // Filter by farmer using their email or ID
+        farmerEmail: userIds?.userEmail,
+        // Remove limit to get all farmer's products (not just 12)
+        limit: 1000, // High limit to get all farmer's products
+      };
+
+      // FIX: Also filter orders by farmer to get only THIS farmer's orders
+      const ordersParams = {
+        farmerEmail: userIds?.userEmail,
+        limit: 1000, // High limit to get all farmer's orders
+      };
+
       const [productsData, ordersData] = await Promise.all([
-        apiService.getProducts({ includeInactive: true }),
-        apiService.getOrders(),
+        apiService.getProducts(productsParams),
+        apiService.getOrders(ordersParams), // Add farmer filtering to orders too
       ]);
 
       const dashboardData = {
@@ -36,25 +51,6 @@ export function useDashboardData() {
         meta: productsData?.meta || {},
       };
 
-      console.log("📊 Dashboard query result:", {
-        productsCount: dashboardData.products.length,
-        sampleProduct: dashboardData.products[0]
-          ? {
-              id: dashboardData.products[0]._id,
-              name: dashboardData.products[0].name,
-              stock: dashboardData.products[0].stock,
-              price: dashboardData.products[0].price,
-            }
-          : null,
-        timestamp: new Date().toISOString(),
-      });
-
-      // ADD DEBUG: Log ALL product data to see what we're actually getting
-      console.log(
-        "🔍 [DEBUG] ALL Dashboard products received from API:",
-        dashboardData.products,
-      );
-
       return {
         products: dashboardData.products || [],
         orders: dashboardData.orders || [],
@@ -62,27 +58,13 @@ export function useDashboardData() {
         meta: dashboardData.meta || {},
       };
     },
-    staleTime: 0, // Always fetch fresh data
-    gcTime: 0, // Don't cache results
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    staleTime: 30 * 1000, // Keep data fresh for 30 seconds to allow optimistic updates
+    gcTime: 5 * 60 * 1000, // Cache for 5 minutes
+    refetchOnMount: false, // Don't refetch when component mounts - use cache
+    refetchOnWindowFocus: false, // Don't refetch when window gets focus - use cache
     retry: 3,
     retryDelay: 1000,
   });
-
-  // Add debug logging for the returned data
-  console.log(
-    "🔍 [DEBUG] Dashboard hook returning products:",
-    data?.products?.length || 0,
-  );
-  if (data?.products?.length > 0) {
-    console.log("🔍 [DEBUG] First product in dashboard:", {
-      id: data.products[0]._id || data.products[0].id,
-      name: data.products[0].name,
-      stock: data.products[0].stock,
-      price: data.products[0].price,
-    });
-  }
 
   // Function to invalidate and refetch dashboard data
   const refreshDashboard = () => {
@@ -159,50 +141,65 @@ export function useDashboardData() {
     );
   };
 
-  // Enhanced bulk update function - MINIMAL fix to match products page behavior
+  // Simple bulk update function - Fixed to maintain optimistic updates properly
   const bulkUpdateProducts = async (productIds, updateData) => {
     try {
-      console.log("🔄 [Dashboard] Starting bulk product update...");
+      // OPTIMISTIC UPDATE: Update the cache immediately to prevent UI flickering
+      queryClient.setQueryData(
+        ["dashboard", userIds?.userId, userIds?.userEmail],
+        (oldData) => {
+          if (!oldData) return oldData;
 
-      // Step 1: Call API service
+          const updatedProducts = oldData.products.map((product) => {
+            const shouldUpdate = productIds.includes(product._id || product.id);
+            return shouldUpdate ? { ...product, ...updateData } : product;
+          });
+
+          return {
+            ...oldData,
+            products: updatedProducts,
+          };
+        },
+      );
+
+      // Call the API
       const result = await apiService.bulkUpdateProducts(
         productIds,
         updateData,
       );
 
-      // Step 2: Clear all caches immediately (same as products page)
-      apiService.clearProductsCache();
-      apiService.clearCache();
-
-      // Step 3: Force immediate refetch of dashboard data
-      console.log("🔄 [Dashboard] Forcing immediate data refetch...");
-      const freshData = await refetch();
-
-      // Step 4: Double-check the fresh data contains updated values
-      if (freshData?.data?.products?.length > 0) {
-        console.log("🔍 [Dashboard] Fresh data after refetch:", {
-          productCount: freshData.data.products.length,
-          firstProduct: {
-            id: freshData.data.products[0]._id,
-            name: freshData.data.products[0].name,
-            stock: freshData.data.products[0].stock,
-            price: freshData.data.products[0].price,
-          },
-        });
+      // Clear API service caches but keep React Query optimistic updates
+      if (apiService.clearProductsCache) {
+        apiService.clearProductsCache();
       }
 
-      // Step 5: Also invalidate the dashboard query to trigger re-render
-      await queryClient.invalidateQueries({
-        queryKey: ["dashboard", userIds?.userId, userIds?.userEmail],
-        exact: true,
-      });
+      // Set a delayed background refresh to sync with server data without disrupting UI
+      setTimeout(async () => {
+        // Only invalidate with refetchType: "none" to mark as stale but keep current data
+        queryClient.invalidateQueries({
+          queryKey: ["dashboard", userIds?.userId, userIds?.userEmail],
+          exact: true,
+          refetchType: "none", // Don't refetch immediately - keep optimistic updates
+        });
 
-      console.log(
-        "✅ [Dashboard] Bulk update completed with forced refetch and invalidation",
-      );
+        // Invalidate other product queries for consistency across the app
+        queryClient.invalidateQueries({
+          queryKey: ["products"],
+          exact: false,
+          refetchType: "none", // Don't refetch immediately
+        });
+      }, 5000); // Wait 5 seconds before background sync
       return result;
     } catch (error) {
       console.error("❌ [Dashboard] Bulk product update failed:", error);
+
+      // If API call failed, revert the optimistic update
+      await queryClient.invalidateQueries({
+        queryKey: ["dashboard", userIds?.userId, userIds?.userEmail],
+        exact: true,
+        refetchType: "active", // Force refetch to get correct data on error
+      });
+
       throw error;
     }
   };
@@ -217,9 +214,9 @@ export function useDashboardData() {
     isRefetching,
     refetch: refetchDashboard,
     refreshDashboard,
+    bulkUpdateProducts,
     updateOrderInCache,
     updateProductInCache,
     updateBulkProductsInCache,
-    bulkUpdateProducts,
   };
 }

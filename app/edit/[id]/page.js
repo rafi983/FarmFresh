@@ -243,8 +243,55 @@ export default function EditProduct({ params }) {
         image: formData.images[0] || "",
       };
 
-      console.log("Updating product:", productData);
+      console.log(
+        "🔄 [Edit] Starting product update with optimistic strategy...",
+      );
+      console.log("📊 [Edit] Product data:", productData);
 
+      // OPTIMISTIC UPDATE: Apply changes to cache immediately (same as bulk update)
+      const userIds = {
+        userId: session.user.userId || session.user.id || session.user._id,
+        userEmail: session.user.email,
+      };
+
+      console.log("🔄 [Edit] Applying optimistic cache update...");
+      queryClient.setQueryData(
+        ["dashboard", userIds.userId, userIds.userEmail],
+        (oldData) => {
+          if (!oldData) return oldData;
+
+          const updatedProducts = oldData.products.map((product) => {
+            return product._id === id || product.id === id
+              ? { ...product, ...productData }
+              : product;
+          });
+
+          console.log("✅ [Edit] Optimistic update applied to dashboard cache");
+          return {
+            ...oldData,
+            products: updatedProducts,
+          };
+        },
+      );
+
+      // Also update other product queries optimistically
+      queryClient.setQueryData(["products"], (oldData) => {
+        if (!oldData?.products) return oldData;
+
+        const updatedProducts = oldData.products.map((product) => {
+          return product._id === id || product.id === id
+            ? { ...product, ...productData }
+            : product;
+        });
+
+        console.log("✅ [Edit] Optimistic update applied to products cache");
+        return {
+          ...oldData,
+          products: updatedProducts,
+        };
+      });
+
+      console.log("🔄 [Edit] Making API call...");
       const response = await fetch(`/api/products/${id}`, {
         method: "PUT",
         headers: {
@@ -255,38 +302,117 @@ export default function EditProduct({ params }) {
 
       if (response.ok) {
         const result = await response.json();
-        console.log("Product updated successfully:", result);
+        console.log("✅ [Edit] Product updated successfully:", result);
 
         alert("Product updated successfully!");
 
-        // Clear ALL cache layers to ensure fresh data
-        // 1. Clear React Query cache
-        const userIds = {
-          userId: session.user.userId || session.user.id || session.user._id,
-          userEmail: session.user.email,
-        };
+        // CRITICAL FIX: Only clear API service cache patterns, not all cache
+        // This preserves our optimistic updates while preventing stale API data
+        console.log("🧹 [Edit] Clearing API service cache patterns only...");
 
-        queryClient.invalidateQueries({
-          queryKey: ["dashboard", userIds.userId, userIds.userEmail],
-        });
+        try {
+          // Clear specific patterns instead of all cache
+          globalCache.clearPattern("products");
+          globalCache.clearPattern("product");
+          globalCache.clearPattern("dashboard");
+          globalCache.clearPattern("farmers");
 
-        // 2. Clear API service global cache
-        globalCache.clear();
+          sessionCache.clearPattern("products");
+          sessionCache.clearPattern("product");
+          sessionCache.clearPattern("dashboard");
+          sessionCache.clearPattern("farmers");
 
-        // 3. Clear session cache
-        sessionCache.clear();
+          // Clear browser storage
+          if (typeof window !== "undefined") {
+            sessionStorage.removeItem("products-cache");
+            sessionStorage.removeItem("dashboard-cache");
+            sessionStorage.removeItem("farmfresh-products");
+            sessionStorage.removeItem("farmfresh-dashboard");
+          }
+        } catch (cacheError) {
+          console.warn("Cache clearing warning:", cacheError);
+        }
+
+        console.log(
+          "🔄 [Edit] API update completed, starting delayed background refresh...",
+        );
+
+        // Delay invalidation to allow UI to stabilize (same as bulk update)
+        setTimeout(() => {
+          console.log("🔄 [Edit] Starting gentle background cache refresh...");
+
+          // Use gentle invalidation that doesn't immediately refetch
+          queryClient.invalidateQueries({
+            queryKey: ["dashboard", userIds.userId, userIds.userEmail],
+            exact: true,
+            refetchType: "none", // Don't refetch immediately
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["products"],
+            exact: false,
+            refetchType: "none",
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["farmers"],
+            exact: false,
+            refetchType: "none",
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["product", id],
+            exact: true,
+            refetchType: "none",
+          });
+
+          console.log("✅ [Edit] Gentle background invalidation completed");
+        }, 5000); // Increase delay to 5 seconds for consistency with bulk update
+
+        console.log("✅ [Edit] Product update completed successfully");
 
         // Redirect to manage products page
         router.push("/manage");
       } else {
         const errorData = await response.json();
-        console.error("Failed to update product:", errorData);
+        console.error("❌ [Edit] Failed to update product:", errorData);
+
+        // Revert optimistic updates on error (same as bulk update)
+        console.log(
+          "🔄 [Edit] Reverting optimistic updates due to API error...",
+        );
+        queryClient.invalidateQueries({
+          queryKey: ["dashboard", userIds.userId, userIds.userEmail],
+          exact: true,
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["products"],
+          exact: false,
+        });
+
         alert(
           `Failed to update product: ${errorData.error || "Unknown error"}`,
         );
       }
     } catch (error) {
-      console.error("Error updating product:", error);
+      console.error("❌ [Edit] Error updating product:", error);
+
+      // Revert optimistic updates on error
+      const userIds = {
+        userId: session.user.userId || session.user.id || session.user._id,
+        userEmail: session.user.email,
+      };
+
+      console.log("🔄 [Edit] Reverting optimistic updates due to error...");
+      queryClient.invalidateQueries({
+        queryKey: ["dashboard", userIds.userId, userIds.userEmail],
+        exact: true,
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["products"],
+        exact: false,
+      });
+
       alert("Failed to update product. Please try again.");
     } finally {
       setLoading(false);

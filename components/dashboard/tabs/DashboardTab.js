@@ -10,8 +10,8 @@ export default function DashboardTab({
   formatPrice,
   formatDate,
   handleRefresh,
-  updateBulkProductsInCache,
-  bulkUpdateProducts, // Add this prop to receive the proper bulk update function
+  updateBulkProductsInCache, // Restore this prop
+  bulkUpdateProducts,
 }) {
   const router = useRouter();
   const [bulkUpdateModal, setBulkUpdateModal] = useState(false);
@@ -93,14 +93,19 @@ export default function DashboardTab({
       console.log("📊 [DashboardTab] Update data:", updateData);
       console.log(
         "📊 [DashboardTab] Current products before update:",
-        products.map((p) => ({
-          id: p._id,
-          name: p.name,
-          stock: p.stock,
-          price: p.price,
-          status: p.status,
-        })),
+        products,
       );
+
+      // DEBUG: Check if selected products are valid IDs
+      console.log("🔍 [DashboardTab] Selected product IDs type check:", {
+        selectedProducts: selectedProducts,
+        areStrings: selectedProducts.map((id) => typeof id),
+        validObjectIds: selectedProducts.map((id) => id && id.length === 24),
+        productsInData: products.map((p) => ({
+          id: p._id || p.id,
+          name: p.name,
+        })),
+      });
 
       const result = await bulkUpdateProducts(selectedProducts, updateData);
 
@@ -113,41 +118,44 @@ export default function DashboardTab({
           `Successfully updated ${result.data.updatedCount || 1} products!`,
         );
 
-        // FORCE immediate refresh to ensure dashboard updates
-        console.log(
-          "🔄 [DashboardTab] Forcing immediate refresh after bulk update...",
-        );
-        console.log(
-          "📊 [DashboardTab] handleRefresh function exists:",
-          !!handleRefresh,
-        );
+        // REMOVED: Don't call handleRefresh() as it overrides optimistic updates
+        // The bulkUpdateProducts function already handles cache updates properly
+        //
+        // // FORCE immediate refresh to ensure dashboard updates
+        // console.log(
+        //   "🔄 [DashboardTab] Forcing immediate refresh after bulk update...",
+        // );
+        // console.log(
+        //   "📊 [DashboardTab] handleRefresh function exists:",
+        //   !!handleRefresh,
+        // );
 
-        if (handleRefresh) {
-          console.log("🔄 [DashboardTab] Calling handleRefresh...");
-          await handleRefresh(); // Force refresh dashboard data
-          console.log("✅ [DashboardTab] handleRefresh completed");
-        } else {
-          console.error(
-            "❌ [DashboardTab] handleRefresh function not available!",
-          );
-        }
+        // if (handleRefresh) {
+        //   console.log("🔄 [DashboardTab] Calling handleRefresh...");
+        //   await handleRefresh(); // Force refresh dashboard data
+        //   console.log("✅ [DashboardTab] handleRefresh completed");
+        // } else {
+        //   console.error(
+        //     "❌ [DashboardTab] handleRefresh function not available!",
+        //   );
+        // }
 
-        // Log products after refresh to see if they changed
-        console.log(
-          "📊 [DashboardTab] Products after refresh (should update via React state):",
-        );
-        setTimeout(() => {
-          console.log(
-            "📊 [DashboardTab] Products state after refresh:",
-            products.map((p) => ({
-              id: p._id,
-              name: p.name,
-              stock: p.stock,
-              price: p.price,
-              status: p.status,
-            })),
-          );
-        }, 1000);
+        // // Log products after refresh to see if they changed
+        // console.log(
+        //   "📊 [DashboardTab] Products after refresh (should update via React state):",
+        // );
+        // setTimeout(() => {
+        //   console.log(
+        //     "📊 [DashboardTab] Products state after refresh:",
+        //     products.map((p) => ({
+        //       id: p._id,
+        //       name: p.name,
+        //       stock: p.stock,
+        //       price: p.price,
+        //       status: p.status,
+        //     })),
+        //   );
+        // }, 1000);
 
         // Dispatch custom event to notify products page of bulk update
         window.dispatchEvent(

@@ -15,14 +15,13 @@
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/products/bulk-update/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/bulk-update/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/farmer-profile/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmer-profile/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/products/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/edit/[id]/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/edit/[id]/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/manage/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/manage/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/dashboard/ProductCard.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/dashboard/ProductCard.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/products/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/products/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/components/dashboard/tabs/DashboardTab.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/dashboard/tabs/DashboardTab.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/dashboard/tabs/ProductsTab.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/dashboard/tabs/ProductsTab.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/hooks/useDashboardData.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useDashboardData.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hooks/useFarmersQuery.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useFarmersQuery.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hooks/useProductsQuery.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useProductsQuery.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/api-service.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/api-service.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/cache-invalidation.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/cache-invalidation.js" afterDir="false" />
     </list>
@@ -138,7 +137,8 @@
       <workItem from="1754821020462" duration="149000" />
       <workItem from="1754823566829" duration="764000" />
       <workItem from="1754829481098" duration="3000" />
-      <workItem from="1754831441751" duration="461000" />
+      <workItem from="1754831441751" duration="2238000" />
+      <workItem from="1754838250054" duration="7346000" />
     </task>
     <servers />
   </component>

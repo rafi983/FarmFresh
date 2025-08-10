@@ -58,8 +58,6 @@ export default function FarmerDashboard() {
     isRefetching,
     refetch: refetchDashboard,
     refreshDashboard,
-    updateProductInCache,
-    updateBulkProductsInCache,
     bulkUpdateProducts,
   } = useDashboardData();
 
@@ -318,16 +316,9 @@ export default function FarmerDashboard() {
           { status: newStatus },
         );
 
-        console.log("API response:", result);
-
         if (!result.success) {
           throw new Error(result.error || `Failed to ${actionText} product`);
         }
-
-        // No need for manual cache update - bulkUpdateProducts handles it automatically
-        // if (updateBulkProductsInCache) {
-        //   updateBulkProductsInCache([productId], { status: newStatus });
-        // }
 
         // Dispatch custom event to notify products page of status change
         window.dispatchEvent(
@@ -492,7 +483,6 @@ export default function FarmerDashboard() {
     formatDate,
     loading: isLoading,
     error,
-    updateBulkProductsInCache,
     bulkUpdateProducts, // Add this prop for DashboardTab
   };
 
@@ -512,7 +502,6 @@ export default function FarmerDashboard() {
     actionLoading,
     getProductStatusBadge,
     // Add missing bulk update functionality for ProductsTab
-    updateBulkProductsInCache,
     bulkUpdateProducts,
   };
 

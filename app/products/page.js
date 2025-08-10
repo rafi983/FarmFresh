@@ -50,7 +50,7 @@ export default function Products() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log("🔄 Products page became visible, refreshing data");
+        console.log("���� Products page became visible, refreshing data");
         productsCache.invalidateProducts();
         farmersCache.invalidateFarmers();
       }
@@ -87,9 +87,17 @@ export default function Products() {
     isLoading: loading,
     error,
     refetch: refetchProducts,
-  } = useProductsQuery(filters, {
-    enabled: true, // Always enabled
-  });
+  } = useProductsQuery(
+    {
+      ...filters,
+      // FIX: Add high limit to get all products instead of just 12
+      limit: 1000, // High limit to get all products
+      page: 1, // Get all from first page since we handle pagination client-side
+    },
+    {
+      enabled: true, // Always enabled
+    },
+  );
 
   // Use React Query for farmers data
   const { data: farmersData } = useFarmersQuery();

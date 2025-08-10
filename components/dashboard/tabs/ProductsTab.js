@@ -1,4 +1,3 @@
-// components/dashboard/tabs/ProductsTab.js
 import Link from "next/link";
 import StatCard from "../StatCard";
 import ProductCard from "../ProductCard";
