@@ -194,7 +194,7 @@ async function calculateFarmerStatsOptimized(productsCollection, farmer, id) {
     },
     {
       $facet: {
-        // Get all products for the farmer
+        // Get all products for the farmer (excluding large base64 images)
         products: [
           {
             $project: {
@@ -203,12 +203,16 @@ async function calculateFarmerStatsOptimized(productsCollection, farmer, id) {
               price: 1,
               stock: 1,
               category: 1,
-              images: 1,
+              // Only include image count and first image thumbnail if needed
+              imageCount: { $size: { $ifNull: ["$images", []] } },
+              // Optionally include a small preview or just the first few characters
+              hasImages: { $gt: [{ $size: { $ifNull: ["$images", []] } }, 0] },
               description: 1,
               farmer: 1,
               farmerId: 1,
               farmerEmail: 1,
               averageRating: 1,
+              reviews: 1, // Add reviews field to include review data
               purchaseCount: 1,
               status: 1,
               featured: 1,
@@ -267,6 +271,38 @@ async function calculateFarmerStatsOptimized(productsCollection, farmer, id) {
     totalStock: 0,
     featuredProducts: 0,
   };
+
+  // If images are needed for the response, fetch them separately for a limited number of products
+  // This prevents the aggregation from failing due to size limits
+  if (products.length > 0) {
+    // Optionally fetch images for the first few products or implement pagination
+    const productIds = products.slice(0, 10).map((p) => p._id); // Limit to first 10 products
+
+    const productsWithImages = await productsCollection
+      .find(
+        { _id: { $in: productIds } },
+        {
+          projection: {
+            _id: 1,
+            images: { $slice: ["$images", 1] }, // Only get the first image to reduce size
+          },
+        },
+      )
+      .toArray();
+
+    // Merge the image data back into the products
+    const imageMap = new Map(
+      productsWithImages.map((p) => [p._id.toString(), p.images]),
+    );
+    products.forEach((product) => {
+      const images = imageMap.get(product._id.toString());
+      if (images && images.length > 0) {
+        product.images = images;
+      } else {
+        product.images = [];
+      }
+    });
+  }
 
   return {
     products,

@@ -5,6 +5,33 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Footer from "@/components/Footer";
 
+// Format price utility function
+const formatPrice = (price) => {
+  return new Intl.NumberFormat("en-BD", {
+    style: "currency",
+    currency: "BDT",
+    minimumFractionDigits: 0,
+  }).format(price);
+};
+
+// Calculate average rating from reviews
+const calculateAverageRating = (product) => {
+  if (!product.reviews || product.reviews.length === 0) {
+    return 0;
+  }
+  const totalRating = product.reviews.reduce(
+    (sum, review) => sum + (review.rating || 0),
+    0,
+  );
+  return totalRating / product.reviews.length;
+};
+
+// Get display rating - use calculated average or fallback to averageRating field
+const getDisplayRating = (product) => {
+  const calculatedRating = calculateAverageRating(product);
+  return calculatedRating > 0 ? calculatedRating : product.averageRating || 0;
+};
+
 // Compact List Row (Table-like)
 const CompactListRow = ({ product, index, formatPrice }) => {
   return (
@@ -38,17 +65,27 @@ const CompactListRow = ({ product, index, formatPrice }) => {
 
       {/* Rating */}
       <div className="hidden sm:flex items-center mr-4">
-        <div className="flex text-yellow-400 mr-1">
-          {[...Array(5)].map((_, i) => (
-            <i
-              key={i}
-              className={`fas fa-star text-xs ${i < Math.floor(product.averageRating || 0) ? "text-yellow-400" : "text-gray-300"}`}
-            ></i>
-          ))}
-        </div>
-        <span className="text-xs text-gray-500 ml-1">
-          ({product.reviews?.length || 0})
-        </span>
+        {getDisplayRating(product) > 0 ? (
+          <>
+            <div className="flex text-yellow-400 mr-1">
+              {[...Array(5)].map((_, i) => (
+                <i
+                  key={i}
+                  className={`fas fa-star text-xs ${i < Math.floor(getDisplayRating(product)) ? "text-yellow-400" : "text-gray-300"}`}
+                ></i>
+              ))}
+            </div>
+            <span className="text-xs text-gray-500 ml-1">
+              ({getDisplayRating(product).toFixed(1)}) •{" "}
+              {product.reviews?.length || product.reviewCount || 0} review
+              {(product.reviews?.length || product.reviewCount || 0) !== 1
+                ? "s"
+                : ""}
+            </span>
+          </>
+        ) : (
+          <span className="text-xs text-gray-400">No ratings yet</span>
+        )}
       </div>
 
       {/* Stock Status */}
@@ -117,17 +154,27 @@ const GridTile = ({ product, index, formatPrice }) => {
 
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center">
-            <div className="flex text-yellow-400 mr-1">
-              {[...Array(5)].map((_, i) => (
-                <i
-                  key={i}
-                  className={`fas fa-star text-xs ${i < Math.floor(product.averageRating || 0) ? "text-yellow-400" : "text-white/50"}`}
-                ></i>
-              ))}
-            </div>
-            <span className="text-xs text-white/80">
-              ({product.reviews?.length || 0})
-            </span>
+            {getDisplayRating(product) > 0 ? (
+              <>
+                <div className="flex text-yellow-400 mr-1">
+                  {[...Array(5)].map((_, i) => (
+                    <i
+                      key={i}
+                      className={`fas fa-star text-xs ${i < Math.floor(getDisplayRating(product)) ? "text-yellow-400" : "text-white/50"}`}
+                    ></i>
+                  ))}
+                </div>
+                <span className="text-xs text-white/80">
+                  ({getDisplayRating(product).toFixed(1)}) •{" "}
+                  {product.reviews?.length || product.reviewCount || 0} review
+                  {(product.reviews?.length || product.reviewCount || 0) !== 1
+                    ? "s"
+                    : ""}
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-white/60">No ratings yet</span>
+            )}
           </div>
           <span className="font-bold text-xl">
             {formatPrice(product.price)}
@@ -360,25 +407,45 @@ const AlternativeProductLayout = ({ product, index, formatPrice }) => {
             className={`flex items-center justify-between mb-4 ${variant === "polaroid-photo" ? "justify-center gap-4" : ""}`}
           >
             <div className="flex items-center">
-              <div className="flex text-yellow-400 mr-2">
-                {[...Array(5)].map((_, i) => (
-                  <i
-                    key={i}
-                    className={`fas fa-star text-sm ${i < Math.floor(product.averageRating || 0) ? "text-yellow-400" : variant === "blueprint-sheet" ? "text-blue-300/30" : "text-gray-300"}`}
-                  ></i>
-                ))}
-              </div>
-              <span
-                className={`text-sm ${
-                  variant === "blueprint-sheet"
-                    ? "text-blue-200"
-                    : variant === "polaroid-photo"
-                      ? "text-gray-600"
-                      : "text-gray-500 dark:text-gray-400"
-                }`}
-              >
-                ({product.reviews?.length || 0})
-              </span>
+              {getDisplayRating(product) > 0 ? (
+                <>
+                  <div className="flex text-yellow-400 mr-2">
+                    {[...Array(5)].map((_, i) => (
+                      <i
+                        key={i}
+                        className={`fas fa-star text-sm ${i < Math.floor(getDisplayRating(product)) ? "text-yellow-400" : variant === "blueprint-sheet" ? "text-blue-300/30" : "text-gray-300"}`}
+                      ></i>
+                    ))}
+                  </div>
+                  <span
+                    className={`text-sm ${
+                      variant === "blueprint-sheet"
+                        ? "text-blue-200"
+                        : variant === "polaroid-photo"
+                          ? "text-gray-600"
+                          : "text-gray-500 dark:text-gray-400"
+                    }`}
+                  >
+                    ({getDisplayRating(product).toFixed(1)}) •{" "}
+                    {product.reviews?.length || product.reviewCount || 0} review
+                    {(product.reviews?.length || product.reviewCount || 0) !== 1
+                      ? "s"
+                      : ""}
+                  </span>
+                </>
+              ) : (
+                <span
+                  className={`text-sm ${
+                    variant === "blueprint-sheet"
+                      ? "text-blue-200/60"
+                      : variant === "polaroid-photo"
+                        ? "text-gray-400"
+                        : "text-gray-400 dark:text-gray-500"
+                  }`}
+                >
+                  No ratings yet
+                </span>
+              )}
             </div>
             {!variant === "polaroid-photo" && (
               <span
@@ -528,7 +595,12 @@ const ProductDisplayLayout = ({ products, viewType, sortBy }) => {
       {viewType === "list" ? (
         <div className="max-w-4xl mx-auto space-y-3">
           {sortedProducts.map((product, index) => (
-            <CompactListRow key={product._id} product={product} index={index} />
+            <CompactListRow
+              key={product._id}
+              product={product}
+              index={index}
+              formatPrice={formatPrice}
+            />
           ))}
         </div>
       ) : viewType === "masonry" ? (
@@ -538,13 +610,19 @@ const ProductDisplayLayout = ({ products, viewType, sortBy }) => {
               key={product._id}
               product={product}
               index={index}
+              formatPrice={formatPrice}
             />
           ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {sortedProducts.map((product, index) => (
-            <GridTile key={product._id} product={product} index={index} />
+            <GridTile
+              key={product._id}
+              product={product}
+              index={index}
+              formatPrice={formatPrice}
+            />
           ))}
         </div>
       )}
@@ -590,11 +668,11 @@ const EnhancedProductLayout = ({ products, viewType, sortBy }) => {
       {viewType === "list" ? (
         <div className="space-y-4">
           {sortedProducts.map((product, index) => (
-            <ModernProductCard
+            <CompactListRow
               key={product._id}
               product={product}
               index={index}
-              viewType="list"
+              formatPrice={formatPrice}
             />
           ))}
         </div>
@@ -602,10 +680,10 @@ const EnhancedProductLayout = ({ products, viewType, sortBy }) => {
         <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6 space-y-6">
           {sortedProducts.map((product, index) => (
             <div key={product._id} className="break-inside-avoid mb-6">
-              <ModernProductCard
+              <AlternativeProductLayout
                 product={product}
                 index={index}
-                viewType="grid"
+                formatPrice={formatPrice}
               />
             </div>
           ))}
@@ -613,11 +691,11 @@ const EnhancedProductLayout = ({ products, viewType, sortBy }) => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {sortedProducts.map((product, index) => (
-            <ModernProductCard
+            <GridTile
               key={product._id}
               product={product}
               index={index}
-              viewType="grid"
+              formatPrice={formatPrice}
             />
           ))}
         </div>
@@ -756,11 +834,20 @@ export default function FarmerDetailsPage() {
     const activeProducts = products.filter(
       (p) => p.status === "active" && p.stock > 0,
     ).length;
+
+    // Calculate average rating only from products that actually have ratings
+    const productsWithRatings = products.filter((p) => {
+      const rating = getDisplayRating(p);
+      return rating > 0;
+    });
+
     const averageRating =
-      products.length > 0
+      productsWithRatings.length > 0
         ? (
-            products.reduce((sum, p) => sum + (p.averageRating || 0), 0) /
-            products.length
+            productsWithRatings.reduce(
+              (sum, p) => sum + getDisplayRating(p),
+              0,
+            ) / productsWithRatings.length
           ).toFixed(1)
         : 0;
 
@@ -966,7 +1053,9 @@ export default function FarmerDetailsPage() {
                   <div className="flex items-center bg-white/10 backdrop-blur-lg rounded-2xl px-6 py-4 text-white border border-white/20">
                     <i className="fas fa-star mr-4 text-2xl text-yellow-400"></i>
                     <span className="font-semibold text-lg">
-                      {stats.averageRating} Mastery
+                      {stats.averageRating > 0
+                        ? `${stats.averageRating}★ Mastery`
+                        : "New Farmer"}
                     </span>
                   </div>
                   <div className="flex items-center bg-white/10 backdrop-blur-lg rounded-2xl px-6 py-4 text-white border border-white/20">

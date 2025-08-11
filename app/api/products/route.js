@@ -353,22 +353,24 @@ export async function GET(request) {
       pipeline.push({ $skip: (page - 1) * limit }, { $limit: limit });
     }
 
-    // Execute optimized query
+    // Execute optimized query with consistent counting
     const startTime = Date.now();
-    const [products, totalCount] = await Promise.all([
+
+    // Use aggregation for both products and count to ensure consistency
+    const countPipeline = [{ $match: query }, { $count: "total" }];
+
+    const [products, countResult] = await Promise.all([
       cachedCollection.aggregate(pipeline).toArray(),
-      // Only count if we need pagination
-      limit < 1000
-        ? cachedCollection.countDocuments(query)
-        : Promise.resolve(0), // We'll calculate this after products are resolved
+      cachedCollection.aggregate(countPipeline).toArray(),
     ]);
 
-    // Calculate actual total count for large datasets
-    const actualTotalCount = limit < 1000 ? totalCount : products.length;
+    // Get consistent total count
+    const actualTotalCount =
+      countResult.length > 0 ? countResult[0].total : products.length;
 
     const queryTime = Date.now() - startTime;
     console.log(
-      `Atlas query executed in ${queryTime}ms for ${products.length} products`,
+      `Atlas query executed in ${queryTime}ms for ${products.length} products, total: ${actualTotalCount}`,
     );
 
     // Enhance with ratings and review counts from the products collection
@@ -450,7 +452,8 @@ export async function POST(request) {
 
     const result = await db.collection("products").insertOne({
       ...body,
-      createdAt: new Date(),
+      // Don't overwrite createdAt if it's already provided, but ensure it's a Date object
+      createdAt: body.createdAt ? new Date(body.createdAt) : new Date(),
       updatedAt: new Date(),
       status: "active",
       averageRating: 0,

@@ -9,8 +9,6 @@ import {
 // Calculate performance metrics for a product
 async function calculateProductPerformanceOptimized(db, productId) {
   try {
-    console.log(`Calculating performance metrics for product: ${productId}`);
-
     // Handle different productId formats (string, ObjectId)
     const productIdVariants = [
       productId,
@@ -25,8 +23,6 @@ async function calculateProductPerformanceOptimized(db, productId) {
         $in: ["completed", "delivered", "confirmed", "shipped", "pending"],
       },
     };
-
-    console.log("Orders query:", JSON.stringify(ordersQuery));
 
     // Calculate sales metrics from orders
     const salesPipeline = [
@@ -301,8 +297,8 @@ export async function GET(request, { params }) {
       ],
     };
 
-    // Calculate real ratings and review counts from reviews data
-    const enhancedProduct = enhanceProductWithRatings(product);
+    // Calculate real ratings and review counts from reviews collection
+    const [enhancedProduct] = await enhanceProductsWithRatings([product], db);
 
     // Fetch performance metrics using optimized aggregation
     const performanceMetrics = await calculateProductPerformanceOptimized(

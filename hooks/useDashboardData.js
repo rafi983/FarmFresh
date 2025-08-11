@@ -150,10 +150,32 @@ export function useDashboardData() {
         (oldData) => {
           if (!oldData) return oldData;
 
-          const updatedProducts = oldData.products.map((product) => {
-            const shouldUpdate = productIds.includes(product._id || product.id);
-            return shouldUpdate ? { ...product, ...updateData } : product;
-          });
+          const updatedProducts = oldData.products
+            .map((product) => {
+              const shouldUpdate = productIds.includes(
+                product._id || product.id,
+              );
+              if (!shouldUpdate) return product;
+
+              const updatedProduct = { ...product, ...updateData };
+
+              // If product is being deactivated, it should be removed from public products page
+              if (updateData.status === "inactive") {
+                return null; // Mark for removal
+              }
+
+              return updatedProduct;
+            })
+            .filter(Boolean); // Remove null entries (deactivated products)
+
+          // If a product was activated, we need to check if it should be added
+          // This handles the case where an inactive product becomes active
+          const shouldAddActivatedProducts = updateData.status === "active";
+
+          if (shouldAddActivatedProducts) {
+            // For now, let the background refresh handle adding activated products
+            // to avoid complex logic here
+          }
 
           return {
             ...oldData,
@@ -161,6 +183,49 @@ export function useDashboardData() {
           };
         },
       );
+
+      // SYNC WITH PRODUCTS PAGE: Update products page cache too - Fixed to handle all filter variations
+      const productsQueryKeys = queryClient.getQueryCache().findAll({
+        queryKey: ["products"],
+      });
+
+      productsQueryKeys.forEach((query) => {
+        queryClient.setQueryData(query.queryKey, (oldData) => {
+          if (!oldData?.products) return oldData;
+
+          const updatedProducts = oldData.products
+            .map((product) => {
+              const shouldUpdate = productIds.includes(
+                product._id || product.id,
+              );
+              if (!shouldUpdate) return product;
+
+              const updatedProduct = { ...product, ...updateData };
+
+              // If product is being deactivated, it should be removed from public products page
+              if (updateData.status === "inactive") {
+                return null; // Mark for removal
+              }
+
+              return updatedProduct;
+            })
+            .filter(Boolean); // Remove null entries (deactivated products)
+
+          // If a product was activated, we need to check if it should be added
+          // This handles the case where an inactive product becomes active
+          const shouldAddActivatedProducts = updateData.status === "active";
+
+          if (shouldAddActivatedProducts) {
+            // For now, let the background refresh handle adding activated products
+            // to avoid complex logic here
+          }
+
+          return {
+            ...oldData,
+            products: updatedProducts,
+          };
+        });
+      });
 
       // Call the API
       const result = await apiService.bulkUpdateProducts(
@@ -200,6 +265,285 @@ export function useDashboardData() {
         refetchType: "active", // Force refetch to get correct data on error
       });
 
+      // Also revert products page cache
+      await queryClient.invalidateQueries({
+        queryKey: ["products"],
+        exact: false,
+        refetchType: "active",
+      });
+
+      throw error;
+    }
+  };
+
+  // Function to delete product with optimistic updates (similar to bulkUpdateProducts)
+  const deleteProduct = async (productId) => {
+    try {
+      // OPTIMISTIC UPDATE: Remove the product from dashboard cache immediately
+      queryClient.setQueryData(
+        ["dashboard", userIds?.userId, userIds?.userEmail],
+        (oldData) => {
+          if (!oldData) return oldData;
+
+          const updatedProducts = oldData.products.filter(
+            (product) => product._id !== productId && product.id !== productId,
+          );
+
+          return {
+            ...oldData,
+            products: updatedProducts,
+          };
+        },
+      );
+
+      // SYNC WITH PRODUCTS PAGE: Also remove from products page cache - Fixed to handle all filter variations
+      const productsQueryKeys = queryClient.getQueryCache().findAll({
+        queryKey: ["products"],
+      });
+
+      productsQueryKeys.forEach((query) => {
+        queryClient.setQueryData(query.queryKey, (oldData) => {
+          if (!oldData?.products) return oldData;
+
+          const filteredProducts = oldData.products.filter(
+            (product) => product._id !== productId && product.id !== productId,
+          );
+
+          return {
+            ...oldData,
+            products: filteredProducts,
+            meta: {
+              ...oldData.meta,
+              total: filteredProducts.length,
+            },
+          };
+        });
+      });
+
+      // Call the API
+      const response = await fetch(`/api/products/${productId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (jsonError) {
+          errorData = {
+            error: `HTTP ${response.status}: ${response.statusText}`,
+          };
+        }
+        throw new Error(errorData.error || "Failed to delete product");
+      }
+
+      const result = await response.json();
+
+      if (!result.success && !result.message) {
+        throw new Error(result.error || "Failed to delete product");
+      }
+
+      // Clear API service caches
+      if (apiService.clearProductsCache) {
+        apiService.clearProductsCache();
+      }
+
+      // Set a delayed background refresh to sync with server data
+      setTimeout(async () => {
+        queryClient.invalidateQueries({
+          queryKey: ["dashboard", userIds?.userId, userIds?.userEmail],
+          exact: true,
+          refetchType: "none",
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["products"],
+          exact: false,
+          refetchType: "none",
+        });
+      }, 5000);
+
+      return { success: true };
+    } catch (error) {
+      console.error("❌ [Dashboard] Product deletion failed:", error);
+
+      // If API call failed, revert the optimistic update by refetching both caches
+      await queryClient.invalidateQueries({
+        queryKey: ["dashboard", userIds?.userId, userIds?.userEmail],
+        exact: true,
+        refetchType: "active",
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: ["products"],
+        exact: false,
+        refetchType: "active",
+      });
+
+      throw error;
+    }
+  };
+
+  // Function to add product with optimistic updates (similar to bulkUpdateProducts and deleteProduct)
+  const addProduct = async (productData) => {
+    try {
+      // Generate a temporary ID for optimistic update
+      const tempId = `temp_${Date.now()}`;
+      const optimisticProduct = {
+        ...productData,
+        _id: tempId,
+        id: tempId,
+      };
+
+      // OPTIMISTIC UPDATE: Add the product to dashboard cache immediately
+      queryClient.setQueryData(
+        ["dashboard", userIds?.userId, userIds?.userEmail],
+        (oldData) => {
+          if (!oldData) return oldData;
+
+          return {
+            ...oldData,
+            products: [...oldData.products, optimisticProduct],
+          };
+        },
+      );
+
+      // SYNC WITH PRODUCTS PAGE: Also add to products page cache - Fixed to handle all filter variations
+      const productsQueryKeys = queryClient.getQueryCache().findAll({
+        queryKey: ["products"],
+      });
+
+      productsQueryKeys.forEach((query) => {
+        queryClient.setQueryData(query.queryKey, (oldData) => {
+          if (!oldData) return oldData;
+
+          // Only add to products page cache if the product should be visible in public context
+          // (i.e., only add active products to products page cache)
+          const shouldAddToPublicCache = optimisticProduct.status === "active";
+
+          if (!shouldAddToPublicCache) {
+            // Don't add inactive products to the public products page cache
+            return oldData;
+          }
+
+          return {
+            ...oldData,
+            products: [...oldData.products, optimisticProduct],
+            meta: {
+              ...oldData.meta,
+              total: (oldData.meta?.total || 0) + 1,
+            },
+          };
+        });
+      });
+
+      // Call the API
+      const response = await fetch("/api/products", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(productData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create product");
+      }
+
+      const result = await response.json();
+
+      const finalProduct = {
+        ...productData,
+        _id: result.productId,
+        id: result.productId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        status: "active",
+        averageRating: 0,
+        totalReviews: 0,
+        reviewCount: 0,
+        purchaseCount: 0,
+      };
+
+      // Update dashboard cache with real product data (replace temp with actual)
+      queryClient.setQueryData(
+        ["dashboard", userIds?.userId, userIds?.userEmail],
+        (oldData) => {
+          if (!oldData) return oldData;
+
+          const updatedProducts = oldData.products.map((product) =>
+            product._id === tempId || product.id === tempId
+              ? finalProduct
+              : product,
+          );
+
+          return {
+            ...oldData,
+            products: updatedProducts,
+          };
+        },
+      );
+
+      // Update products page cache with real product data too - Fixed to handle all filter variations
+      const productsQueryKeysForUpdate = queryClient.getQueryCache().findAll({
+        queryKey: ["products"],
+      });
+
+      productsQueryKeysForUpdate.forEach((query) => {
+        queryClient.setQueryData(query.queryKey, (oldData) => {
+          if (!oldData) return oldData;
+
+          const updatedProducts = oldData.products.map((product) =>
+            product._id === tempId || product.id === tempId
+              ? finalProduct
+              : product,
+          );
+
+          return {
+            ...oldData,
+            products: updatedProducts,
+          };
+        });
+      });
+
+      // Clear API service caches
+      if (apiService.clearProductsCache) {
+        apiService.clearProductsCache();
+      }
+
+      // Set a delayed background refresh to sync with server data
+      setTimeout(async () => {
+        queryClient.invalidateQueries({
+          queryKey: ["dashboard", userIds?.userId, userIds?.userEmail],
+          exact: true,
+          refetchType: "none",
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["products"],
+          exact: false,
+          refetchType: "none",
+        });
+      }, 5000);
+
+      return { success: true, productId: result.productId };
+    } catch (error) {
+      console.error("❌ [Dashboard] Product creation failed:", error);
+
+      // If API call failed, revert the optimistic update by refetching both caches
+      await queryClient.invalidateQueries({
+        queryKey: ["dashboard", userIds?.userId, userIds?.userEmail],
+        exact: true,
+        refetchType: "active",
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: ["products"],
+        exact: false,
+        refetchType: "active",
+      });
+
       throw error;
     }
   };
@@ -218,5 +562,7 @@ export function useDashboardData() {
     updateOrderInCache,
     updateProductInCache,
     updateBulkProductsInCache,
+    deleteProduct,
+    addProduct,
   };
 }

@@ -1711,47 +1711,82 @@ export default function FarmerPage() {
                   </div>
 
                   {/* Prismatic Community Impact */}
-                  <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 dark:from-purple-900/20 dark:via-pink-900/20 dark:to-rose-900/20 p-8 hover:shadow-2xl transition-all duration-700 border border-purple-200 dark:border-purple-800">
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-400/10 to-pink-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                    <div className="absolute bottom-4 left-4 w-12 h-12 bg-purple-100 dark:bg-purple-800/30 rounded-full opacity-30 group-hover:animate-pulse"></div>
+                  {/* Dynamic Farm Specializations Card */}
+                  <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-emerald-900/20 dark:via-teal-900/20 dark:to-cyan-900/20 p-8 hover:shadow-2xl transition-all duration-700 border border-emerald-200 dark:border-emerald-800">
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-teal-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div className="absolute top-4 right-4 w-16 h-16 bg-emerald-100 dark:bg-emerald-800/30 rounded-full opacity-20 group-hover:scale-150 group-hover:rotate-180 transition-all duration-700"></div>
                     <div className="relative z-10">
                       <div className="flex items-center justify-between mb-6">
-                        <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center transform group-hover:rotate-45 transition-transform duration-500 shadow-lg">
-                          <i className="fas fa-calendar text-2xl text-white"></i>
+                        <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center transform group-hover:rotate-12 transition-transform duration-500 shadow-lg">
+                          <i className="fas fa-spa text-2xl text-white"></i>
                         </div>
                         <div className="text-right">
-                          <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-1">
-                            {calculateYearsOfExperience(
-                              farmer.joinedDate,
-                              farmer.createdAt,
-                            )}
+                          <div className="text-4xl font-bold text-emerald-600 dark:text-emerald-400 mb-1">
+                            {farmer.specializations?.length ||
+                              stats.categories?.length ||
+                              3}
                           </div>
-                          <div className="text-purple-500 dark:text-purple-300 text-sm font-medium">
-                            Years Experience
+                          <div className="text-emerald-500 dark:text-emerald-300 text-sm font-medium">
+                            Specializations
                           </div>
                         </div>
                       </div>
                       <div className="space-y-3">
-                        <div className="flex justify-between text-gray-700 dark:text-gray-300">
-                          <span>Farm Size</span>
-                          <span className="font-bold text-pink-600 dark:text-pink-400">
-                            {farmer.farmSize
-                              ? `${farmer.farmSize} ${farmer.farmSizeUnit}`
-                              : "Not specified"}
-                          </span>
+                        <div className="text-center">
+                          <div className="flex flex-wrap gap-1 justify-center mb-3">
+                            {(
+                              farmer.specializations?.slice(0, 3) ||
+                              stats.categories?.slice(0, 3) || [
+                                "Organic",
+                                "Fresh",
+                                "Quality",
+                              ]
+                            ).map((spec, index) => {
+                              const icons = {
+                                Grains: "fas fa-seedling",
+                                Fruits: "fas fa-apple-alt",
+                                Vegetables: "fas fa-carrot",
+                                Herbs: "fas fa-leaf",
+                                Honey: "fas fa-bug",
+                                Dairy: "fas fa-glass-whiskey",
+                                Organic: "fas fa-leaf",
+                                Fresh: "fas fa-sun",
+                                Quality: "fas fa-star",
+                              };
+                              const colors = [
+                                "text-emerald-500",
+                                "text-teal-500",
+                                "text-cyan-500",
+                              ];
+                              return (
+                                <div
+                                  key={index}
+                                  className="flex items-center bg-white/70 dark:bg-emerald-900/30 rounded-full px-2 py-1"
+                                >
+                                  <i
+                                    className={`${icons[spec] || "fas fa-spa"} ${colors[index % 3]} text-xs mr-1`}
+                                  ></i>
+                                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                    {spec}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <div className="flex-1 h-2 bg-purple-100 dark:bg-purple-900/30 rounded-full overflow-hidden">
+                          <div className="flex-1 h-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
-                              style={{
-                                width: farmer.verified ? "100%" : "75%",
-                              }}
+                              className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full animate-pulse"
+                              style={{ width: "90%" }}
                             ></div>
                           </div>
-                          <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
-                            {farmer.verified ? "Verified" : "Pending"}
+                          <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                            Expert
                           </span>
+                        </div>
+                        <div className="text-center text-xs text-gray-500 dark:text-gray-400">
+                          Premium farm specialties
                         </div>
                       </div>
                     </div>

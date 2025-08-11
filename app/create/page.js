@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Footer from "@/components/Footer";
+import { useDashboardData } from "@/hooks/useDashboardData";
 
 export default function CreateProduct() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { addProduct } = useDashboardData(); // Use the optimistic addProduct function
   const [loading, setLoading] = useState(false);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [imageFiles, setImageFiles] = useState([]);
@@ -182,46 +184,36 @@ export default function CreateProduct() {
 
       console.log("Creating product:", productData);
 
-      const response = await fetch("/api/products", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(productData),
-      });
+      // Use the addProduct function from hook with optimistic updates
+      const result = await addProduct(productData);
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log("Product created successfully:", result);
-
-        alert("Product added successfully!");
-
-        // Reset form
-        setFormData({
-          name: "",
-          category: "",
-          description: "",
-          price: "",
-          stock: "",
-          unit: "",
-          features: [],
-          images: [],
-          farmLocation: "",
-          harvestDate: "",
-        });
-        setImagePreviews([]);
-        setImageFiles([]);
-
-        // Redirect to manage products page
-        router.push("/manage");
-      } else {
-        const errorData = await response.json();
-        console.error("Failed to create product:", errorData);
-        alert(`Failed to add product: ${errorData.error || "Unknown error"}`);
+      if (!result.success) {
+        throw new Error("Failed to create product");
       }
+
+      alert("Product added successfully!");
+
+      // Reset form
+      setFormData({
+        name: "",
+        category: "",
+        description: "",
+        price: "",
+        stock: "",
+        unit: "",
+        features: [],
+        images: [],
+        farmLocation: "",
+        harvestDate: "",
+      });
+      setImagePreviews([]);
+      setImageFiles([]);
+
+      // Redirect to manage products page
+      router.push("/manage");
     } catch (error) {
       console.error("Error creating product:", error);
-      alert("Failed to add product. Please try again.");
+      alert(`Failed to add product: ${error.message || "Please try again."}`);
     } finally {
       setLoading(false);
     }

@@ -25,6 +25,9 @@ export function useProductsQuery(filters = {}, options = {}) {
 export function useProductsCache() {
   const queryClient = useQueryClient();
 
+  // Remove the problematic dashboard cache listener that was causing race conditions
+  // Instead, rely on the direct cache updates from dashboard operations
+
   return {
     // Invalidate products cache to trigger refetch
     invalidateProducts: () => {
@@ -43,8 +46,6 @@ export function useProductsCache() {
 
     // Enhanced refresh with comprehensive cache clearing
     refetchProducts: () => {
-      console.log("🔄 Refetching products with cache clearing");
-
       // Clear all related caches
       apiService.clearProductsCache();
       apiService.clearFarmersCache();
@@ -64,28 +65,90 @@ export function useProductsCache() {
 
     // Update product data in cache with farmer name sync
     updateProductInCache: (productId, updatedData) => {
-      // Update in React Query cache
-      queryClient.setQueryData(PRODUCTS_QUERY_KEY, (oldData) => {
-        if (!oldData?.products) return oldData;
+      // Update in React Query cache for products page
+      queryClient.setQueriesData(
+        { queryKey: PRODUCTS_QUERY_KEY, exact: false },
+        (oldData) => {
+          if (!oldData?.products) return oldData;
 
-        return {
-          ...oldData,
-          products: oldData.products.map((product) =>
-            product._id === productId
-              ? { ...product, ...updatedData }
-              : product,
-          ),
-        };
-      });
+          return {
+            ...oldData,
+            products: oldData.products.map((product) =>
+              product._id === productId || product.id === productId
+                ? { ...product, ...updatedData }
+                : product,
+            ),
+          };
+        },
+      );
 
-      // Also clear API service cache to ensure consistency
+      // Also update dashboard cache if it exists
+      queryClient.setQueriesData(
+        { queryKey: ["dashboard"], exact: false },
+        (oldData) => {
+          if (!oldData?.products) return oldData;
+
+          return {
+            ...oldData,
+            products: oldData.products.map((product) =>
+              product._id === productId || product.id === productId
+                ? { ...product, ...updatedData }
+                : product,
+            ),
+          };
+        },
+      );
+
+      // Clear API service cache
       apiService.clearProductsCache();
+    },
+
+    // Add product to both caches (for new product additions)
+    addProductToCache: (newProduct) => {
+      // Add to products page cache
+      queryClient.setQueriesData(
+        { queryKey: PRODUCTS_QUERY_KEY, exact: false },
+        (oldData) => {
+          if (!oldData) return oldData;
+
+          return {
+            ...oldData,
+            products: [...oldData.products, newProduct],
+            meta: {
+              ...oldData.meta,
+              total: (oldData.meta?.total || 0) + 1,
+            },
+          };
+        },
+      );
+    },
+
+    // Remove product from both caches (for deletions)
+    removeProductFromCache: (productId) => {
+      // Remove from products page cache
+      queryClient.setQueriesData(
+        { queryKey: PRODUCTS_QUERY_KEY, exact: false },
+        (oldData) => {
+          if (!oldData?.products) return oldData;
+
+          const filteredProducts = oldData.products.filter(
+            (product) => product._id !== productId && product.id !== productId,
+          );
+
+          return {
+            ...oldData,
+            products: filteredProducts,
+            meta: {
+              ...oldData.meta,
+              total: filteredProducts.length,
+            },
+          };
+        },
+      );
     },
 
     // Force complete cache refresh - use this after farmer updates
     forceRefreshProducts: async (filters = {}) => {
-      console.log("🔄 Force refreshing products after farmer update");
-
       // Step 1: Clear all caches
       apiService.clearCache(); // Use the new clearCache method
 

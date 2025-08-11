@@ -59,6 +59,7 @@ export default function FarmerDashboard() {
     refetch: refetchDashboard,
     refreshDashboard,
     bulkUpdateProducts,
+    deleteProduct, // Import deleteProduct function
   } = useDashboardData();
 
   // UI state
@@ -371,45 +372,35 @@ export default function FarmerDashboard() {
       setActionLoading((prev) => ({ ...prev, [productId]: "delete" }));
 
       try {
-        const response = await fetch(`/api/products/${productId}`, {
-          method: "DELETE",
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-
-          if (response.status === 409) {
-            alert(
-              "❌ Cannot Delete Product\n\n" +
-                "This product has pending orders and cannot be deleted.\n" +
-                "Please wait for all orders to be completed or cancelled before deleting this product.\n\n" +
-                "You can temporarily deactivate the product instead by clicking the pause button.",
-            );
-            return;
-          } else if (response.status === 404) {
-            alert("❌ Product not found. It may have already been deleted.");
-            return;
-          } else {
-            throw new Error(errorData.error || "Failed to delete product");
-          }
-        }
-
-        const result = await response.json();
+        // Use the deleteProduct function from hook (includes optimistic cache updates)
+        const result = await deleteProduct(productId);
 
         if (!result.success) {
-          throw new Error(result.error || "Failed to delete product");
+          throw new Error("Failed to delete product");
         }
 
-        await refetchDashboard();
         alert("Product deleted successfully!");
       } catch (error) {
         console.error("Error deleting product:", error);
-        alert(`❌ Failed to delete product: ${error.message}`);
+
+        // Handle specific error cases
+        if (error.message.includes("pending orders")) {
+          alert(
+            "❌ Cannot Delete Product\n\n" +
+              "This product has pending orders and cannot be deleted.\n" +
+              "Please wait for all orders to be completed or cancelled before deleting this product.\n\n" +
+              "You can temporarily deactivate the product instead by clicking the pause button.",
+          );
+        } else if (error.message.includes("not found")) {
+          alert("❌ Product not found. It may have already been deleted.");
+        } else {
+          alert(`❌ Failed to delete product: ${error.message}`);
+        }
       } finally {
         setActionLoading((prev) => ({ ...prev, [productId]: null }));
       }
     },
-    [refetchDashboard],
+    [deleteProduct],
   );
 
   // Update functions

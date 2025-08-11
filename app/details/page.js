@@ -15,8 +15,8 @@ import EnhancedReviewModal from "@/components/EnhancedReviewModal";
 import useProductData from "@/hooks/useProductData";
 import useOwnership from "@/hooks/useOwnership";
 import { useReviewsQuery } from "@/hooks/useReviewsQuery";
-import { apiService } from "@/lib/api-service";
-import Loading from "@/components/Loading";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { useProductsCache } from "@/hooks/useProductsQuery";
 import NotFound from "@/components/NotFound";
 import FarmerDetailsLoading from "@/components/FarmerDetailsLoading";
 import CustomerDetailsLoading from "@/components/CustomerDetailsLoading";
@@ -72,6 +72,10 @@ export default function ProductDetails() {
     deleteReview,
   } = useReviewsQuery(productId, session?.user?.id);
   const isOwner = useOwnership(product, session, viewMode);
+
+  // Add dashboard data hook for optimistic caching
+  const { updateProductInCache } = useDashboardData();
+  const { updateProductInCache: updateProductsCache } = useProductsCache();
 
   // Core UI states
   const [selectedImage, setSelectedImage] = useState(0);
@@ -562,11 +566,13 @@ export default function ProductDetails() {
     setIsUpdating(true);
     try {
       const updateData = {};
+      const originalData = { stock: product.stock, price: product.price };
 
       if (stockUpdate && stockUpdate.trim() !== "") {
         const stockValue = parseInt(stockUpdate);
         if (isNaN(stockValue) || stockValue < 0) {
           alert("Please enter a valid stock number");
+          setIsUpdating(false);
           return;
         }
         updateData.stock = stockValue;
@@ -576,9 +582,25 @@ export default function ProductDetails() {
         const priceValue = parseFloat(priceUpdate);
         if (isNaN(priceValue) || priceValue <= 0) {
           alert("Please enter a valid price");
+          setIsUpdating(false);
           return;
         }
         updateData.price = priceValue;
+      }
+
+      // Optimistically update the product in dashboard cache
+      if (updateProductInCache) {
+        updateProductInCache(productId, {
+          ...updateData,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      // Optimistically update the product in products cache
+      if (updateProductsCache) {
+        updateProductsCache(productId, {
+          ...updateData,
+          updatedAt: new Date().toISOString(),
+        });
       }
 
       const response = await fetch(`/api/products/${productId}`, {
@@ -588,21 +610,62 @@ export default function ProductDetails() {
       });
 
       if (response.ok) {
+        const updatedProduct = await response.json();
+
+        // Update the dashboard cache with the server response
+        if (updateProductInCache && updatedProduct.product) {
+          updateProductInCache(productId, updatedProduct.product);
+        }
+        // Update the products cache with the server response
+        if (updateProductsCache && updatedProduct.product) {
+          updateProductsCache(productId, updatedProduct.product);
+        }
+
         alert("Product updated successfully!");
-        fetchProductDetails();
+        // Refresh the product details to sync with server
+        await fetchProductDetails();
         setStockUpdate("");
         setPriceUpdate("");
       } else {
         const error = await response.json();
+
+        // Revert optimistic update on error
+        if (updateProductInCache) {
+          updateProductInCache(productId, originalData);
+        }
+        if (updateProductsCache) {
+          updateProductsCache(productId, originalData);
+        }
+
         alert(error.error || "Failed to update product");
       }
     } catch (error) {
       console.error("Error updating product:", error);
+
+      // Revert optimistic update on error
+      if (updateProductInCache) {
+        const originalData = { stock: product.stock, price: product.price };
+        updateProductInCache(productId, originalData);
+      }
+      if (updateProductsCache) {
+        const originalData = { stock: product.stock, price: product.price };
+        updateProductsCache(productId, originalData);
+      }
+
       alert("Failed to update product. Please try again.");
     } finally {
       setIsUpdating(false);
     }
-  }, [isOwner, stockUpdate, priceUpdate, productId, fetchProductDetails]);
+  }, [
+    isOwner,
+    stockUpdate,
+    priceUpdate,
+    productId,
+    product,
+    updateProductInCache,
+    updateProductsCache,
+    fetchProductDetails,
+  ]);
 
   // Handle adding images to product
   const handleAddImages = useCallback(() => {
@@ -2065,20 +2128,6 @@ export default function ProductDetails() {
                                 );
                               });
                             })()}
-
-                            {/* Total Reviews Summary */}
-                            <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
-                              <div className="text-center text-sm text-gray-600 dark:text-gray-400">
-                                <span className="font-medium">
-                                  {(reviews?.length || 0) === 0 &&
-                                    "Be the first to review this product!"}
-                                  {(reviews?.length || 0) === 1 &&
-                                    "1 customer has reviewed this product"}
-                                  {(reviews?.length || 0) > 1 &&
-                                    `${reviews.length} customers have reviewed this product`}
-                                </span>
-                              </div>
-                            </div>
                           </div>
                         </div>
                       </div>
