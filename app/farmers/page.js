@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import Link from "next/link";
 import Footer from "@/components/Footer";
+import MessageButton from "@/components/messaging/MessageButton";
 import { useFarmersQuery, useFarmersCache } from "@/hooks/useFarmersQuery";
 import { useProductsQuery, useProductsCache } from "@/hooks/useProductsQuery";
 
@@ -675,9 +676,15 @@ export default function FarmersPage() {
                         <i className="fas fa-shopping-bag mr-1"></i>
                         View Products
                       </Link>
-                      <button className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                        <i className="fas fa-envelope"></i>
-                      </button>
+                      
+                      {/* Message Farmer Button */}
+                      <MessageButton
+                        recipientId={farmer._id}
+                        recipientName={farmer.name}
+                        recipientType="farmer"
+                        variant="icon"
+                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg"
+                      />
                     </div>
 
                     {/* Join Date */}

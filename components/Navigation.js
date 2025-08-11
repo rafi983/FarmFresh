@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { useCart } from "@/contexts/CartContext";
+import { useMessaging } from "@/contexts/MessagingContext";
 import { signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -14,6 +15,7 @@ export default function Navigation() {
   const { isDarkMode, toggleDarkMode } = useTheme();
   const { favorites } = useFavorites();
   const { cartItems, cartCount } = useCart();
+  const { totalUnreadCount } = useMessaging();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [updatedUserName, setUpdatedUserName] = useState(user?.name || "");
   const pathname = usePathname();
@@ -255,6 +257,20 @@ export default function Navigation() {
             {/* Cart and Favorites (only for authenticated users and not on simplified pages) */}
             {shouldShowSearchAndCart && isAuthenticated && (
               <>
+                {/* Messages */}
+                <Link
+                  href="/messages"
+                  className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition relative"
+                  title="Messages"
+                >
+                  <i className="far fa-envelope text-xl"></i>
+                  {totalUnreadCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {totalUnreadCount > 9 ? "9+" : totalUnreadCount}
+                    </span>
+                  )}
+                </Link>
+
                 <Link
                   href="/favorites"
                   className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition relative"
@@ -390,6 +406,19 @@ export default function Navigation() {
 
                         {/* Common menu items */}
                         <div className="border-t border-gray-200 dark:border-gray-700 mt-2 pt-2">
+                          <Link
+                            href="/messages"
+                            className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            onClick={() => setShowUserMenu(false)}
+                          >
+                            <i className="fas fa-envelope mr-2"></i>
+                            Messages
+                            {totalUnreadCount > 0 && (
+                              <span className="ml-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center inline-flex">
+                                {totalUnreadCount > 9 ? "9+" : totalUnreadCount}
+                              </span>
+                            )}
+                          </Link>
                           <Link
                             href="/profile"
                             className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"

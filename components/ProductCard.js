@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { useCart } from "@/contexts/CartContext";
 import StarRating from "./StarRating";
+import MessageButton from "./messaging/MessageButton";
 
 export default function ProductCard({ product, showAddToCart = true }) {
   const { data: session } = useSession();
@@ -257,37 +258,56 @@ export default function ProductCard({ product, showAddToCart = true }) {
 
         {/* Action Buttons */}
         {showAddToCart && (
-          <div className="flex gap-2">
-            <button
-              onClick={handleAddToCart}
-              disabled={isAddingToCart || isOutOfStock}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all duration-200 ${
-                isOutOfStock
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "bg-primary-600 hover:bg-primary-700 text-white"
-              } ${isAddingToCart ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
-              {isAddingToCart ? (
-                <>
-                  <i className="fas fa-spinner fa-spin mr-2"></i>
-                  Adding...
-                </>
-              ) : isOutOfStock ? (
-                "Out of Stock"
-              ) : (
-                <>
-                  <i className="fas fa-cart-plus mr-2"></i>
-                  Add to Cart
-                </>
-              )}
-            </button>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <button
+                onClick={handleAddToCart}
+                disabled={isAddingToCart || isOutOfStock}
+                className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all duration-200 ${
+                  isOutOfStock
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-primary-600 hover:bg-primary-700 text-white"
+                } ${isAddingToCart ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                {isAddingToCart ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                    Adding...
+                  </>
+                ) : isOutOfStock ? (
+                  "Out of Stock"
+                ) : (
+                  <>
+                    <i className="fas fa-cart-plus mr-2"></i>
+                    Add to Cart
+                  </>
+                )}
+              </button>
 
-            <Link
-              href={`/details?id=${product._id}`}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 flex items-center justify-center"
-            >
-              <i className="fas fa-eye"></i>
-            </Link>
+              <Link
+                href={`/details?id=${product._id}`}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 flex items-center justify-center"
+              >
+                <i className="fas fa-eye"></i>
+              </Link>
+            </div>
+
+            {/* Message Farmer Button */}
+            {session?.user?.userType !== "farmer" && product.farmerId && (
+              <MessageButton
+                recipientId={product.farmerId}
+                recipientName={
+                  product.farmer?.name ||
+                  product.farmer?.farmName ||
+                  product.farmerName ||
+                  "Farmer"
+                }
+                recipientType="farmer"
+                productName={product.name}
+                variant="secondary"
+                className="w-full"
+              />
+            )}
           </div>
         )}
 

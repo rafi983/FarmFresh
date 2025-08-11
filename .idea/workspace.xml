@@ -15,16 +15,10 @@
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/farmers/[id]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/farmers/[id]/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/products/[id]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/[id]/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/products/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/create/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/create/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/details/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/details/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/farmers/[id]/details/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmers/[id]/details/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/farmers/[id]/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmers/[id]/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/manage/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/manage/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hooks/useDashboardData.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useDashboardData.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hooks/useProductsQuery.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useProductsQuery.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/farmers/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmers/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/Navigation.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/Navigation.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/ProductCard.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/ProductCard.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/providers/Providers.js" beforeDir="false" afterPath="$PROJECT_DIR$/providers/Providers.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -140,7 +134,8 @@
       <workItem from="1754829481098" duration="3000" />
       <workItem from="1754831441751" duration="2238000" />
       <workItem from="1754838250054" duration="8194000" />
-      <workItem from="1754900082053" duration="17064000" />
+      <workItem from="1754900082053" duration="17190000" />
+      <workItem from="1754923306470" duration="8792000" />
     </task>
     <servers />
   </component>

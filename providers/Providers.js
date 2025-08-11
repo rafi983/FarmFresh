@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
 import { OrderUpdateProvider } from "@/contexts/OrderUpdateContext";
+import { MessagingProvider } from "@/contexts/MessagingContext";
 import { useState } from "react";
 
 export default function Providers({ children }) {
@@ -33,7 +34,9 @@ export default function Providers({ children }) {
           <ThemeProvider>
             <CartProvider>
               <FavoritesProvider>
-                <OrderUpdateProvider>{children}</OrderUpdateProvider>
+                <OrderUpdateProvider>
+                  <MessagingProvider>{children}</MessagingProvider>
+                </OrderUpdateProvider>
               </FavoritesProvider>
             </CartProvider>
           </ThemeProvider>
