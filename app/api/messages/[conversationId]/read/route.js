@@ -11,7 +11,8 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const conversationId = params.conversationId;
+    // Await params before using its properties
+    const { conversationId } = await params;
     if (!conversationId) {
       return NextResponse.json(
         { error: "Conversation ID required" },

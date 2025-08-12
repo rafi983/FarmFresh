@@ -147,13 +147,32 @@ function setCachedResponse(cacheKey, data) {
 
 // Optimized farmer lookup with proper indexing
 async function findFarmerOptimized(farmersCollection, id) {
-  // First, try to find farmer by ObjectId (for new farmers) - uses primary index
-  if (ObjectId.isValid(id)) {
-    const farmer = await farmersCollection.findOne({ _id: new ObjectId(id) });
-    if (farmer) return farmer;
+  // First, try to find farmer by string ID (for hardcoded farmers like "farmer_001")
+  // This should find the individual farmer documents we created for hardcoded farmers
+  let farmer = await farmersCollection.findOne({
+    _id: id,
+    farmers: { $exists: false }, // Ensure it's an individual document, not nested
+  });
+
+  if (farmer) {
+    console.log(`Found individual farmer document for ID: ${id}`);
+    return farmer;
   }
 
-  // Search in the farmers array (for hardcoded farmers) - uses nested_farmers_id_idx
+  // Second, try to find farmer by ObjectId (for new farmers) - uses primary index
+  if (ObjectId.isValid(id)) {
+    farmer = await farmersCollection.findOne({
+      _id: new ObjectId(id),
+      farmers: { $exists: false }, // Ensure it's an individual document, not nested
+    });
+    if (farmer) {
+      console.log(`Found farmer by ObjectId: ${id}`);
+      return farmer;
+    }
+  }
+
+  // Fallback: Search in the farmers array (for legacy hardcoded farmers) - uses nested_farmers_id_idx
+  console.log(`Falling back to nested structure for ID: ${id}`);
   const farmersDoc = await farmersCollection.findOne(
     { "farmers._id": id },
     { projection: { farmers: { $elemMatch: { _id: id } } } }, // Project only matching farmer
@@ -162,9 +181,11 @@ async function findFarmerOptimized(farmersCollection, id) {
   if (farmersDoc?.farmers?.[0]) {
     const farmer = farmersDoc.farmers[0];
     farmer._id = id; // Ensure consistent _id field
+    console.log(`Found farmer in nested structure: ${farmer.name}`);
     return farmer;
   }
 
+  console.log(`No farmer found for ID: ${id}`);
   return null;
 }
 

@@ -27,7 +27,7 @@ async function initializeFarmersIndexes(db) {
     const existingIndexes = await farmersCollection.listIndexes().toArray();
     const indexNames = existingIndexes.map((index) => index.name);
 
-    // Atlas-optimized compound indexes for farmers queries
+    // Simplified indexes for direct farmers only
     const indexesToCreate = [
       // Text search index with proper weights
       {
@@ -62,12 +62,6 @@ async function initializeFarmersIndexes(db) {
         name: "specializations_verified_idx",
         options: { background: true },
       },
-      // Nested farmers array index
-      {
-        key: { "farmers.name": 1, "farmers.location": 1 },
-        name: "nested_farmers_search_idx",
-        options: { background: true },
-      },
       // Verified/certification status
       {
         key: { verified: 1, isCertified: 1, createdAt: -1 },
@@ -86,7 +80,7 @@ async function initializeFarmersIndexes(db) {
     }
 
     farmersIndexesInitialized = true;
-    console.log("Atlas-optimized farmers indexes initialized successfully");
+    console.log("Simplified farmers indexes initialized successfully");
   } catch (error) {
     console.log("Farmers index initialization note:", error.message);
   }
@@ -227,7 +221,7 @@ async function enhanceFarmersWithStats(
   });
 }
 
-// Optimized farmers query using aggregation pipeline
+// Simplified farmers query - only direct farmers
 async function getFarmersOptimized(
   farmersCollection,
   search,
@@ -236,116 +230,36 @@ async function getFarmersOptimized(
   limit,
   page,
 ) {
-  const pipeline = [];
+  // Build match filter for direct farmers only
+  const matchFilter = {
+    // Only get documents that are direct farmers (have name and location fields)
+    name: { $exists: true, $ne: null },
+    location: { $exists: true, $ne: null },
+  };
 
-  // Build match stage for filtering
-  const matchStage = { $match: { $or: [] } };
-
-  // Handle both direct farmers and nested farmers structure
-  const directFarmerMatch = {};
-  const nestedFarmerMatch = {};
-
-  // Add search filters
+  // Add search filter
   if (search) {
-    directFarmerMatch.$text = { $search: search };
-    nestedFarmerMatch["farmers"] = {
-      $elemMatch: {
-        $or: [
-          { name: { $regex: search, $options: "i" } },
-          { description: { $regex: search, $options: "i" } },
-          { location: { $regex: search, $options: "i" } },
-          { farmName: { $regex: search, $options: "i" } },
-        ],
-      },
-    };
+    matchFilter.$text = { $search: search };
   }
 
   // Add specialization filter
   if (specialization) {
-    directFarmerMatch.specializations = {
+    matchFilter.specializations = {
       $elemMatch: { $regex: specialization, $options: "i" },
     };
-    if (nestedFarmerMatch["farmers"]) {
-      nestedFarmerMatch["farmers"].$elemMatch.$or.push({
-        specializations: {
-          $elemMatch: { $regex: specialization, $options: "i" },
-        },
-      });
-    } else {
-      nestedFarmerMatch["farmers"] = {
-        $elemMatch: {
-          specializations: {
-            $elemMatch: { $regex: specialization, $options: "i" },
-          },
-        },
-      };
-    }
   }
 
   // Add location filter
   if (location) {
-    directFarmerMatch.location = { $regex: location, $options: "i" };
-    if (nestedFarmerMatch["farmers"]) {
-      nestedFarmerMatch["farmers"].$elemMatch.$or =
-        nestedFarmerMatch["farmers"].$elemMatch.$or || [];
-      nestedFarmerMatch["farmers"].$elemMatch.$or.push({
-        location: { $regex: location, $options: "i" },
-      });
-    } else {
-      nestedFarmerMatch["farmers"] = {
-        $elemMatch: { location: { $regex: location, $options: "i" } },
-      };
-    }
+    matchFilter.location = { $regex: location, $options: "i" };
   }
 
-  // Add conditions for direct farmers
-  if (Object.keys(directFarmerMatch).length > 0) {
-    directFarmerMatch.name = { $exists: true };
-    directFarmerMatch.location = { $exists: true };
-    matchStage.$match.$or.push(directFarmerMatch);
-  }
-
-  // Add conditions for nested farmers
-  if (Object.keys(nestedFarmerMatch).length > 0) {
-    matchStage.$match.$or.push(nestedFarmerMatch);
-  }
-
-  // If no specific filters, match all documents
-  if (matchStage.$match.$or.length === 0) {
-    matchStage.$match = {};
-  }
-
-  pipeline.push(matchStage);
-
-  // Add facet stage for both direct and nested farmers
-  pipeline.push({
-    $facet: {
-      directFarmers: [
-        { $match: { name: { $exists: true }, location: { $exists: true } } },
-        { $project: { farmers: 0 } }, // Exclude nested farmers array
-      ],
-      nestedFarmers: [
-        { $match: { farmers: { $exists: true, $type: "array" } } },
-        { $unwind: "$farmers" },
-        { $replaceRoot: { newRoot: "$farmers" } },
-      ],
-    },
-  });
-
-  // Combine results
-  pipeline.push({
-    $project: {
-      allFarmers: { $concatArrays: ["$directFarmers", "$nestedFarmers"] },
-    },
-  });
-
-  pipeline.push({ $unwind: "$allFarmers" });
-  pipeline.push({ $replaceRoot: { newRoot: "$allFarmers" } });
-
-  // Add sorting (by verification status, then name)
-  pipeline.push({
-    $sort: { verified: -1, isCertified: -1, name: 1 },
-  });
+  // Build aggregation pipeline
+  const pipeline = [
+    { $match: matchFilter },
+    // Sort by verification status, then name
+    { $sort: { verified: -1, isCertified: -1, name: 1 } },
+  ];
 
   // Add pagination
   if (limit) {
@@ -357,109 +271,37 @@ async function getFarmersOptimized(
   return await farmersCollection.aggregate(pipeline).toArray();
 }
 
-// Get total count for pagination
+// Get total count for pagination - simplified for direct farmers only
 async function getFarmersCount(
   farmersCollection,
   search,
   specialization,
   location,
 ) {
-  const pipeline = [];
+  // Build match filter for direct farmers only
+  const matchFilter = {
+    name: { $exists: true, $ne: null },
+    location: { $exists: true, $ne: null },
+  };
 
-  // Build match stage (same as main query)
-  const matchStage = { $match: { $or: [] } };
-
-  const directFarmerMatch = {};
-  const nestedFarmerMatch = {};
-
+  // Add search filter
   if (search) {
-    directFarmerMatch.$text = { $search: search };
-    nestedFarmerMatch["farmers"] = {
-      $elemMatch: {
-        $or: [
-          { name: { $regex: search, $options: "i" } },
-          { description: { $regex: search, $options: "i" } },
-          { location: { $regex: search, $options: "i" } },
-          { farmName: { $regex: search, $options: "i" } },
-        ],
-      },
-    };
+    matchFilter.$text = { $search: search };
   }
 
+  // Add specialization filter
   if (specialization) {
-    directFarmerMatch.specializations = {
+    matchFilter.specializations = {
       $elemMatch: { $regex: specialization, $options: "i" },
     };
-    if (nestedFarmerMatch["farmers"]) {
-      nestedFarmerMatch["farmers"].$elemMatch.$or.push({
-        specializations: {
-          $elemMatch: { $regex: specialization, $options: "i" },
-        },
-      });
-    } else {
-      nestedFarmerMatch["farmers"] = {
-        $elemMatch: {
-          specializations: {
-            $elemMatch: { $regex: specialization, $options: "i" },
-          },
-        },
-      };
-    }
   }
 
+  // Add location filter
   if (location) {
-    directFarmerMatch.location = { $regex: location, $options: "i" };
-    if (nestedFarmerMatch["farmers"]) {
-      nestedFarmerMatch["farmers"].$elemMatch.$or =
-        nestedFarmerMatch["farmers"].$elemMatch.$or || [];
-      nestedFarmerMatch["farmers"].$elemMatch.$or.push({
-        location: { $regex: location, $options: "i" },
-      });
-    } else {
-      nestedFarmerMatch["farmers"] = {
-        $elemMatch: { location: { $regex: location, $options: "i" } },
-      };
-    }
+    matchFilter.location = { $regex: location, $options: "i" };
   }
 
-  if (Object.keys(directFarmerMatch).length > 0) {
-    directFarmerMatch.name = { $exists: true };
-    directFarmerMatch.location = { $exists: true };
-    matchStage.$match.$or.push(directFarmerMatch);
-  }
-
-  if (Object.keys(nestedFarmerMatch).length > 0) {
-    matchStage.$match.$or.push(nestedFarmerMatch);
-  }
-
-  if (matchStage.$match.$or.length === 0) {
-    matchStage.$match = {};
-  }
-
-  pipeline.push(matchStage);
-
-  pipeline.push({
-    $facet: {
-      directFarmers: [
-        { $match: { name: { $exists: true }, location: { $exists: true } } },
-        { $count: "count" },
-      ],
-      nestedFarmers: [
-        { $match: { farmers: { $exists: true, $type: "array" } } },
-        { $unwind: "$farmers" },
-        { $count: "count" },
-      ],
-    },
-  });
-
-  const result = await farmersCollection.aggregate(pipeline).toArray();
-
-  if (result.length === 0) return 0;
-
-  const directCount = result[0].directFarmers[0]?.count || 0;
-  const nestedCount = result[0].nestedFarmers[0]?.count || 0;
-
-  return directCount + nestedCount;
+  return await farmersCollection.countDocuments(matchFilter);
 }
 
 export async function GET(request) {
@@ -481,9 +323,9 @@ export async function GET(request) {
     const location = searchParams.get("location");
     const limit = searchParams.get("limit")
       ? parseInt(searchParams.get("limit"))
-      : 12; // Default pagination limit
+      : 50;
     const page = parseInt(searchParams.get("page")) || 1;
-    const includeStats = searchParams.get("includeStats") !== "false"; // Default to true
+    const includeStats = searchParams.get("includeStats") !== "false";
 
     // Reuse database connections
     if (!cachedDb) {
@@ -496,7 +338,7 @@ export async function GET(request) {
     // Initialize indexes only once
     await initializeFarmersIndexes(cachedDb);
 
-    // Get farmers using optimized aggregation pipeline
+    // Get farmers using simplified query
     const [farmers, totalCount] = await Promise.all([
       getFarmersOptimized(
         cachedFarmersCollection,
@@ -514,7 +356,7 @@ export async function GET(request) {
       ),
     ]);
 
-    // Enhance farmers with product statistics if requested
+    // Enhance with stats if requested
     const enhancedFarmers = includeStats
       ? await enhanceFarmersWithStats(
           cachedFarmersCollection,
@@ -526,15 +368,30 @@ export async function GET(request) {
           profilePicture: farmer.profilePicture || farmer.profileImage,
           bio: farmer.bio || farmer.description,
           verified: farmer.verified || farmer.isCertified || false,
+          stats: {
+            totalProducts: 0,
+            activeProducts: 0,
+            averageRating: 0,
+            totalSales: 0,
+            featuredProducts: 0,
+          },
         }));
 
     const responseData = {
       farmers: enhancedFarmers,
-      total: totalCount,
-      page,
-      totalPages: Math.ceil(totalCount / limit),
-      hasNextPage: page * limit < totalCount,
-      hasPrevPage: page > 1,
+      pagination: {
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit),
+        hasNext: page < Math.ceil(totalCount / limit),
+        hasPrev: page > 1,
+      },
+      filters: {
+        search: search || "",
+        specialization: specialization || "",
+        location: location || "",
+      },
     };
 
     // Cache the response
@@ -543,10 +400,9 @@ export async function GET(request) {
     const response = NextResponse.json(responseData);
     response.headers.set("X-Cache", "MISS");
     response.headers.set("Cache-Control", "public, max-age=300");
-
     return response;
   } catch (error) {
-    console.error("Error fetching farmers:", error);
+    console.error("Error in farmers API:", error);
     return NextResponse.json(
       { error: "Failed to fetch farmers" },
       { status: 500 },
@@ -608,6 +464,19 @@ export async function PUT(request) {
         ...farmer.address, // Keep existing address
         ...body.address, // Override with new data
       };
+
+      // IMPORTANT: Also update the location field for display compatibility
+      // Combine address fields into a location string for farmer page display
+      const addressParts = [];
+      if (body.address.street) addressParts.push(body.address.street);
+      if (body.address.city) addressParts.push(body.address.city);
+      if (body.address.state) addressParts.push(body.address.state);
+      if (body.address.country) addressParts.push(body.address.country);
+
+      // Update location field with formatted address string
+      if (addressParts.length > 0) {
+        updateData.location = addressParts.join(", ");
+      }
     }
 
     // Update business information
@@ -640,7 +509,7 @@ export async function PUT(request) {
 
     if (body.name) {
       try {
-        const productsUpdateResult = await db.collection("products").updateMany(
+        await db.collection("products").updateMany(
           {
             $or: [
               { farmerId: farmer._id },

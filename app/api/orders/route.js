@@ -269,13 +269,76 @@ export async function GET(request) {
     const startTime = Date.now();
 
     // First get the orders
-    const orders = await cachedOrdersCollection.aggregate(pipeline).toArray();
+    let orders = await cachedOrdersCollection.aggregate(pipeline).toArray();
 
-    // Then get the total count
+    // Then get the total count BEFORE filtering for accurate pagination
     const totalCount =
       limit < 1000
         ? await cachedOrdersCollection.countDocuments(query)
         : orders.length;
+
+    // IMPORTANT: Filter order items for farmers to show only their products
+    if (farmerId || farmerEmail) {
+      console.log(
+        `Filtering order items for farmer: ${farmerId || farmerEmail}`,
+      );
+
+      orders = orders.map((order) => {
+        // Filter items to only include those belonging to the current farmer
+        const filteredItems =
+          order.items?.filter((item) => {
+            // Check multiple ways the farmer might be identified in the item
+            const itemFarmerId =
+              item.farmerId || item.farmer?.id || item.farmer?._id;
+            const itemFarmerEmail = item.farmerEmail || item.farmer?.email;
+            const itemFarmerName = item.farmerName || item.farmer?.name;
+
+            // Match by farmer ID
+            if (
+              farmerId &&
+              (itemFarmerId === farmerId || itemFarmerId === farmerId)
+            ) {
+              return true;
+            }
+
+            // Match by farmer email
+            if (farmerEmail && itemFarmerEmail === farmerEmail) {
+              return true;
+            }
+
+            // For hardcoded farmers, also try matching by name if we have it
+            // This is a fallback for older orders that might not have proper farmer IDs
+            if (farmerEmail && itemFarmerName) {
+              // We need to get the farmer name from the farmer collection
+              // For now, we'll rely on the ID and email matching
+              return false;
+            }
+
+            return false;
+          }) || [];
+
+        // Calculate the farmer-specific subtotal from filtered items
+        const farmerSubtotal = filteredItems.reduce((sum, item) => {
+          return sum + (item.subtotal || item.price * item.quantity || 0);
+        }, 0);
+
+        // Return order with filtered items and updated subtotal
+        return {
+          ...order,
+          items: filteredItems,
+          farmerSubtotal: farmerSubtotal,
+          originalItemCount: order.items?.length || 0, // For debugging
+          filteredItemCount: filteredItems.length, // For debugging
+        };
+      });
+
+      // Remove orders that have no items after filtering (shouldn't happen with proper query, but safety check)
+      orders = orders.filter((order) => order.items && order.items.length > 0);
+
+      console.log(
+        `Filtered orders: ${orders.length} orders with farmer-specific items`,
+      );
+    }
 
     const queryTime = Date.now() - startTime;
     console.log(

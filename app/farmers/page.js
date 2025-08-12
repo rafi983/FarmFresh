@@ -16,7 +16,7 @@ export default function FarmersPage() {
   const farmersCache = useFarmersCache();
   const productsCache = useProductsCache();
 
-  // React Query data fetching (consistent with products page)
+  // React Query data fetching
   const {
     data: farmersData,
     isLoading: farmersLoading,
@@ -24,19 +24,15 @@ export default function FarmersPage() {
     refetch: refetchFarmers,
   } = useFarmersQuery();
 
-  const {
-    data: productsData,
-    isLoading: productsLoading,
-    refetch: refetchProducts,
-  } = useProductsQuery({}, { enabled: true });
+  const { data: productsData, isLoading: productsLoading } = useProductsQuery(
+    { limit: 100 },
+    { enabled: true },
+  );
 
-  // Auto-refresh data when page becomes visible (handles browser tab switching)
+  // Auto-refresh data when page becomes visible
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log(
-          "🔄 Page became visible, refreshing farmers and products data",
-        );
         farmersCache.invalidateFarmers();
         productsCache.invalidateProducts();
       }
@@ -51,7 +47,7 @@ export default function FarmersPage() {
   const farmers = farmersData?.farmers || [];
   const products = productsData?.products || [];
 
-  // Loading state - show loading if any essential data is loading
+  // Loading state
   const loading = farmersLoading || productsLoading;
   const error = farmersError;
 
@@ -63,152 +59,158 @@ export default function FarmersPage() {
   // Calculate dynamic stats based on farmers and products data
   const getStats = () => {
     const totalFarmers = farmers.length;
-    const totalProducts = products.length;
 
-    // Filter active/available products with more detailed logging
-    const activeProducts = products.filter((product) => {
-      // Don't count deleted or inactive products
+    // Get farmer identifiers for comprehensive matching
+    const farmerIds = farmers.map((f) => f._id).filter(Boolean);
+    const farmerEmails = farmers.map((f) => f.email).filter(Boolean);
+    const farmerNames = farmers.map((f) => f.name).filter(Boolean);
+
+    // More comprehensive product filtering with detailed matching
+    const farmerProducts = products.filter((product) => {
+      // Direct farmer ID match (string or ObjectId)
+      if (product.farmerId) {
+        const matches =
+          farmerIds.includes(product.farmerId) ||
+          farmerIds.includes(product.farmerId.toString());
+        if (matches) return true;
+      }
+
+      // Farmer email match
+      if (product.farmerEmail && farmerEmails.includes(product.farmerEmail)) {
+        return true;
+      }
+
+      // Farmer name match
+      if (product.farmerName && farmerNames.includes(product.farmerName)) {
+        return true;
+      }
+
+      // Nested farmer object matches
+      if (product.farmer) {
+        if (product.farmer._id && farmerIds.includes(product.farmer._id)) {
+          return true;
+        }
+        if (
+          product.farmer.email &&
+          farmerEmails.includes(product.farmer.email)
+        ) {
+          return true;
+        }
+        if (product.farmer.name && farmerNames.includes(product.farmer.name)) {
+          return true;
+        }
+      }
+
+      // Additional checks for owner fields
+      if (product.owner && farmerIds.includes(product.owner)) {
+        return true;
+      }
+
+      // Check if product has any farmer reference at all
+      if (product.createdBy && farmerEmails.includes(product.createdBy)) {
+        return true;
+      }
+
+      return false;
+    });
+
+    const totalProducts = farmerProducts.length;
+
+    // Filter active/available products from farmer products only
+    const activeProducts = farmerProducts.filter((product) => {
+      // Skip deleted or inactive products
       if (product.status === "deleted" || product.status === "inactive") {
         return false;
       }
-
-      // Count products that have stock or don't have stock field defined
-      // Be more permissive with stock checking
       const hasStock =
         product.stock === undefined ||
         product.stock === null ||
-        parseInt(product.stock) > 0 ||
-        product.stock === "";
+        product.stock === "" ||
+        (typeof product.stock === "string" && product.stock.trim() === "") ||
+        parseInt(product.stock) > 0;
+
       return hasStock;
     });
 
-    // Get unique categories from products with better handling
+    // Get unique categories from farmer products only
     const categories = new Set();
-    products.forEach((product) => {
-      if (product.category && product.category.trim()) {
-        // Normalize category names
+    farmerProducts.forEach((product) => {
+      if (
+        product.category &&
+        typeof product.category === "string" &&
+        product.category.trim()
+      ) {
         categories.add(product.category.toLowerCase().trim());
       }
     });
     const categoriesCount = categories.size;
 
-    return {
+    const stats = {
       totalFarmers,
       totalProducts,
       activeProducts: activeProducts.length,
       categoriesCount,
     };
+
+    return stats;
   };
 
   const loadMoreFarmers = () => {
     setShowAllFarmers(true);
   };
 
-  const getFarmerProductCount = (farmerId) => {
-    const matchingProducts = products.filter((product) => {
-      // Get all possible farmer identifiers from product
-      const productFarmerId =
-        product.farmer?.id || product.farmer?._id || product.farmerId;
-      const productFarmerEmail = product.farmer?.email || product.farmerEmail;
-      const productFarmerName = product.farmer?.name || product.farmerName;
+  // Calculate farmer rating based on their products
+  const getFarmerRating = useCallback(
+    (farmerId) => {
+      if (!farmerId || !products.length) return 0;
 
-      // Try matching by ID first (most reliable)
-      const matchesById = productFarmerId === farmerId;
-
-      // For additional verification, also try matching by email
       const farmer = farmers.find((f) => f._id === farmerId);
-      const farmerEmail = farmer?.email;
-      const matchesByEmail = farmerEmail && productFarmerEmail === farmerEmail;
+      if (!farmer) return 0;
 
-      // As fallback, try matching by name
-      const farmerName = farmer?.name;
-      const matchesByName = farmerName && productFarmerName === farmerName;
+      // Simple direct matching for farmer products
+      const farmerProducts = products.filter((product) => {
+        return (
+          product.farmerId === farmerId ||
+          product.farmerId === farmerId.toString()
+        );
+      });
 
-      const isMatch = matchesById || matchesByEmail || matchesByName;
+      if (farmerProducts.length === 0) return 0;
 
-      return isMatch;
-    });
-
-    return matchingProducts.length;
-  };
-
-  const getFarmerRating = (farmerId) => {
-    const farmer = farmers.find((f) => f._id === farmerId);
-    const farmerEmail = farmer?.email;
-
-    const farmerProducts = products.filter((product) => {
-      const productFarmerId =
-        product.farmer?.id || product.farmer?._id || product.farmerId;
-      const productFarmerName = product.farmer?.name || product.farmerName;
-      const productFarmerEmail = product.farmer?.email || product.farmerEmail;
-
-      // Use the same matching logic as the farmer ID page
-      const matchesById = productFarmerId === farmerId;
-      const matchesByObjectId = productFarmerId === farmerId;
-      const farmerName = farmer?.name;
-      const matchesByName = farmerName && productFarmerName === farmerName;
-      const matchesByEmail = farmerEmail && productFarmerEmail === farmerEmail;
-
-      return (
-        matchesById || matchesByObjectId || matchesByName || matchesByEmail
+      // Calculate average rating from products that have ratings
+      const productsWithRatings = farmerProducts.filter(
+        (p) => p.averageRating && parseFloat(p.averageRating) > 0,
       );
-    });
 
-    if (farmerProducts.length === 0) return 0;
+      if (productsWithRatings.length === 0) return 0;
 
-    // Calculate simple average of product ratings (only products with ratings)
-    const productsWithRatings = farmerProducts.filter(
-      (p) => parseFloat(p.averageRating) > 0,
-    );
-
-    if (productsWithRatings.length > 0) {
-      const totalRating = productsWithRatings.reduce((sum, p) => {
-        return sum + parseFloat(p.averageRating);
-      }, 0);
-
-      return (totalRating / productsWithRatings.length).toFixed(1);
-    }
-
-    return 0;
-  };
-
-  // Updated function to get total review count for a farmer from both sources
-  const getFarmerReviewCount = (farmerId) => {
-    const farmer = farmers.find((f) => f._id === farmerId);
-    const farmerEmail = farmer?.email;
-
-    const farmerProducts = products.filter((product) => {
-      const productFarmerId =
-        product.farmer?.id || product.farmer?._id || product.farmerId;
-      const productFarmerName = product.farmer?.name || product.farmerName;
-      const productFarmerEmail = product.farmer?.email || product.farmerEmail;
-
-      // Use the same matching logic as the farmer ID page
-      const matchesById = productFarmerId === farmerId;
-      const matchesByObjectId = productFarmerId === farmerId;
-      const farmerName = farmer?.name;
-      const matchesByName = farmerName && productFarmerName === farmerName;
-      const matchesByEmail = farmerEmail && productFarmerEmail === farmerEmail;
-
-      return (
-        matchesById || matchesByObjectId || matchesByName || matchesByEmail
+      const totalRating = productsWithRatings.reduce(
+        (sum, product) => sum + parseFloat(product.averageRating),
+        0,
       );
-    });
 
-    // Count embedded reviews in products
-    const productReviewsCount = farmerProducts.reduce(
-      (sum, product) => sum + (product.reviews?.length || 0),
-      0,
-    );
+      return Math.round((totalRating / productsWithRatings.length) * 10) / 10;
+    },
+    [farmers, products],
+  );
 
-    // Note: We don't have access to separate reviews in this component
-    // This would need to be fetched separately if needed
-    return productReviewsCount;
-  };
-
-  // Display logic for farmers
+  // Display logic for farmers - Sort real farmers first, then hardcoded farmers
   const displayedFarmers = useMemo(() => {
-    return showAllFarmers ? farmers : farmers.slice(0, 6);
+    const sortedFarmers = farmers.sort((a, b) => {
+      const aIsReal =
+        a._id && a._id.length === 24 && /^[0-9a-fA-F]{24}$/.test(a._id);
+      const bIsReal =
+        b._id && b._id.length === 24 && /^[0-9a-fA-F]{24}$/.test(b._id);
+
+      // Real farmers come first
+      if (aIsReal && !bIsReal) return -1;
+      if (!aIsReal && bIsReal) return 1;
+
+      // Within same type, sort by name
+      return (a.name || "").localeCompare(b.name || "");
+    });
+
+    return showAllFarmers ? sortedFarmers : sortedFarmers.slice(0, 6);
   }, [farmers, showAllFarmers]);
 
   const stats = getStats();
@@ -583,9 +585,9 @@ export default function FarmersPage() {
                 >
                   {/* Farmer Image */}
                   <div className="relative h-48 bg-gradient-to-br from-green-400 to-green-600">
-                    {farmer.profileImage ? (
+                    {farmer.profilePicture || farmer.profileImage ? (
                       <img
-                        src={farmer.profileImage}
+                        src={farmer.profilePicture || farmer.profileImage}
                         alt={farmer.name}
                         className="w-full h-full object-cover"
                       />
@@ -594,11 +596,6 @@ export default function FarmersPage() {
                         <i className="fas fa-user-tie text-6xl text-white opacity-80"></i>
                       </div>
                     )}
-                    <div className="absolute top-4 right-4">
-                      <span className="bg-white/90 dark:bg-gray-800/90 px-3 py-1 rounded-full text-xs font-medium text-gray-900 dark:text-white">
-                        {getFarmerProductCount(farmer._id)} Products
-                      </span>
-                    </div>
                   </div>
 
                   {/* Farmer Info */}
@@ -619,11 +616,13 @@ export default function FarmersPage() {
                       <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                         <i className="fas fa-map-marker-alt mr-2 text-primary-600"></i>
                         <span>
-                          {farmer.address?.city && farmer.address?.state
-                            ? `${farmer.address.city}, ${farmer.address.state}${farmer.address.country ? `, ${farmer.address.country}` : ""}`
-                            : farmer.location ||
-                              farmer.address ||
-                              "Location not specified"}
+                          {farmer.address?.street && farmer.address?.city
+                            ? `${farmer.address.street}, ${farmer.address.city}${farmer.address.state ? `, ${farmer.address.state}` : ""}${farmer.address.country ? `, ${farmer.address.country}` : ""}`
+                            : farmer.address?.city && farmer.address?.state
+                              ? `${farmer.address.city}, ${farmer.address.state}${farmer.address.country ? `, ${farmer.address.country}` : ""}`
+                              : farmer.location ||
+                                farmer.address ||
+                                "Location not specified"}
                         </span>
                       </div>
                       <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
@@ -676,7 +675,7 @@ export default function FarmersPage() {
                         <i className="fas fa-shopping-bag mr-1"></i>
                         View Products
                       </Link>
-                      
+
                       {/* Message Farmer Button */}
                       <MessageButton
                         recipientId={farmer._id}

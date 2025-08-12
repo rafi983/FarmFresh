@@ -50,7 +50,6 @@ export default function Products() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log("���� Products page became visible, refreshing data");
         productsCache.invalidateProducts();
         farmersCache.invalidateFarmers();
       }
@@ -90,7 +89,6 @@ export default function Products() {
   } = useProductsQuery(
     {
       ...filters,
-      // FIX: Add high limit to get all products instead of just 12
       limit: 1000, // High limit to get all products
       page: 1, // Get all from first page since we handle pagination client-side
     },
@@ -245,6 +243,32 @@ export default function Products() {
       // Only exclude if stock is explicitly undefined/null AND status indicates unavailable
       return true; // Show all active products regardless of stock level
     });
+
+    // Apply search term filter
+    if (filters.searchTerm && filters.searchTerm.trim()) {
+      const searchTerm = filters.searchTerm.toLowerCase().trim();
+      filtered = filtered.filter((product) => {
+        return (
+          product.name?.toLowerCase().includes(searchTerm) ||
+          product.description?.toLowerCase().includes(searchTerm) ||
+          product.category?.toLowerCase().includes(searchTerm) ||
+          product.farmerName?.toLowerCase().includes(searchTerm)
+        );
+      });
+    }
+
+    // Apply category filter
+    if (
+      filters.selectedCategory &&
+      filters.selectedCategory !== "All Categories"
+    ) {
+      filtered = filtered.filter((product) => {
+        return (
+          product.category?.toLowerCase() ===
+          filters.selectedCategory.toLowerCase()
+        );
+      });
+    }
 
     // Apply price range checkboxes
     if (filters.selectedPriceRanges.length > 0) {

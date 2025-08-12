@@ -395,7 +395,7 @@ export default function FarmerPage() {
         `Total reviews found: ${allReviews.length} (${productReviews.length} from products, ${separateReviews.length} from reviews collection)`,
       );
 
-      // Calculate revenue from orders
+      // Calculate revenue from orders - ONLY DELIVERED ORDERS (like analytics tab)
       const farmerOrders = (ordersData.orders || []).filter((order) => {
         return (
           order.items &&
@@ -409,21 +409,19 @@ export default function FarmerPage() {
         );
       });
 
-      // Use exact same filtering logic as dashboard
-      const validOrders = farmerOrders.filter(
-        (order) =>
-          order.status !== ORDER_STATUS.CANCELLED &&
-          order.status !== ORDER_STATUS.RETURNED,
+      // CRITICAL: Only count DELIVERED orders for revenue calculation (matching analytics tab)
+      const deliveredOrders = farmerOrders.filter(
+        (order) => order.status === ORDER_STATUS.DELIVERED,
       );
 
-      // Calculate total revenue using the same method as dashboard analytics
-      const actualTotalRevenue = validOrders.reduce(
+      // Calculate total revenue using ONLY delivered orders
+      const actualTotalRevenue = deliveredOrders.reduce(
         (sum, order) => sum + (order.farmerSubtotal || order.total || 0),
         0,
       );
 
-      // Calculate monthly revenue using the same method as dashboard
-      const thisMonthValidOrders = validOrders.filter((order) => {
+      // Calculate monthly revenue using ONLY delivered orders from this month
+      const thisMonthDeliveredOrders = deliveredOrders.filter((order) => {
         const orderDate = new Date(order.createdAt);
         const currentDate = new Date();
         return (
@@ -432,14 +430,14 @@ export default function FarmerPage() {
         );
       });
 
-      const monthlyRevenue = thisMonthValidOrders.reduce(
+      const monthlyRevenue = thisMonthDeliveredOrders.reduce(
         (sum, order) => sum + (order.farmerSubtotal || order.total || 0),
         0,
       );
 
-      // Calculate real community reach based on actual orders
+      // Calculate community reach based on delivered orders only
       const uniqueCustomers = new Set();
-      validOrders.forEach((order) => {
+      deliveredOrders.forEach((order) => {
         if (order.userId) {
           uniqueCustomers.add(order.userId);
         }
@@ -622,9 +620,11 @@ export default function FarmerPage() {
                 <div className="flex items-center justify-center lg:justify-start text-white/80 mb-6">
                   <i className="fas fa-map-marker-alt mr-2 text-yellow-400"></i>
                   <span className="text-lg">
-                    {farmer.address?.city && farmer.address?.state
-                      ? `${farmer.address.city}, ${farmer.address.state}${farmer.address.country ? `, ${farmer.address.country}` : ""}`
-                      : farmer.location || "Location not specified"}
+                    {farmer.address?.street && farmer.address?.city
+                      ? `${farmer.address.street}, ${farmer.address.city}${farmer.address.state ? `, ${farmer.address.state}` : ""}`
+                      : farmer.address?.city && farmer.address?.state
+                        ? `${farmer.address.city}, ${farmer.address.state}${farmer.address.country ? `, ${farmer.address.country}` : ""}`
+                        : farmer.location || "Location not specified"}
                   </span>
                 </div>
 
@@ -924,9 +924,11 @@ export default function FarmerPage() {
                       </h4>
                       <p className="text-gray-600 dark:text-gray-400 text-sm">
                         Serving{" "}
-                        {farmer.address?.city && farmer.address?.state
-                          ? `${farmer.address.city}, ${farmer.address.state}`
-                          : farmer.location || "the community"}{" "}
+                        {farmer.address?.street && farmer.address?.city
+                          ? `${farmer.address.street}, ${farmer.address.city}${farmer.address.state ? `, ${farmer.address.state}` : ""}`
+                          : farmer.address?.city && farmer.address?.state
+                            ? `${farmer.address.city}, ${farmer.address.state}`
+                            : farmer.location || "the community"}{" "}
                         with {stats.totalProducts} quality products
                       </p>
                     </div>
@@ -1714,7 +1716,7 @@ export default function FarmerPage() {
                   {/* Dynamic Farm Specializations Card */}
                   <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-emerald-900/20 dark:via-teal-900/20 dark:to-cyan-900/20 p-8 hover:shadow-2xl transition-all duration-700 border border-emerald-200 dark:border-emerald-800">
                     <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-teal-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                    <div className="absolute top-4 right-4 w-16 h-16 bg-emerald-100 dark:bg-emerald-800/30 rounded-full opacity-20 group-hover:scale-150 group-hover:rotate-180 transition-all duration-700"></div>
+                    <div className="absolute top-4 right-4 w-16 h-16 bg-emerald-100 dark:bg-emerald-800/30 rounded-full opacity-20 group-hover:scale-150 transition-transform duration-700"></div>
                     <div className="relative z-10">
                       <div className="flex items-center justify-between mb-6">
                         <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center transform group-hover:rotate-12 transition-transform duration-500 shadow-lg">

@@ -127,6 +127,11 @@ export default function FarmerDashboard() {
         order.status !== ORDER_STATUS.RETURNED,
     );
 
+    // Only count DELIVERED orders for revenue calculation
+    const deliveredOrders = orders.filter(
+      (order) => order.status === ORDER_STATUS.DELIVERED,
+    );
+
     const totalProducts = products.length;
     const activeProducts = products.filter(
       (p) => p.stock > 0 && p.status !== PRODUCT_STATUS.INACTIVE,
@@ -137,7 +142,8 @@ export default function FarmerDashboard() {
       (o) => o.status === ORDER_STATUS.PENDING,
     ).length;
 
-    const totalRevenue = validOrders.reduce(
+    // Use DELIVERED orders only for revenue calculation
+    const totalRevenue = deliveredOrders.reduce(
       (sum, order) => sum + (order.farmerSubtotal || order.total || 0),
       0,
     );
@@ -151,8 +157,9 @@ export default function FarmerDashboard() {
       );
     });
 
+    // Keep averageOrderValue based on validOrders (all orders) but use delivered revenue
     const averageOrderValue =
-      validOrders.length > 0 ? totalRevenue / validOrders.length : 0;
+      deliveredOrders.length > 0 ? totalRevenue / deliveredOrders.length : 0;
 
     const recentOrders = orders.slice(0, 5).map((order) => ({
       _id: order._id,

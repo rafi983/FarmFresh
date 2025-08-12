@@ -40,8 +40,9 @@ export default function AnalyticsTab({
 }) {
   // Calculate category statistics
   const categoryStats = useMemo(() => {
-    const validOrders = orders.filter(
-      (order) => order.status !== "cancelled" && order.status !== "returned",
+    // Only use DELIVERED orders for revenue calculations
+    const deliveredOrders = orders.filter(
+      (order) => order.status === "delivered",
     );
 
     // First, group products by category
@@ -74,8 +75,8 @@ export default function AnalyticsTab({
               count
             : 0;
 
-        // Calculate revenue for this category from actual orders
-        const categoryRevenue = validOrders.reduce((sum, order) => {
+        // Calculate revenue for this category from DELIVERED orders only
+        const categoryRevenue = deliveredOrders.reduce((sum, order) => {
           if (!order.items) return sum;
 
           const categoryOrderItems = order.items.filter((item) => {
@@ -117,12 +118,12 @@ export default function AnalyticsTab({
       const date = new Date();
       date.setDate(date.getDate() - (29 - i));
 
+      // Only count DELIVERED orders for daily revenue
       const dayOrders = orders.filter((order) => {
         const orderDate = new Date(order.createdAt).toISOString().split("T")[0];
         const isToday = orderDate === date.toISOString().split("T")[0];
-        const isValidOrder =
-          order.status !== "cancelled" && order.status !== "returned";
-        return isToday && isValidOrder;
+        const isDelivered = order.status === "delivered";
+        return isToday && isDelivered;
       });
 
       return {
@@ -140,12 +141,13 @@ export default function AnalyticsTab({
 
   // Product performance bubble chart data
   const productBubbleData = useMemo(() => {
-    const validOrders = orders.filter(
-      (order) => order.status !== "cancelled" && order.status !== "returned",
+    // Only use DELIVERED orders for product performance metrics
+    const deliveredOrders = orders.filter(
+      (order) => order.status === "delivered",
     );
 
     const productData = products.slice(0, 20).map((product) => {
-      const productOrders = validOrders.filter((order) =>
+      const productOrders = deliveredOrders.filter((order) =>
         order.items?.some(
           (item) =>
             item.product?._id === product._id || item.productId === product._id,

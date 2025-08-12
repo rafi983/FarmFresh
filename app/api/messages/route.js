@@ -158,9 +158,28 @@ export async function GET(request) {
       });
     } else {
       // Fetch all conversations for the user
+      // Handle both real ObjectIds and hardcoded farmer IDs
+      let conversationQuery;
+
+      // Check if userId is a valid ObjectId format (24 hex characters)
+      const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(userId);
+
+      if (isValidObjectId) {
+        // Real MongoDB user - use ObjectId
+        conversationQuery = { participants: new ObjectId(userId) };
+      } else {
+        // Hardcoded farmer - use string directly or alternative field
+        conversationQuery = {
+          $or: [
+            { participants: userId }, // Direct string match
+            { participantIds: userId }, // Alternative field for hardcoded IDs
+          ],
+        };
+      }
+
       const conversations = await db
         .collection("conversations")
-        .find({ participants: new ObjectId(userId) }) // Use extracted userId
+        .find(conversationQuery)
         .sort({ lastMessageAt: -1 })
         .toArray();
 
@@ -171,22 +190,88 @@ export async function GET(request) {
       // Get participant details and unread counts
       const enrichedConversations = await Promise.all(
         conversations.map(async (conv) => {
-          const otherParticipantId = conv.participants.find(
-            (p) => !p.equals(new ObjectId(userId)), // Use extracted userId
-          );
+          // Handle finding other participant for both ObjectId and string formats
+          let otherParticipantId;
 
-          const otherParticipant = await db
-            .collection("users")
-            .findOne(
-              { _id: otherParticipantId },
-              { projection: { name: 1, email: 1, image: 1, role: 1 } },
+          if (isValidObjectId) {
+            // For real users, find the other ObjectId participant
+            otherParticipantId = conv.participants.find(
+              (p) => !p.equals(new ObjectId(userId)),
             );
+          } else {
+            // For hardcoded farmers, find the other participant (could be ObjectId or string)
+            otherParticipantId = conv.participants.find(
+              (p) => p.toString() !== userId,
+            );
+          }
 
-          const unreadCount = await db.collection("messages").countDocuments({
-            conversationId: conv._id,
-            receiverId: new ObjectId(userId), // Use extracted userId
-            isRead: false,
-          });
+          // Look up other participant in users collection
+          let otherParticipant = null;
+
+          if (otherParticipantId) {
+            // Try to find in users collection (for real users)
+            if (ObjectId.isValid(otherParticipantId)) {
+              otherParticipant = await db
+                .collection("users")
+                .findOne(
+                  { _id: new ObjectId(otherParticipantId) },
+                  { projection: { name: 1, email: 1, image: 1, role: 1 } },
+                );
+            }
+
+            // If not found in users, might be a hardcoded farmer - look in farmers collection
+            if (!otherParticipant) {
+              // Try finding in farmers collection by ID or email
+              const farmerQuery = ObjectId.isValid(otherParticipantId)
+                ? { _id: new ObjectId(otherParticipantId) }
+                : {
+                    $or: [
+                      { email: otherParticipantId },
+                      { userId: otherParticipantId },
+                    ],
+                  };
+
+              otherParticipant = await db
+                .collection("farmers")
+                .findOne(farmerQuery, {
+                  projection: {
+                    name: 1,
+                    email: 1,
+                    profilePicture: 1,
+                    userType: 1,
+                  },
+                });
+
+              // Normalize farmer data to match user format
+              if (otherParticipant) {
+                otherParticipant.image = otherParticipant.profilePicture;
+                otherParticipant.role = "farmer";
+              }
+            }
+          }
+
+          // Calculate unread count - handle both ObjectId and string formats for userId
+          let unreadCount = 0;
+          try {
+            const unreadQuery = {
+              conversationId: conv._id,
+              isRead: false,
+            };
+
+            // Add receiverId condition based on userId format
+            if (isValidObjectId) {
+              unreadQuery.receiverId = new ObjectId(userId);
+            } else {
+              unreadQuery.receiverId = userId; // String format for hardcoded farmers
+            }
+
+            unreadCount = await db
+              .collection("messages")
+              .countDocuments(unreadQuery);
+          } catch (unreadError) {
+            console.warn("Error counting unread messages:", unreadError);
+            unreadCount = 0;
+          }
 
           return {
             ...conv,
@@ -287,11 +372,23 @@ export async function POST(request) {
       }
     }
 
-    // Find or create conversation
-    const participants = [
-      new ObjectId(userId), // Use the extracted userId instead of session.user.id
-      new ObjectId(receiverId),
-    ].sort((a, b) => a.toString().localeCompare(b.toString()));
+    // Find or create conversation - handle both ObjectId and string formats
+    const isValidSenderId = /^[0-9a-fA-F]{24}$/.test(userId);
+    const isValidReceiverId = /^[0-9a-fA-F]{24}$/.test(receiverId);
+
+    // Create participants array with proper format handling
+    let participants;
+    if (isValidSenderId && isValidReceiverId) {
+      // Both are valid ObjectIds
+      participants = [new ObjectId(userId), new ObjectId(receiverId)].sort(
+        (a, b) => a.toString().localeCompare(b.toString()),
+      );
+    } else {
+      // Handle mixed or string IDs
+      participants = [userId, receiverId].sort((a, b) =>
+        a.toString().localeCompare(b.toString()),
+      );
+    }
 
     let conversation = await db.collection("conversations").findOne({
       participants: { $all: participants },
@@ -303,7 +400,7 @@ export async function POST(request) {
         createdAt: new Date(),
         lastMessageAt: new Date(),
         lastMessage: content || (file ? `📎 ${fileName}` : ""),
-        lastMessageSender: new ObjectId(userId), // Use extracted userId
+        lastMessageSender: isValidSenderId ? new ObjectId(userId) : userId,
       };
 
       const conversationResult = await db
@@ -316,11 +413,11 @@ export async function POST(request) {
       );
     }
 
-    // Create the message
+    // Create the message - handle ID formats properly
     const message = {
       conversationId: conversation._id,
-      senderId: new ObjectId(userId), // Use extracted userId
-      receiverId: new ObjectId(receiverId),
+      senderId: isValidSenderId ? new ObjectId(userId) : userId,
+      receiverId: isValidReceiverId ? new ObjectId(receiverId) : receiverId,
       content: content || "",
       messageType,
       fileUrl,
@@ -344,16 +441,42 @@ export async function POST(request) {
         $set: {
           lastMessageAt: new Date(),
           lastMessage: content || (file ? `📎 ${fileName}` : ""),
-          lastMessageSender: new ObjectId(userId), // Use extracted userId
+          lastMessageSender: isValidSenderId ? new ObjectId(userId) : userId,
         },
       },
     );
 
-    // Get sender info for the response
-    const sender = await db.collection("users").findOne(
-      { _id: new ObjectId(userId) }, // Use extracted userId
-      { projection: { name: 1, email: 1, image: 1, role: 1 } },
-    );
+    // Get sender info for the response - check both users and farmers collections
+    let sender = null;
+
+    if (isValidSenderId) {
+      // Try users collection first
+      sender = await db
+        .collection("users")
+        .findOne(
+          { _id: new ObjectId(userId) },
+          { projection: { name: 1, email: 1, image: 1, role: 1 } },
+        );
+    }
+
+    // If not found in users, try farmers collection
+    if (!sender) {
+      const farmerQuery = isValidSenderId
+        ? { _id: new ObjectId(userId) }
+        : { $or: [{ email: userId }, { userId: userId }] };
+
+      sender = await db
+        .collection("farmers")
+        .findOne(farmerQuery, {
+          projection: { name: 1, email: 1, profilePicture: 1, userType: 1 },
+        });
+
+      // Normalize farmer data
+      if (sender) {
+        sender.image = sender.profilePicture;
+        sender.role = "farmer";
+      }
+    }
 
     const responseMessage = {
       _id: messageResult.insertedId,
