@@ -179,17 +179,22 @@ export async function POST(request, { params }) {
       },
       {
         $addFields: {
-          // Convert farmerId to ObjectId if it's a string
+          // Convert farmerId to ObjectId only if it's a valid 24-character ObjectId string
           farmerObjectId: {
             $cond: {
-              if: { $type: "$farmerId" },
-              then: {
-                $cond: {
-                  if: { $eq: [{ $type: "$farmerId" }, "string"] },
-                  then: { $toObjectId: "$farmerId" },
-                  else: "$farmerId",
-                },
+              if: {
+                $and: [
+                  { $eq: [{ $type: "$farmerId" }, "string"] },
+                  { $eq: [{ $strLenCP: "$farmerId" }, 24] },
+                  {
+                    $regexMatch: {
+                      input: "$farmerId",
+                      regex: /^[0-9a-fA-F]{24}$/,
+                    },
+                  },
+                ],
               },
+              then: { $toObjectId: "$farmerId" },
               else: null,
             },
           },

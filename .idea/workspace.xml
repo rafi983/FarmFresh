@@ -15,16 +15,17 @@
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/farmers/[id]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/farmers/[id]/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/farmers/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/farmers/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/messages/[conversationId]/read/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/messages/[conversationId]/read/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/messages/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/messages/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/orders/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/farmers/[id]/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmers/[id]/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/farmers/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmers/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/orders/[orderId]/reorder/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/[orderId]/reorder/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/products/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/create/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/create/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/details/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/details/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/edit/[id]/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/edit/[id]/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/manage/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/manage/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/products/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/products/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/components/dashboard/tabs/AnalyticsTab.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/dashboard/tabs/AnalyticsTab.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useDashboardData.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useDashboardData.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useProductsQuery.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useProductsQuery.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/next.config.mjs" beforeDir="false" afterPath="$PROJECT_DIR$/next.config.mjs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -98,8 +99,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-09060db00ec0-JavaScript-PS-251.26927.60" />
-        <option value="bundled-php-predefined-a98d8de5180a-e5747d4f5a45-com.jetbrains.php.sharedIndexes-PS-251.26927.60" />
+        <option value="bundled-js-predefined-d6986cc7102b-09060db00ec0-JavaScript-WS-251.26927.40" />
       </set>
     </attachedChunks>
   </component>
@@ -145,6 +145,7 @@
       <workItem from="1754993919226" duration="44000" />
       <workItem from="1754993965317" duration="12069000" />
       <workItem from="1755008393891" duration="6000" />
+      <workItem from="1755071664461" duration="17724000" />
     </task>
     <servers />
   </component>

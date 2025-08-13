@@ -62,7 +62,53 @@ export default function CreateProduct() {
     }));
   };
 
-  const handleImageChange = (e) => {
+  const compressImage = (
+    file,
+    maxWidth = 1200,
+    maxHeight = 1200,
+    quality = 0.8,
+  ) => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new window.Image(); // Use native browser Image constructor
+
+      img.onload = () => {
+        // Calculate new dimensions while maintaining aspect ratio
+        let { width, height } = img;
+
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        if (height > maxHeight) {
+          width = (width * maxHeight) / height;
+          height = maxHeight;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // Draw and compress the image
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(blob);
+          },
+          "image/jpeg",
+          quality,
+        );
+      };
+
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleImageChange = async (e) => {
     const files = Array.from(e.target.files);
 
     // Validate number of files
@@ -76,40 +122,52 @@ export default function CreateProduct() {
     const previews = [];
     const base64Images = [];
 
-    files.forEach((file) => {
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert(`Image ${file.name} is too large. Maximum size is 5MB`);
-        return;
-      }
-
+    for (const file of files) {
       // Validate file type
       if (!file.type.startsWith("image/")) {
         alert(`${file.name} is not a valid image file`);
-        return;
+        continue;
       }
 
       validFiles.push(file);
       previews.push(URL.createObjectURL(file));
 
-      // Convert image to base64 for storage
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        base64Images.push(event.target.result);
+      try {
+        // Compress large images automatically
+        let processedImageData;
 
-        // When all files are processed, update state
-        if (base64Images.length === validFiles.length) {
-          setFormData((prev) => ({
-            ...prev,
-            images: base64Images,
-          }));
+        if (file.size > 2 * 1024 * 1024) {
+          // If file is larger than 2MB
+          console.log(
+            `Compressing large image: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`,
+          );
+          processedImageData = await compressImage(file, 1200, 1200, 0.8);
+        } else if (file.size > 1 * 1024 * 1024) {
+          // If file is larger than 1MB
+          processedImageData = await compressImage(file, 1200, 1200, 0.9);
+        } else {
+          // For smaller files, just convert to base64 without compression
+          const reader = new FileReader();
+          processedImageData = await new Promise((resolve) => {
+            reader.onload = (event) => resolve(event.target.result);
+            reader.readAsDataURL(file);
+          });
         }
-      };
-      reader.readAsDataURL(file);
-    });
 
+        base64Images.push(processedImageData);
+      } catch (error) {
+        console.error(`Error processing image ${file.name}:`, error);
+        alert(`Failed to process image ${file.name}. Please try again.`);
+      }
+    }
+
+    // Update state with processed images
     setImageFiles(validFiles);
     setImagePreviews(previews);
+    setFormData((prev) => ({
+      ...prev,
+      images: base64Images,
+    }));
   };
 
   const removeImage = (index) => {
@@ -410,8 +468,16 @@ export default function CreateProduct() {
                     id="stock"
                     name="stock"
                     min="0"
+                    step="1"
                     value={formData.stock}
                     onChange={handleInputChange}
+                    onWheel={(e) => e.target.blur()} // Prevent mouse wheel changes
+                    onKeyDown={(e) => {
+                      // Prevent arrow keys from changing the value unintentionally
+                      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                        e.preventDefault();
+                      }
+                    }}
                     required
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                     placeholder="100"
@@ -449,7 +515,8 @@ export default function CreateProduct() {
                         Click to upload images
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        PNG, JPG, WebP up to 5MB each
+                        PNG, JPG, WebP - Large images will be automatically
+                        optimized
                       </p>
                     </label>
                   </div>

@@ -149,10 +149,9 @@ export async function GET(request) {
     const sortBy = searchParams.get("sortBy");
     const farmerId = searchParams.get("farmerId");
     const farmerEmail = searchParams.get("farmerEmail");
-    const limit = searchParams.get("limit")
-      ? parseInt(searchParams.get("limit"))
-      : 12; // Default to 12 for pagination
+    const limit = parseInt(searchParams.get("limit")) || 50;
     const page = parseInt(searchParams.get("page")) || 1;
+    const skip = (page - 1) * limit;
 
     // Simplified filtering parameters
     const minPrice = searchParams.get("minPrice")
@@ -175,20 +174,18 @@ export async function GET(request) {
     // Initialize indexes only once
     await initializeProductIndexes(cachedDb);
 
-    // Build optimized query for Atlas
+    // Build query - BACK TO ORIGINAL WORKING VERSION
     const query = { status: { $ne: "deleted" } };
 
     // Check if this is a dashboard context request
     const isDashboardContext = searchParams.get("dashboard") === "true";
 
     // For public access (non-farmer requests), exclude inactive products
-    // Only farmers should see their inactive products in their dashboard
     if (!farmerId && !farmerEmail && !isDashboardContext) {
-      // This is a public request - exclude inactive products
       query.status = { $nin: ["deleted", "inactive"] };
     }
 
-    // Add search filter using text index for better performance
+    // Add search filter
     if (search) {
       query.$text = { $search: search };
     }
@@ -203,33 +200,32 @@ export async function GET(request) {
       query.featured = true;
     }
 
-    // Add farmer filters for dashboard
+    // Add farmer filters for dashboard - FIXED LOGIC to prevent cross-contamination
     if (farmerId || farmerEmail) {
-      query.$or = [];
-      if (farmerId) {
-        // First, try to get farmer info to match by name for hardcoded farmers
+      // For hardcoded farmers (no ObjectId), filter strictly by email
+      if (!farmerId || !farmerId.match(/^[0-9a-fA-F]{24}$/)) {
+        // This is a hardcoded farmer - filter ONLY by exact email match
+        if (farmerEmail) {
+          query.$and = query.$and || [];
+          query.$and.push({
+            $or: [
+              { farmerEmail: { $eq: farmerEmail } },
+              { "farmer.email": { $eq: farmerEmail } },
+            ],
+          });
+        }
+      } else {
+        // This is a real farmer with ObjectId - use comprehensive matching
+        query.$or = [];
+
         let farmerName = null;
         let farmerFarmName = null;
 
         try {
-          // Try to get farmer data to extract name for name-based matching
           const farmersCollection = cachedDb.collection("farmers");
-          let farmer = null;
-
-          // Check if it's an ObjectId
-          if (farmerId.match(/^[0-9a-fA-F]{24}$/)) {
-            farmer = await farmersCollection.findOne({
-              _id: new ObjectId(farmerId),
-            });
-          } else {
-            // Check in farmers array for hardcoded farmers
-            const farmersDoc = await farmersCollection.findOne({
-              "farmers._id": farmerId,
-            });
-            if (farmersDoc && farmersDoc.farmers) {
-              farmer = farmersDoc.farmers.find((f) => f._id === farmerId);
-            }
-          }
+          const farmer = await farmersCollection.findOne({
+            _id: new ObjectId(farmerId),
+          });
 
           if (farmer) {
             farmerName = farmer.name;
@@ -239,6 +235,7 @@ export async function GET(request) {
           console.log("Could not fetch farmer for name-based matching:", error);
         }
 
+        // Match by farmerId (various formats)
         query.$or.push(
           { farmerId: farmerId },
           { farmerId: { $eq: farmerId } },
@@ -246,13 +243,23 @@ export async function GET(request) {
           { "farmer._id": farmerId },
         );
 
-        // Add name-based matching for hardcoded farmers
+        // Match by farmer email (for real farmers)
+        if (farmerEmail) {
+          query.$or.push(
+            { farmerEmail: farmerEmail },
+            { "farmer.email": farmerEmail },
+          );
+        }
+
+        // Match by farmer name (if available)
         if (farmerName) {
           query.$or.push(
             { "farmer.name": farmerName },
             { "farmer.name": { $regex: new RegExp(`^${farmerName}$`, "i") } },
           );
         }
+
+        // Match by farm name (if available)
         if (farmerFarmName) {
           query.$or.push(
             { "farmer.farmName": farmerFarmName },
@@ -263,12 +270,6 @@ export async function GET(request) {
             },
           );
         }
-      }
-      if (farmerEmail) {
-        query.$or.push(
-          { farmerEmail: farmerEmail },
-          { "farmer.email": farmerEmail },
-        );
       }
     }
 
@@ -284,38 +285,9 @@ export async function GET(request) {
       query.averageRating = { $gte: minRating };
     }
 
-    // Optimized projection - only select needed fields to reduce data transfer
-    const projection = {
-      _id: 1,
-      name: 1,
-      description: 1,
-      price: 1,
-      stock: 1,
-      images: 1,
-      category: 1,
-      averageRating: 1,
-      totalReviews: 1,
-      reviews: 1, // Include reviews array for rating calculation
-      featured: 1,
-      status: 1,
-      createdAt: 1,
-      updatedAt: 1,
-      farmer: 1,
-      farmerId: 1,
-      farmerEmail: 1,
-      farmerName: 1,
-      tags: 1,
-      isOrganic: 1,
-      isFresh: 1,
-      purchaseCount: 1,
-      unit: 1, // Add unit field for product cards
-      // Exclude heavy fields like detailed descriptions, etc.
-    };
-
-    // Build sort options for better Atlas performance
+    // BACK TO ORIGINAL WORKING SORT
     let sortOptions = {};
     if (search) {
-      // Text search score for relevance
       sortOptions = { score: { $meta: "textScore" }, createdAt: -1 };
     } else {
       switch (sortBy) {
@@ -341,39 +313,26 @@ export async function GET(request) {
       }
     }
 
-    // Use aggregation pipeline for better Atlas performance
-    const pipeline = [
-      { $match: query },
-      { $project: projection },
-      { $sort: sortOptions },
-    ];
-
-    // Add pagination only if needed
-    if (limit < 1000) {
-      pipeline.push({ $skip: (page - 1) * limit }, { $limit: limit });
-    }
-
-    // Execute optimized query with consistent counting
+    // BACK TO ORIGINAL WORKING QUERY EXECUTION
     const startTime = Date.now();
 
-    // Use aggregation for both products and count to ensure consistency
-    const countPipeline = [{ $match: query }, { $count: "total" }];
-
-    const [products, countResult] = await Promise.all([
-      cachedCollection.aggregate(pipeline).toArray(),
-      cachedCollection.aggregate(countPipeline).toArray(),
+    // Execute query with original method
+    const [products, totalCount] = await Promise.all([
+      cachedCollection
+        .find(query)
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(limit)
+        .toArray(),
+      cachedCollection.countDocuments(query),
     ]);
-
-    // Get consistent total count
-    const actualTotalCount =
-      countResult.length > 0 ? countResult[0].total : products.length;
 
     const queryTime = Date.now() - startTime;
     console.log(
-      `Atlas query executed in ${queryTime}ms for ${products.length} products, total: ${actualTotalCount}`,
+      `Query executed in ${queryTime}ms for ${products.length} products, total: ${totalCount}`,
     );
 
-    // Enhance with ratings and review counts from the products collection
+    // Enhance with ratings
     const enhancedProducts = await enhanceProductsWithRatings(
       products,
       cachedDb,
@@ -385,9 +344,9 @@ export async function GET(request) {
       pagination: {
         page,
         limit,
-        total: actualTotalCount,
-        totalPages: Math.ceil(actualTotalCount / limit),
-        hasNext: page * limit < actualTotalCount,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+        hasNext: page * limit < totalCount,
         hasPrev: page > 1,
       },
       meta: {
@@ -404,7 +363,7 @@ export async function GET(request) {
           queryTime,
           cached: false,
         },
-        timestamp: new Date().toISOString(), // Add timestamp for debugging
+        timestamp: new Date().toISOString(),
       },
     };
 
@@ -412,7 +371,6 @@ export async function GET(request) {
     setCachedResponse(cacheKey, responseData);
 
     const response = NextResponse.json(responseData);
-
     // Add cache headers
     response.headers.set("X-Cache", "MISS");
     response.headers.set("Cache-Control", "public, max-age=300"); // 5 minutes

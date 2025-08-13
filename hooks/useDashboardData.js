@@ -22,19 +22,19 @@ export function useDashboardData() {
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ["dashboard", userIds?.userId, userIds?.userEmail],
     queryFn: async () => {
-      console.log("🔍 Dashboard query executing - fetching fresh data...");
-
-      // FIX: Pass farmer filtering parameters to get only THIS farmer's products AND orders
+      // FIX: Pass more specific farmer filtering parameters to get only THIS farmer's products AND orders
       const productsParams = {
         includeInactive: true,
-        // Filter by farmer using their email or ID
-        farmerEmail: userIds?.userEmail,
+        // Pass BOTH farmerId and farmerEmail for precise filtering
+        farmerId: userIds?.userId, // This will be null/undefined for hardcoded farmers
+        farmerEmail: userIds?.userEmail, // This is the email from session
         // Remove limit to get all farmer's products (not just 12)
         limit: 1000, // High limit to get all farmer's products
       };
 
       // FIX: Also filter orders by farmer to get only THIS farmer's orders
       const ordersParams = {
+        farmerId: userIds?.userId, // Pass farmerId for orders too
         farmerEmail: userIds?.userEmail,
         limit: 1000, // High limit to get all farmer's orders
       };
@@ -101,6 +101,7 @@ export function useDashboardData() {
 
   // Function to update specific product in cache without full refetch
   const updateProductInCache = (productId, updatedProduct) => {
+    // Update dashboard cache
     queryClient.setQueryData(
       ["dashboard", userIds?.userId, userIds?.userEmail],
       (oldData) => {
@@ -118,6 +119,51 @@ export function useDashboardData() {
         };
       },
     );
+
+    // CRITICAL FIX: Update ALL products queries with different filter combinations
+    const allProductsQueries = queryClient.getQueryCache().findAll({
+      queryKey: ["products"],
+    });
+
+    allProductsQueries.forEach((query) => {
+      queryClient.setQueryData(query.queryKey, (oldData) => {
+        if (!oldData?.products) return oldData;
+
+        const updatedProducts = oldData.products.map((product) =>
+          product._id === productId || product.id === productId
+            ? { ...product, ...updatedProduct }
+            : product,
+        );
+
+        return {
+          ...oldData,
+          products: updatedProducts,
+        };
+      });
+    });
+
+    // AGGRESSIVE FIX: Force immediate refetch with multiple strategies
+    setTimeout(() => {
+      // Strategy 1: Force refetch all products queries
+      allProductsQueries.forEach((query) => {
+        queryClient.refetchQueries({
+          queryKey: query.queryKey,
+          type: "active",
+        });
+      });
+
+      // Strategy 2: Clear and invalidate
+      queryClient.removeQueries({
+        queryKey: ["products"],
+        exact: false,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["products"],
+        exact: false,
+        refetchType: "active",
+      });
+    }, 100); // Small delay to ensure cache updates are complete
   };
 
   // Function to update multiple products in cache (bulk update)
@@ -173,8 +219,6 @@ export function useDashboardData() {
           const shouldAddActivatedProducts = updateData.status === "active";
 
           if (shouldAddActivatedProducts) {
-            // For now, let the background refresh handle adding activated products
-            // to avoid complex logic here
           }
 
           return {
@@ -184,7 +228,7 @@ export function useDashboardData() {
         },
       );
 
-      // SYNC WITH PRODUCTS PAGE: Update products page cache too - Fixed to handle all filter variations
+      // SYNC WITH PRODUCTS PAGE: Update products page cache too - ENHANCED to handle all cases
       const productsQueryKeys = queryClient.getQueryCache().findAll({
         queryKey: ["products"],
       });
@@ -202,7 +246,7 @@ export function useDashboardData() {
 
               const updatedProduct = { ...product, ...updateData };
 
-              // If product is being deactivated, it should be removed from public products page
+              // If product is being deactivated, remove from public products page
               if (updateData.status === "inactive") {
                 return null; // Mark for removal
               }
@@ -211,21 +255,67 @@ export function useDashboardData() {
             })
             .filter(Boolean); // Remove null entries (deactivated products)
 
-          // If a product was activated, we need to check if it should be added
-          // This handles the case where an inactive product becomes active
-          const shouldAddActivatedProducts = updateData.status === "active";
-
-          if (shouldAddActivatedProducts) {
-            // For now, let the background refresh handle adding activated products
-            // to avoid complex logic here
-          }
-
           return {
             ...oldData,
             products: updatedProducts,
+            pagination: oldData.pagination
+              ? {
+                  ...oldData.pagination,
+                  // Update total count if products were removed
+                  total:
+                    oldData.pagination.total -
+                    (oldData.products.length - updatedProducts.length),
+                }
+              : undefined,
           };
         });
       });
+
+      if (updateData.status === "active") {
+        productsQueryKeys.forEach((query) => {
+          queryClient.setQueryData(query.queryKey, (oldData) => {
+            if (!oldData?.products) return oldData;
+
+            // Get the activated products from dashboard cache
+            const dashboardData = queryClient.getQueryData([
+              "dashboard",
+              userIds?.userId,
+              userIds?.userEmail,
+            ]);
+
+            if (dashboardData?.products) {
+              const activatedProducts = dashboardData.products.filter(
+                (p) =>
+                  productIds.includes(p._id || p.id) && p.status === "active",
+              );
+
+              // Add activated products to products page cache if they don't exist
+              const existingIds = oldData.products.map((p) => p._id || p.id);
+              const newProducts = activatedProducts.filter(
+                (p) => !existingIds.includes(p._id || p.id),
+              );
+
+              if (newProducts.length > 0) {
+                const combinedProducts = [...newProducts, ...oldData.products];
+
+                return {
+                  ...oldData,
+                  products: combinedProducts,
+                  pagination: oldData.pagination
+                    ? {
+                        ...oldData.pagination,
+                        total:
+                          (oldData.pagination.total || 0) + newProducts.length,
+                      }
+                    : undefined,
+                };
+              }
+            }
+
+            return oldData;
+          });
+        });
+      }
 
       // Call the API
       const result = await apiService.bulkUpdateProducts(
@@ -296,12 +386,12 @@ export function useDashboardData() {
         },
       );
 
-      // SYNC WITH PRODUCTS PAGE: Also remove from products page cache - Fixed to handle all filter variations
-      const productsQueryKeys = queryClient.getQueryCache().findAll({
-        queryKey: ["products"],
+      // SYNC WITH UNIFIED PRODUCTS PAGE CACHE: Also remove from unified products cache
+      const unifiedProductsQueryKeys = queryClient.getQueryCache().findAll({
+        queryKey: ["products", "all"],
       });
 
-      productsQueryKeys.forEach((query) => {
+      unifiedProductsQueryKeys.forEach((query) => {
         queryClient.setQueryData(query.queryKey, (oldData) => {
           if (!oldData?.products) return oldData;
 
@@ -314,7 +404,7 @@ export function useDashboardData() {
             products: filteredProducts,
             meta: {
               ...oldData.meta,
-              total: filteredProducts.length,
+              total: Math.max((oldData.meta?.total || 0) - 1, 0),
             },
           };
         });
@@ -384,15 +474,23 @@ export function useDashboardData() {
     }
   };
 
-  // Function to add product with optimistic updates (similar to bulkUpdateProducts and deleteProduct)
+  // Function to add product with optimistic updates (FIXED VERSION)
   const addProduct = async (productData) => {
     try {
-      // Generate a temporary ID for optimistic update
-      const tempId = `temp_${Date.now()}`;
+      // Generate a truly unique temporary ID
+      const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const currentTime = new Date().toISOString();
       const optimisticProduct = {
         ...productData,
         _id: tempId,
         id: tempId,
+        createdAt: currentTime,
+        updatedAt: currentTime,
+        status: "active",
+        averageRating: 0,
+        totalReviews: 0,
+        reviewCount: 0,
+        purchaseCount: 0,
       };
 
       // OPTIMISTIC UPDATE: Add the product to dashboard cache immediately
@@ -401,34 +499,57 @@ export function useDashboardData() {
         (oldData) => {
           if (!oldData) return oldData;
 
-          return {
-            ...oldData,
-            products: [...oldData.products, optimisticProduct],
-          };
-        },
-      );
+          // FIXED: Check for duplicates before adding
+          const productExists = oldData.products.some(
+            (p) =>
+              p.name === optimisticProduct.name &&
+              p.farmerId === optimisticProduct.farmerId &&
+              p.createdAt === optimisticProduct.createdAt,
+          );
 
-      // SYNC WITH PRODUCTS PAGE: Also add to products page cache - Fixed to handle all filter variations
-      const productsQueryKeys = queryClient.getQueryCache().findAll({
-        queryKey: ["products"],
-      });
-
-      productsQueryKeys.forEach((query) => {
-        queryClient.setQueryData(query.queryKey, (oldData) => {
-          if (!oldData) return oldData;
-
-          // Only add to products page cache if the product should be visible in public context
-          // (i.e., only add active products to products page cache)
-          const shouldAddToPublicCache = optimisticProduct.status === "active";
-
-          if (!shouldAddToPublicCache) {
-            // Don't add inactive products to the public products page cache
+          if (productExists) {
+            console.log(
+              "⚠️ Duplicate product detected, skipping optimistic update",
+            );
             return oldData;
           }
 
           return {
             ...oldData,
-            products: [...oldData.products, optimisticProduct],
+            products: [optimisticProduct, ...oldData.products],
+          };
+        },
+      );
+
+      // FIXED: Update unified products page cache with proper duplicate checking
+      const unifiedProductsQueryKeys = queryClient.getQueryCache().findAll({
+        queryKey: ["products", "all"],
+      });
+
+      unifiedProductsQueryKeys.forEach((query) => {
+        queryClient.setQueryData(query.queryKey, (oldData) => {
+          if (!oldData?.products) return oldData;
+
+          // FIXED: Check for duplicates in unified products page cache too
+          const productExists = oldData.products.some(
+            (p) =>
+              p.name === optimisticProduct.name &&
+              p.farmerId === optimisticProduct.farmerId &&
+              p.createdAt === optimisticProduct.createdAt,
+          );
+
+          if (productExists) {
+            console.log(
+              "⚠️ Product already exists in unified products cache, skipping",
+            );
+            return oldData;
+          }
+
+          const updatedProducts = [optimisticProduct, ...oldData.products];
+
+          return {
+            ...oldData,
+            products: updatedProducts,
             meta: {
               ...oldData.meta,
               total: (oldData.meta?.total || 0) + 1,
@@ -437,7 +558,7 @@ export function useDashboardData() {
         });
       });
 
-      // Call the API
+      // Call the API to create the actual product
       const response = await fetch("/api/products", {
         method: "POST",
         headers: {
@@ -447,18 +568,46 @@ export function useDashboardData() {
       });
 
       if (!response.ok) {
+        // ROLLBACK: Remove the optimistic product on API failure
+
+        queryClient.setQueryData(
+          ["dashboard", userIds?.userId, userIds?.userEmail],
+          (oldData) => {
+            if (!oldData) return oldData;
+            return {
+              ...oldData,
+              products: oldData.products.filter((p) => p._id !== tempId),
+            };
+          },
+        );
+
+        unifiedProductsQueryKeys.forEach((query) => {
+          queryClient.setQueryData(query.queryKey, (oldData) => {
+            if (!oldData?.products) return oldData;
+            return {
+              ...oldData,
+              products: oldData.products.filter((p) => p._id !== tempId),
+              meta: {
+                ...oldData.meta,
+                total: Math.max((oldData.meta?.total || 1) - 1, 0),
+              },
+            };
+          });
+        });
+
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to create product");
       }
 
       const result = await response.json();
+      const realProductId = result.productId;
 
       const finalProduct = {
         ...productData,
-        _id: result.productId,
-        id: result.productId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        _id: realProductId,
+        id: realProductId,
+        createdAt: currentTime,
+        updatedAt: currentTime,
         status: "active",
         averageRating: 0,
         totalReviews: 0,
@@ -466,17 +615,33 @@ export function useDashboardData() {
         purchaseCount: 0,
       };
 
-      // Update dashboard cache with real product data (replace temp with actual)
+      // FIXED: Replace temp product with real product - better logic
       queryClient.setQueryData(
         ["dashboard", userIds?.userId, userIds?.userEmail],
         (oldData) => {
           if (!oldData) return oldData;
 
-          const updatedProducts = oldData.products.map((product) =>
-            product._id === tempId || product.id === tempId
-              ? finalProduct
-              : product,
+          const updatedProducts = oldData.products.map((product) => {
+            // FIXED: Only replace if it's the exact temp product we created
+            if (product._id === tempId && product.id === tempId) {
+              return finalProduct;
+            }
+            return product;
+          });
+
+          // SAFETY CHECK: If temp product wasn't found, add the real product
+          const tempProductFound = oldData.products.some(
+            (p) => p._id === tempId,
           );
+          if (!tempProductFound) {
+            console.log(
+              "⚠️ Temp product not found, adding real product directly",
+            );
+            return {
+              ...oldData,
+              products: [finalProduct, ...oldData.products],
+            };
+          }
 
           return {
             ...oldData,
@@ -485,20 +650,38 @@ export function useDashboardData() {
         },
       );
 
-      // Update products page cache with real product data too - Fixed to handle all filter variations
-      const productsQueryKeysForUpdate = queryClient.getQueryCache().findAll({
-        queryKey: ["products"],
-      });
-
-      productsQueryKeysForUpdate.forEach((query) => {
+      // FIXED: Update unified products page caches with real product
+      unifiedProductsQueryKeys.forEach((query) => {
         queryClient.setQueryData(query.queryKey, (oldData) => {
-          if (!oldData) return oldData;
+          if (!oldData?.products) return oldData;
 
-          const updatedProducts = oldData.products.map((product) =>
-            product._id === tempId || product.id === tempId
-              ? finalProduct
-              : product,
+          const updatedProducts = oldData.products.map((product) => {
+            // FIXED: Only replace if it's the exact temp product we created
+            if (product._id === tempId && product.id === tempId) {
+              return finalProduct;
+            }
+            return product;
+          });
+
+          // SAFETY CHECK: If temp product wasn't found, add the real product
+          const tempProductFound = oldData.products.some(
+            (p) => p._id === tempId,
           );
+          if (!tempProductFound) {
+            console.log(
+              "⚠️ Temp product not found in products cache, adding real product",
+            );
+            return {
+              ...oldData,
+              products: updatedProducts,
+              pagination: oldData.pagination
+                ? {
+                    ...oldData.pagination,
+                    total: (oldData.pagination.total || 0) + 1,
+                  }
+                : undefined,
+            };
+          }
 
           return {
             ...oldData,
@@ -507,42 +690,17 @@ export function useDashboardData() {
         });
       });
 
-      // Clear API service caches
-      if (apiService.clearProductsCache) {
-        apiService.clearProductsCache();
-      }
-
-      // Set a delayed background refresh to sync with server data
-      setTimeout(async () => {
-        queryClient.invalidateQueries({
-          queryKey: ["dashboard", userIds?.userId, userIds?.userEmail],
-          exact: true,
-          refetchType: "none",
-        });
-
-        queryClient.invalidateQueries({
-          queryKey: ["products"],
-          exact: false,
-          refetchType: "none",
-        });
-      }, 5000);
-
-      return { success: true, productId: result.productId };
+      return {
+        success: true,
+        productId: realProductId,
+        product: finalProduct,
+      };
     } catch (error) {
-      console.error("❌ [Dashboard] Product creation failed:", error);
+      console.error("❌ Error in addProduct:", error);
 
-      // If API call failed, revert the optimistic update by refetching both caches
-      await queryClient.invalidateQueries({
-        queryKey: ["dashboard", userIds?.userId, userIds?.userEmail],
-        exact: true,
-        refetchType: "active",
-      });
-
-      await queryClient.invalidateQueries({
-        queryKey: ["products"],
-        exact: false,
-        refetchType: "active",
-      });
+      // Additional cleanup on error
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
 
       throw error;
     }

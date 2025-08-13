@@ -143,9 +143,16 @@ export default function FarmerDashboard() {
     ).length;
 
     // Use DELIVERED orders only for revenue calculation
-    const totalRevenue = deliveredOrders.reduce(
-      (sum, order) => sum + (order.farmerSubtotal || order.total || 0),
-      0,
+    const totalRevenue = deliveredOrders.reduce((sum, order) => {
+      const revenue = parseFloat(order.farmerSubtotal || order.total || 0);
+      console.log(
+        `Dashboard Analytics - Order ${order._id}: Status=${order.status}, FarmerSubtotal=${order.farmerSubtotal}, Total=${order.total}, Revenue=${revenue}`,
+      );
+      return sum + revenue;
+    }, 0);
+
+    console.log(
+      `Dashboard Analytics Summary - Delivered Orders: ${deliveredOrders.length}, Total Revenue: ${totalRevenue}, Debug API Revenue: 26525.91`,
     );
 
     const now = new Date();
@@ -489,6 +496,20 @@ export default function FarmerDashboard() {
     paginatedProducts,
     filteredProducts: filteredAndSortedProducts,
     totalProducts: products.length,
+    // Fix: Map filters object to individual props expected by ProductsTab
+    searchTerm: filters.search,
+    setSearchTerm: (value) =>
+      setFilters((prev) => ({ ...prev, search: value })),
+    selectedCategory: filters.category,
+    setSelectedCategory: (value) =>
+      setFilters((prev) => ({ ...prev, category: value })),
+    selectedStatus: filters.status,
+    setSelectedStatus: (value) =>
+      setFilters((prev) => ({ ...prev, status: value })),
+    selectedSort: filters.sort,
+    setSelectedSort: (value) =>
+      setFilters((prev) => ({ ...prev, sort: value })),
+    // Keep existing props
     filters,
     updateFilters,
     pagination: { ...pagination, totalPages },

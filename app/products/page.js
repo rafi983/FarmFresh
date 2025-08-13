@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import Footer from "@/components/Footer";
 import { debounce } from "@/utils/debounce";
-import { useProductsQuery, useProductsCache } from "@/hooks/useProductsQuery";
+import { useUnifiedProductsData } from "@/hooks/useUnifiedProductsData";
 import { useFarmersQuery, useFarmersCache } from "@/hooks/useFarmersQuery";
 
 // Move constants outside component to prevent recreations
@@ -42,15 +42,13 @@ export default function Products() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Cache management hooks
-  const productsCache = useProductsCache();
+  // Use unified caching system instead of separate caching
   const farmersCache = useFarmersCache();
 
   // Auto-refresh data when page becomes visible (handles browser tab switching)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        productsCache.invalidateProducts();
         farmersCache.invalidateFarmers();
       }
     };
@@ -58,7 +56,7 @@ export default function Products() {
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () =>
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [productsCache, farmersCache]);
+  }, [farmersCache]);
 
   // Filter states - Initialize from URL params
   const [filters, setFilters] = useState(() => ({
@@ -80,31 +78,19 @@ export default function Products() {
   );
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  // Use React Query for products data
+  // Use unified products data hook with same caching mechanism as dashboard
   const {
-    data: productsData,
+    products: allProducts,
     isLoading: loading,
     error,
     refetch: refetchProducts,
-  } = useProductsQuery(
-    {
-      ...filters,
-      limit: 1000, // High limit to get all products
-      page: 1, // Get all from first page since we handle pagination client-side
-    },
-    {
-      enabled: true, // Always enabled
-    },
-  );
+    refreshProducts,
+  } = useUnifiedProductsData(filters);
 
   // Use React Query for farmers data
   const { data: farmersData } = useFarmersQuery();
 
   // Extract products and farmers from React Query data
-  const allProducts = useMemo(() => {
-    return productsData?.products || [];
-  }, [productsData]);
-
   const availableFarmers = useMemo(() => {
     // Get farmers from the dedicated farmers query instead of product data
     const farmers = farmersData?.farmers || [];
@@ -195,25 +181,25 @@ export default function Products() {
     });
   }, [allProducts, farmerLookup, farmersData]);
 
-  // Listen for order completion events to refresh data
+  // Listen for order completion events to refresh data - IMPROVED TO PREVENT RACE CONDITIONS
   useEffect(() => {
     const handleOrderComplete = (event) => {
       const { orderId } = event.detail || {};
       if (orderId) {
         console.log("🎉 Order completed, refreshing product data");
-        // Simply refresh data since backend handles all updates
+        // Longer delay to ensure backend has processed the update completely
         setTimeout(() => {
-          productsCache.invalidateProducts();
-        }, 1000);
+          farmersCache.invalidateFarmers();
+        }, 3000); // Increased to 3 seconds to prevent race conditions
       }
     };
 
     const handleCartCheckout = (event) => {
       console.log("🛒 Cart checkout completed, refreshing product data");
-      // Simply refresh data since backend handles all updates
+      // Longer delay to ensure backend has processed the update completely
       setTimeout(() => {
-        productsCache.invalidateProducts();
-      }, 1000);
+        farmersCache.invalidateFarmers();
+      }, 3000); // Already correct at 3 seconds
     };
 
     // Listen for order completion events
@@ -224,7 +210,7 @@ export default function Products() {
       window.removeEventListener("orderCompleted", handleOrderComplete);
       window.removeEventListener("cartCheckoutCompleted", handleCartCheckout);
     };
-  }, [productsCache]);
+  }, [farmersCache]);
 
   // Memoized filtered and sorted products
   const filteredProducts = useMemo(() => {
@@ -1336,8 +1322,11 @@ export default function Products() {
               ) : paginationData.products.length > 0 ? (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {paginationData.products.map((product) => (
-                      <ProductCard key={product._id} product={product} />
+                    {paginationData.products.map((product, index) => (
+                      <ProductCard
+                        key={`${product._id}-${product.farmerId || product.farmer?._id || "unknown"}-${index}`}
+                        product={product}
+                      />
                     ))}
                   </div>
 

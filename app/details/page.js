@@ -1017,13 +1017,6 @@ export default function ProductDetails() {
                       <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                         Product Images
                       </h3>
-                      <button
-                        onClick={handleAddImages}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-                      >
-                        <i className="fas fa-plus mr-1"></i>
-                        Add Images
-                      </button>
                     </div>
 
                     {/* Current Images Display */}
@@ -1082,13 +1075,6 @@ export default function ProductDetails() {
                       <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                         Product Information
                       </h3>
-                      <Link
-                        href={`/create?edit=${productId}`}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-                      >
-                        <i className="fas fa-edit mr-1"></i>
-                        Edit Details
-                      </Link>
                     </div>
 
                     <div className="space-y-4">
@@ -1142,62 +1128,6 @@ export default function ProductDetails() {
                           </ul>
                         </div>
                       )}
-                    </div>
-                  </div>
-
-                  {/* Quick Actions */}
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-                      Quick Updates
-                    </h3>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Stock Update */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Update Stock
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            value={stockUpdate}
-                            onChange={(e) => setStockUpdate(e.target.value)}
-                            placeholder="New stock amount"
-                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                          />
-                          <button
-                            onClick={handleUpdateProduct}
-                            disabled={isUpdating || !stockUpdate}
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition disabled:bg-gray-400"
-                          >
-                            Update
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Price Update */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Update Price
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={priceUpdate}
-                            onChange={(e) => setPriceUpdate(e.target.value)}
-                            placeholder="New price"
-                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                          />
-                          <button
-                            onClick={handleUpdateProduct}
-                            disabled={isUpdating || !priceUpdate}
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition disabled:bg-gray-400"
-                          >
-                            Update
-                          </button>
-                        </div>
-                      </div>
                     </div>
                   </div>
 

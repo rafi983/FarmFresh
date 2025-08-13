@@ -275,23 +275,27 @@ export default function EditProduct({ params }) {
       );
 
       // Also update other product queries optimistically
-      queryClient.setQueryData(["products"], (oldData) => {
-        if (!oldData?.products) return oldData;
-
-        const updatedProducts = oldData.products.map((product) => {
-          return product._id === id || product.id === id
-            ? { ...product, ...productData }
-            : product;
-        });
-
-        console.log("✅ [Edit] Optimistic update applied to products cache");
-        return {
-          ...oldData,
-          products: updatedProducts,
-        };
+      const productsQueryKeys = queryClient.getQueryCache().findAll({
+        queryKey: ["products"],
       });
 
-      console.log("🔄 [Edit] Making API call...");
+      productsQueryKeys.forEach((query) => {
+        queryClient.setQueryData(query.queryKey, (oldData) => {
+          if (!oldData?.products) return oldData;
+
+          const updatedProducts = oldData.products.map((product) => {
+            return product._id === id || product.id === id
+              ? { ...product, ...productData }
+              : product;
+          });
+
+          return {
+            ...oldData,
+            products: updatedProducts,
+          };
+        });
+      });
+
       const response = await fetch(`/api/products/${id}`, {
         method: "PUT",
         headers: {
@@ -302,13 +306,11 @@ export default function EditProduct({ params }) {
 
       if (response.ok) {
         const result = await response.json();
-        console.log("✅ [Edit] Product updated successfully:", result);
 
         alert("Product updated successfully!");
 
         // CRITICAL FIX: Only clear API service cache patterns, not all cache
         // This preserves our optimistic updates while preventing stale API data
-        console.log("🧹 [Edit] Clearing API service cache patterns only...");
 
         try {
           // Clear specific patterns instead of all cache
@@ -333,43 +335,23 @@ export default function EditProduct({ params }) {
           console.warn("Cache clearing warning:", cacheError);
         }
 
-        console.log(
-          "🔄 [Edit] API update completed, starting delayed background refresh...",
-        );
-
-        // Delay invalidation to allow UI to stabilize (same as bulk update)
-        setTimeout(() => {
-          console.log("🔄 [Edit] Starting gentle background cache refresh...");
-
-          // Use gentle invalidation that doesn't immediately refetch
+        // FIXED: Use the same delayed invalidation strategy as bulk update
+        setTimeout(async () => {
+          // Use gentle invalidation that doesn't immediately refetch (same as bulk update)
           queryClient.invalidateQueries({
             queryKey: ["dashboard", userIds.userId, userIds.userEmail],
             exact: true,
-            refetchType: "none", // Don't refetch immediately
+            refetchType: "none", // Don't refetch immediately - keep optimistic updates
           });
 
           queryClient.invalidateQueries({
             queryKey: ["products"],
             exact: false,
-            refetchType: "none",
-          });
-
-          queryClient.invalidateQueries({
-            queryKey: ["farmers"],
-            exact: false,
-            refetchType: "none",
-          });
-
-          queryClient.invalidateQueries({
-            queryKey: ["product", id],
-            exact: true,
-            refetchType: "none",
+            refetchType: "none", // Don't refetch immediately
           });
 
           console.log("✅ [Edit] Gentle background invalidation completed");
-        }, 5000); // Increase delay to 5 seconds for consistency with bulk update
-
-        console.log("✅ [Edit] Product update completed successfully");
+        }, 5000); // Wait 5 seconds before background sync (same as bulk update)
 
         // Redirect to manage products page
         router.push("/manage");

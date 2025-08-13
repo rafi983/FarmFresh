@@ -45,15 +45,81 @@ export default function AnalyticsTab({
       (order) => order.status === "delivered",
     );
 
-    // First, group products by category
-    const categorizedProducts = products.reduce((acc, product) => {
-      const category = product.category || "Other";
+    // First, collect ALL unique products from both products array AND order items
+    const allProducts = new Map();
+
+    // Add products from the products array
+    products.forEach((product) => {
+      allProducts.set(product._id, {
+        ...product,
+        source: "products_array",
+      });
+    });
+
+    // Add missing products from order items
+    deliveredOrders.forEach((order) => {
+      order.items?.forEach((item) => {
+        const productId = item.product?._id || item.productId;
+        const productName = item.product?.name || item.name || "no-name";
+
+        if (productId && !allProducts.has(productId)) {
+          // Create a dummy product for missing products
+          allProducts.set(productId, {
+            _id: productId,
+            name: productName,
+            price: parseFloat(item.price) || 0,
+            category: "Other", // Assign missing products to "Other"
+            stock: 0,
+            status: "unknown",
+            source: "order_items",
+          });
+        }
+      });
+    });
+
+    const allProductsArray = Array.from(allProducts.values());
+
+    console.log(`🔍 TOTAL PRODUCTS FOUND: ${allProductsArray.length}`);
+    console.log("  From products array:", products.length);
+    console.log(
+      "  From order items (missing):",
+      allProductsArray.length - products.length,
+    );
+
+    // Group all products by category
+    const categorizedProducts = allProductsArray.reduce((acc, product) => {
+      const category =
+        product.category && product.category.trim()
+          ? product.category.trim()
+          : "Other";
       if (!acc[category]) {
         acc[category] = [];
       }
       acc[category].push(product);
       return acc;
     }, {});
+
+    console.log(
+      `Category Analysis for farmer - Products with categories:`,
+      Object.fromEntries(
+        Object.entries(categorizedProducts).map(([cat, prods]) => [
+          cat,
+          prods.length,
+        ]),
+      ),
+    );
+
+    // DEBUG: Log all products and their categories
+    console.log("🔍 ALL PRODUCTS AND CATEGORIES:");
+    allProductsArray.forEach((product) => {
+      const category =
+        product.category && product.category.trim()
+          ? product.category.trim()
+          : "Other";
+      console.log(
+        `  Product: ${product.name} (${product._id}) -> Category: "${product.category}" -> Assigned: "${category}" [${product.source}]`,
+      );
+    });
 
     // Calculate stats for each category
     return Object.entries(categorizedProducts).reduce(
@@ -71,32 +137,68 @@ export default function AnalyticsTab({
         // Calculate simple average price to match Top Categories display
         const avgPrice =
           count > 0
-            ? categoryProducts.reduce((sum, p) => sum + (p.price || 0), 0) /
-              count
+            ? categoryProducts.reduce(
+                (sum, p) => sum + (parseFloat(p.price) || 0),
+                0,
+              ) / count
             : 0;
 
-        // Calculate revenue for this category from DELIVERED orders only
+        // FIX: Calculate revenue for this category directly from item values, not proportional
         const categoryRevenue = deliveredOrders.reduce((sum, order) => {
           if (!order.items) return sum;
 
-          const categoryOrderItems = order.items.filter((item) => {
-            // Check if this order item belongs to any product in this category
-            return categoryProducts.some(
-              (product) =>
+          console.log(
+            `Category ${category} - Checking order ${order._id} with ${order.items?.length} items`,
+          );
+
+          // Find items in this order that belong to this category
+          const categoryItems = order.items.filter((item) => {
+            const hasMatch = categoryProducts.some((product) => {
+              const matches =
                 item.product?._id === product._id ||
-                item.productId === product._id,
-            );
+                item.productId === product._id ||
+                item.product?.id === product._id ||
+                item.productId === product.id;
+
+              if (matches) {
+                console.log(
+                  `  ✅ MATCH found: Order item ${item.product?._id || item.productId} matches product ${product._id} (${product.name})`,
+                );
+              }
+              return matches;
+            });
+
+            if (!hasMatch) {
+              console.log(
+                `  ❌ NO MATCH: Order item ${item.product?._id || item.productId || "no-id"} (${item.product?.name || item.name || "no-name"}) not found in ${category} products`,
+              );
+            }
+
+            return hasMatch;
           });
 
-          return (
-            sum +
-            categoryOrderItems.reduce(
+          // Calculate revenue directly from category items, not proportional
+          if (categoryItems.length > 0) {
+            const categoryItemsRevenue = categoryItems.reduce(
               (itemSum, item) =>
-                itemSum + (item.price || 0) * (item.quantity || 0),
+                itemSum +
+                (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 0),
               0,
-            )
-          );
+            );
+
+            console.log(
+              `  💰 Order ${order._id} contains ${category} products - direct revenue: ${categoryItemsRevenue}`,
+            );
+
+            return sum + categoryItemsRevenue;
+          }
+
+          return sum;
         }, 0);
+
+        console.log(
+          `📈 Category ${category} final revenue: ${categoryRevenue}`,
+        );
 
         acc[category] = {
           count,
@@ -110,6 +212,45 @@ export default function AnalyticsTab({
       },
       {},
     );
+  }, [products, orders]);
+
+  // Create allProductsArray for use in other charts
+  const allProductsArray = useMemo(() => {
+    const deliveredOrders = orders.filter(
+      (order) => order.status === "delivered",
+    );
+
+    const allProducts = new Map();
+
+    // Add products from the products array
+    products.forEach((product) => {
+      allProducts.set(product._id, {
+        ...product,
+        source: "products_array",
+      });
+    });
+
+    // Add missing products from order items
+    deliveredOrders.forEach((order) => {
+      order.items?.forEach((item) => {
+        const productId = item.product?._id || item.productId;
+        const productName = item.product?.name || item.name || "no-name";
+
+        if (productId && !allProducts.has(productId)) {
+          allProducts.set(productId, {
+            _id: productId,
+            name: productName,
+            price: parseFloat(item.price) || 0,
+            category: "Other",
+            stock: 0,
+            status: "unknown",
+            source: "order_items",
+          });
+        }
+      });
+    });
+
+    return Array.from(allProducts.values());
   }, [products, orders]);
 
   // Calculate last 30 days performance with more data points
@@ -126,14 +267,20 @@ export default function AnalyticsTab({
         return isToday && isDelivered;
       });
 
+      // FIX: Ensure revenue values are properly converted to numbers
+      const dayRevenue = dayOrders.reduce((sum, order) => {
+        const revenue = parseFloat(order.farmerSubtotal || order.total || 0);
+        console.log(
+          `Day ${date.toISOString().split("T")[0]}: Order ${order._id} revenue: ${revenue}`,
+        );
+        return sum + revenue;
+      }, 0);
+
       return {
         date: date.toISOString().split("T")[0],
         day: date.getDate(),
         orders: dayOrders.length,
-        revenue: dayOrders.reduce(
-          (sum, order) => sum + (order.farmerSubtotal || order.total || 0),
-          0,
-        ),
+        revenue: dayRevenue, // This is now guaranteed to be a number
         customers: new Set(dayOrders.map((order) => order.userId)).size,
       };
     });
@@ -146,7 +293,8 @@ export default function AnalyticsTab({
       (order) => order.status === "delivered",
     );
 
-    const productData = products.slice(0, 20).map((product) => {
+    // Use allProductsArray instead of just products to include deleted products
+    const productData = allProductsArray.slice(0, 20).map((product) => {
       const productOrders = deliveredOrders.filter((order) =>
         order.items?.some(
           (item) =>
@@ -164,12 +312,13 @@ export default function AnalyticsTab({
         return (
           sum +
           matchingItems.reduce(
-            (itemSum, item) => itemSum + (item.quantity || 0),
+            (itemSum, item) => itemSum + (parseInt(item.quantity) || 0),
             0,
           )
         );
       }, 0);
 
+      // Calculate product revenue directly from item values for accuracy
       const totalRevenue = productOrders.reduce((sum, order) => {
         const matchingItems =
           order.items?.filter(
@@ -177,18 +326,22 @@ export default function AnalyticsTab({
               item.product?._id === product._id ||
               item.productId === product._id,
           ) || [];
-        return (
-          sum +
-          matchingItems.reduce(
-            (itemSum, item) =>
-              itemSum + (item.price || 0) * (item.quantity || 0),
-            0,
-          )
+
+        if (matchingItems.length === 0) return sum;
+
+        // Calculate direct revenue from matching items
+        const itemRevenue = matchingItems.reduce(
+          (itemSum, item) =>
+            itemSum +
+            (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 0),
+          0,
         );
+
+        return sum + itemRevenue;
       }, 0);
 
       return {
-        x: product.price || 0, // Price
+        x: parseFloat(product.price) || 0, // Price
         y: totalQuantitySold, // Quantity sold
         r: Math.max(Math.sqrt(totalRevenue / 10), 5), // Revenue (bubble size)
         label: product.name,
@@ -207,7 +360,7 @@ export default function AnalyticsTab({
         },
       ],
     };
-  }, [products, orders]);
+  }, [allProductsArray, orders]);
 
   // Radar chart data for category performance
   const categoryRadarData = useMemo(() => {
