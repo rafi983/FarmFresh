@@ -15,12 +15,8 @@
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/debug/analytics/route.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/debug/cleanup/route.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/debug/products/route.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/products/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/farmers/[id]/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmers/[id]/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/debug-products.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/cart/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/cart/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/contexts/CartContext.js" beforeDir="false" afterPath="$PROJECT_DIR$/contexts/CartContext.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -141,7 +137,7 @@
       <workItem from="1754993965317" duration="12069000" />
       <workItem from="1755008393891" duration="6000" />
       <workItem from="1755071664461" duration="20803000" />
-      <workItem from="1755097630419" duration="3863000" />
+      <workItem from="1755097630419" duration="6636000" />
     </task>
     <servers />
   </component>

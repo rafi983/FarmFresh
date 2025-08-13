@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCart } from "@/contexts/CartContext";
 import Footer from "@/components/Footer";
 import { debounce } from "@/utils/debounce";
+import { useFarmersData } from "@/hooks/useFarmerData";
 
 export default function Cart() {
   const {
@@ -29,9 +30,148 @@ export default function Cart() {
 
   const notificationTimeouts = useRef(new Map());
 
-  // Enhanced cart statistics with memoization
+  // Get effective quantity (local or actual) - Move this up before it's used
+  const getEffectiveQuantity = useCallback(
+    (item) => {
+      return localQuantities[item.id] !== undefined
+        ? localQuantities[item.id]
+        : item.quantity;
+    },
+    [localQuantities],
+  );
+
+  // Extract unique farmer IDs from cart items
+  const farmerIds = useMemo(() => {
+    const ids = items
+      .map((item) => {
+        if (typeof item.farmer === "object" && item.farmer?._id) {
+          return item.farmer._id;
+        } else if (item.farmerId) {
+          return item.farmerId;
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    return [...new Set(ids)];
+  }, [items]);
+
+  // Fetch farmer data dynamically
+  const {
+    farmers: farmersData,
+    loading: farmersLoading,
+    getFarmer,
+  } = useFarmersData(farmerIds);
+
+  // Enhanced cart items processing to properly extract and display farmer names and product images
+  const enrichedCartItems = useMemo(() => {
+    return items.map((item) => {
+      // Extract farmer information with comprehensive fallbacks
+      let farmerName = "Local Farmer";
+      let farmerId = null;
+
+      // Priority 1: Direct farmer object with name
+      if (typeof item.farmer === "object" && item.farmer?.name) {
+        farmerName = item.farmer.name;
+        farmerId = item.farmer._id || item.farmer.id;
+      }
+      // Priority 2: Direct farmer name string
+      else if (typeof item.farmer === "string" && item.farmer.trim()) {
+        farmerName = item.farmer;
+      }
+      // Priority 3: farmerName field (from localStorage simplified data)
+      else if (item.farmerName && item.farmerName.trim()) {
+        farmerName = item.farmerName;
+        farmerId = item.farmerId;
+      }
+      // Priority 4: farmerId field - check database first, then fallback to hardcoded mapping
+      else if (item.farmerId) {
+        farmerId = item.farmerId;
+
+        // Try to get farmer data from API
+        const farmerData = getFarmer(item.farmerId);
+        if (farmerData && farmerData.name) {
+          // Use database farmer name - this is the proper way
+          farmerName = farmerData.name;
+        } else if (!farmersLoading) {
+          // If not loading and no data found, show fallback
+          farmerName = "Local Farmer";
+        } else {
+          // Still loading, show loading state
+          farmerName = "Loading...";
+        }
+      }
+
+      // Enhanced image handling with better fallbacks
+      let productImage = null;
+
+      // Priority 1: Direct image field
+      if (item.image) {
+        if (Array.isArray(item.image) && item.image.length > 0) {
+          productImage = item.image[0];
+        } else if (typeof item.image === "string" && item.image.trim()) {
+          productImage = item.image;
+        }
+      }
+
+      // Priority 2: images array field
+      if (
+        !productImage &&
+        item.images &&
+        Array.isArray(item.images) &&
+        item.images.length > 0
+      ) {
+        productImage = item.images[0];
+      }
+
+      // Priority 3: Category-based default images
+      if (!productImage) {
+        const categoryImages = {
+          Vegetables:
+            "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&h=300&fit=crop",
+          Fruits:
+            "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=300&h=300&fit=crop",
+          Dairy:
+            "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&h=300&fit=crop",
+          Herbs:
+            "https://images.unsplash.com/photo-1462536943532-57a629f6cc60?w=300&h=300&fit=crop",
+          Honey:
+            "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=300&h=300&fit=crop",
+          Grains:
+            "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&h=300&fit=crop",
+          Spices:
+            "https://images.unsplash.com/photo-1596040033229-a9821ebc227d?w=300&h=300&fit=crop",
+          Meat: "https://images.unsplash.com/photo-1588347818505-d0e4dfe81f30?w=300&h=300&fit=crop",
+        };
+
+        productImage =
+          categoryImages[item.category] ||
+          categoryImages["Vegetables"] ||
+          "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&h=300&fit=crop";
+      }
+
+      return {
+        ...item,
+        enrichedFarmerName: farmerName,
+        enrichedFarmerId: farmerId || item.farmerId,
+        enrichedImage: productImage,
+        effectiveQuantity: getEffectiveQuantity(item),
+        isUpdating: updatingQuantities.has(item.id),
+        isRemoving: removingItems.has(item.id),
+      };
+    });
+  }, [
+    items,
+    getEffectiveQuantity,
+    updatingQuantities,
+    removingItems,
+    getFarmer,
+    farmersLoading,
+  ]);
+
+  // Enhanced cart statistics with proper farmer counting
   const cartStats = useMemo(() => {
-    if (!items.length) {
+    if (!enrichedCartItems.length) {
       return {
         totalItems: 0,
         totalAmount: 0,
@@ -39,29 +179,28 @@ export default function Cart() {
         averagePrice: 0,
         farmers: 0,
         categories: 0,
-        estimatedSavings: 50, // Free delivery
+        estimatedSavings: 50,
       };
     }
 
     const totalItems = getCartItemsCount();
     const totalAmount = getCartTotal();
     const farmers = new Set(
-      items.map((item) =>
-        typeof item.farmer === "object" ? item.farmer?.name : item.farmer,
-      ),
+      enrichedCartItems.map((item) => item.enrichedFarmerName),
     ).size;
-    const categories = new Set(items.map((item) => item.category)).size;
+    const categories = new Set(enrichedCartItems.map((item) => item.category))
+      .size;
 
     return {
       totalItems,
       totalAmount,
-      uniqueItems: items.length,
+      uniqueItems: enrichedCartItems.length,
       averagePrice: totalItems > 0 ? totalAmount / totalItems : 0,
       farmers,
       categories,
-      estimatedSavings: 50 + (totalAmount >= 500 ? 25 : 0), // Free delivery + premium packaging
+      estimatedSavings: 50 + (totalAmount >= 500 ? 25 : 0),
     };
-  }, [items, getCartTotal, getCartItemsCount]);
+  }, [enrichedCartItems, getCartTotal, getCartItemsCount]);
 
   // Debounced quantity update to prevent excessive API calls
   const debouncedQuantityUpdate = useMemo(
@@ -235,16 +374,6 @@ export default function Cart() {
       express: cartStats.totalAmount >= 1000,
     };
   }, [cartStats.totalAmount]);
-
-  // Get effective quantity (local or actual)
-  const getEffectiveQuantity = useCallback(
-    (item) => {
-      return localQuantities[item.id] !== undefined
-        ? localQuantities[item.id]
-        : item.quantity;
-    },
-    [localQuantities],
-  );
 
   // Memoized cart items to prevent unnecessary re-renders
   const memoizedCartItems = useMemo(
@@ -596,15 +725,17 @@ export default function Cart() {
                 {/* Cart Items List */}
                 <div className="p-6">
                   <div
-                    className={`${viewMode === "compact" ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" : "space-y-6"}`}
+                    className={`${
+                      viewMode === "compact"
+                        ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                        : "space-y-6"
+                    }`}
                   >
-                    {items.map((item, index) => (
+                    {enrichedCartItems.map((item, index) => (
                       <div
                         key={item.id}
                         className={`group relative bg-gradient-to-br from-gray-50 to-green-50 dark:from-gray-700 dark:to-gray-600 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-green-300 dark:hover:border-green-600 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-xl ${
-                          removingItems.has(item.id)
-                            ? "opacity-50 scale-95"
-                            : ""
+                          item.isRemoving ? "opacity-50 scale-95" : ""
                         }`}
                         style={{ animationDelay: `${index * 100}ms` }}
                       >
@@ -612,12 +743,13 @@ export default function Cart() {
                           {/* Product Image & Quantity Badge */}
                           <div className="relative mb-4">
                             <img
-                              src={
-                                item.image ||
-                                "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=100&h=100&fit=crop"
-                              }
+                              src={item.enrichedImage}
                               alt={item.name}
-                              className={`${viewMode === "detailed" ? "w-32 h-32 mx-auto" : "w-full h-48"} object-cover rounded-xl border-2 border-white dark:border-gray-600 shadow-lg`}
+                              className={`${
+                                viewMode === "detailed"
+                                  ? "w-32 h-32 mx-auto"
+                                  : "w-full h-48"
+                              } object-cover rounded-xl border-2 border-white dark:border-gray-600 shadow-lg`}
                             />
                             <div className="absolute -top-3 -right-3 bg-gradient-to-r from-green-600 to-blue-600 text-white text-sm rounded-full w-8 h-8 flex items-center justify-center font-bold shadow-lg">
                               {item.quantity}
@@ -637,13 +769,8 @@ export default function Cart() {
                               </h3>
                               <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2">
                                 <i className="fas fa-user-tie mr-2"></i>
-                                <span>
-                                  {typeof item.farmer === "object" &&
-                                  item.farmer?.name
-                                    ? item.farmer.name
-                                    : typeof item.farmer === "string"
-                                      ? item.farmer
-                                      : "Local Farmer"}
+                                <span className="font-medium">
+                                  {item.enrichedFarmerName}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between text-sm">
@@ -666,14 +793,14 @@ export default function Cart() {
                                       item.quantity - 1,
                                     )
                                   }
-                                  disabled={updatingQuantities.has(item.id)}
+                                  disabled={item.isUpdating}
                                   className="px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900 text-red-600 transition-colors duration-200 disabled:opacity-50"
                                 >
                                   <i className="fas fa-minus"></i>
                                 </button>
 
                                 <div className="px-4 py-2 border-x border-gray-300 dark:border-gray-600 min-w-[80px] text-center bg-gray-50 dark:bg-gray-700">
-                                  {updatingQuantities.has(item.id) ? (
+                                  {item.isUpdating ? (
                                     <i className="fas fa-spinner fa-spin text-green-600"></i>
                                   ) : (
                                     <span className="font-semibold text-gray-900 dark:text-white">
@@ -689,7 +816,7 @@ export default function Cart() {
                                       item.quantity + 1,
                                     )
                                   }
-                                  disabled={updatingQuantities.has(item.id)}
+                                  disabled={item.isUpdating}
                                   className="px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900 text-green-600 transition-colors duration-200 disabled:opacity-50"
                                 >
                                   <i className="fas fa-plus"></i>
@@ -699,10 +826,10 @@ export default function Cart() {
                               {/* Remove Button */}
                               <button
                                 onClick={() => handleRemoveItem(item.id)}
-                                disabled={removingItems.has(item.id)}
+                                disabled={item.isRemoving}
                                 className="p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900 rounded-xl transition-colors duration-200 disabled:opacity-50 shadow-sm"
                               >
-                                {removingItems.has(item.id) ? (
+                                {item.isRemoving ? (
                                   <i className="fas fa-spinner fa-spin"></i>
                                 ) : (
                                   <i className="fas fa-trash"></i>

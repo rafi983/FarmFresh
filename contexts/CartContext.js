@@ -5,61 +5,201 @@ import { useSession } from "next-auth/react";
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [cartItems, setCartItems] = useState([]);
   const [cartCount, setCartCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [recentlyOrderedItems, setRecentlyOrderedItems] = useState([]);
+  const [cartInitialized, setCartInitialized] = useState(false);
 
   // New states for better UX
   const [addingToCart, setAddingToCart] = useState(false);
   const [cartMessage, setCartMessage] = useState(null); // { type: 'success' | 'error' | 'info', message: string }
   const [addingItemId, setAddingItemId] = useState(null); // Track which item is being added
 
-  // Fetch cart when session changes
+  // Initialize cart from localStorage immediately
   useEffect(() => {
-    if (session?.user) {
-      fetchCart();
-    } else {
-      // Load from localStorage for non-authenticated users
-      const savedCart = localStorage.getItem("farmfresh-cart");
-      if (savedCart) {
-        try {
+    const initializeCart = () => {
+      try {
+        const savedCart = localStorage.getItem("farmfresh-cart");
+        if (savedCart) {
           const items = JSON.parse(savedCart);
           setCartItems(items);
           updateCartCount(items);
-        } catch (error) {
-          console.error("Error loading cart from localStorage:", error);
+        }
+      } catch (error) {
+        console.error("Error loading cart from localStorage:", error);
+      } finally {
+        setCartInitialized(true);
+      }
+    };
+
+    // Only initialize once
+    if (!cartInitialized) {
+      initializeCart();
+    }
+  }, []); // Empty dependency array to run only once
+
+  // Handle session-based cart loading
+  useEffect(() => {
+    if (status === "loading" || !cartInitialized) return;
+
+    if (session?.user) {
+      // User is logged in - fetch from server and merge with localStorage
+      fetchCartAndMerge();
+    }
+    // For non-authenticated users, cart is already loaded from localStorage
+  }, [session?.user?.id, status, cartInitialized]); // More specific dependencies
+
+  // Helper function to safely store data in localStorage with size management
+  const safeLocalStorageSet = (key, data) => {
+    try {
+      // First, clean and optimize the data
+      const cleanedData = data.map((item) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        stock: item.stock,
+        unit: item.unit,
+        image: Array.isArray(item.image) ? item.image[0] : item.image, // Take only first image
+        farmerId: item.farmerId,
+        farmerName: item.farmerName,
+        category: item.category,
+      }));
+
+      const dataString = JSON.stringify(cleanedData);
+
+      // Check size before attempting to store (500KB limit for safety)
+      if (dataString.length > 512 * 1024) {
+        console.warn("Cart data too large, reducing items");
+        // Keep only the 20 most recent items
+        const reducedData = cleanedData.slice(-20);
+        localStorage.setItem(key, JSON.stringify(reducedData));
+        return reducedData;
+      }
+
+      // Try to store the full dataset
+      localStorage.setItem(key, dataString);
+      return cleanedData;
+    } catch (error) {
+      if (error.name === "QuotaExceededError") {
+        console.warn(
+          "localStorage quota exceeded, implementing aggressive cleanup",
+        );
+
+        // Clear other potentially large items first
+        try {
+          // Clear any other farmfresh related storage
+          Object.keys(localStorage).forEach((key) => {
+            if (key.startsWith("farmfresh-") && key !== "farmfresh-cart") {
+              localStorage.removeItem(key);
+            }
+          });
+
+          // Try minimal cart storage (only 5 most recent items)
+          const minimalData = data.slice(-5).map((item) => ({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+          }));
+
+          localStorage.setItem(key, JSON.stringify(minimalData));
+          return minimalData;
+        } catch (secondError) {
+          console.error("Critical storage error, clearing cart storage");
+          localStorage.removeItem(key);
+          return [];
         }
       }
+      throw error;
     }
-  }, [session]);
+  };
 
-  // Save to localStorage whenever cart changes
+  // Save to localStorage whenever cart changes (for both authenticated and non-authenticated users)
   useEffect(() => {
-    if (!session?.user) {
-      localStorage.setItem("farmfresh-cart", JSON.stringify(cartItems));
+    if (!cartInitialized) return; // Don't save until cart is initialized
+
+    if (cartItems.length > 0) {
+      const storedData = safeLocalStorageSet("farmfresh-cart", cartItems);
+
+      // If the stored data was reduced, update the cart state to match
+      if (storedData.length < cartItems.length) {
+        setCartItems(storedData);
+        setCartMessage({
+          type: "info",
+          message: `Cart was reduced to ${storedData.length} items due to storage limits.`,
+        });
+      }
+
+      updateCartCount(cartItems);
+
+      // Also save to server if user is authenticated (debounced to prevent excessive calls)
+      if (session?.user) {
+        const timeoutId = setTimeout(() => saveCart(cartItems), 500);
+        return () => clearTimeout(timeoutId);
+      }
+    } else {
+      // Clear localStorage when cart is empty
+      try {
+        localStorage.removeItem("farmfresh-cart");
+      } catch (error) {
+        console.error("Error clearing empty cart:", error);
+      }
     }
-    updateCartCount(cartItems);
-  }, [cartItems, session]);
+  }, [cartItems, session?.user?.id, cartInitialized]);
 
   const updateCartCount = (items) => {
     const count = items.reduce((total, item) => total + item.quantity, 0);
     setCartCount(count);
   };
 
-  const fetchCart = async () => {
+  const fetchCartAndMerge = async () => {
     if (!session?.user) return;
 
     setLoading(true);
     try {
-      // Remove the Authorization header since NextAuth uses cookies
       const response = await fetch("/api/cart");
 
       if (response.ok) {
         const data = await response.json();
-        setCartItems(data.items || []);
+        const serverItems = data.items || [];
+
+        // Get current localStorage items
+        const localStorageCart = localStorage.getItem("farmfresh-cart");
+        let localItems = [];
+
+        if (localStorageCart) {
+          try {
+            localItems = JSON.parse(localStorageCart);
+          } catch (error) {
+            console.error("Error parsing localStorage cart:", error);
+          }
+        }
+
+        // Merge logic: prefer server data, but include local items not on server
+        const mergedItems = [...serverItems];
+
+        localItems.forEach((localItem) => {
+          const existsOnServer = serverItems.find(
+            (serverItem) => serverItem.id === localItem.id,
+          );
+          if (!existsOnServer) {
+            mergedItems.push(localItem);
+          }
+        });
+
+        setCartItems(mergedItems);
+
+        // Save merged cart back to server if there were local items
+        if (
+          localItems.length > 0 &&
+          mergedItems.length !== serverItems.length
+        ) {
+          saveCart(mergedItems);
+        }
       } else {
         console.error(
           "Failed to fetch cart:",
@@ -233,6 +373,14 @@ export function CartProvider({ children }) {
 
   const clearCart = async () => {
     setCartItems([]);
+    setCartCount(0); // Add this line to reset cart count
+
+    // Also clear localStorage
+    try {
+      localStorage.removeItem("farmfresh-cart");
+    } catch (error) {
+      console.error("Error clearing localStorage:", error);
+    }
 
     if (session?.user) {
       try {
@@ -302,7 +450,7 @@ export function CartProvider({ children }) {
     clearCartAfterPayment,
     getCartTotal,
     getCartItemsCount,
-    fetchCart,
+    fetchCart: fetchCartAndMerge,
     clearCartMessage,
   };
 
