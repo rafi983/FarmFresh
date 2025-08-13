@@ -200,32 +200,28 @@ export async function GET(request) {
       query.featured = true;
     }
 
-    // Add farmer filters for dashboard - FIXED LOGIC to prevent cross-contamination
+    // Add farmer filters for dashboard
     if (farmerId || farmerEmail) {
-      // For hardcoded farmers (no ObjectId), filter strictly by email
-      if (!farmerId || !farmerId.match(/^[0-9a-fA-F]{24}$/)) {
-        // This is a hardcoded farmer - filter ONLY by exact email match
-        if (farmerEmail) {
-          query.$and = query.$and || [];
-          query.$and.push({
-            $or: [
-              { farmerEmail: { $eq: farmerEmail } },
-              { "farmer.email": { $eq: farmerEmail } },
-            ],
-          });
-        }
-      } else {
-        // This is a real farmer with ObjectId - use comprehensive matching
-        query.$or = [];
-
+      query.$or = [];
+      if (farmerId) {
+        let farmer = null;
         let farmerName = null;
         let farmerFarmName = null;
 
         try {
           const farmersCollection = cachedDb.collection("farmers");
-          const farmer = await farmersCollection.findOne({
-            _id: new ObjectId(farmerId),
-          });
+          if (farmerId.match(/^[0-9a-fA-F]{24}$/)) {
+            farmer = await farmersCollection.findOne({
+              _id: new ObjectId(farmerId),
+            });
+          } else {
+            const farmersDoc = await farmersCollection.findOne({
+              "farmers._id": farmerId,
+            });
+            if (farmersDoc && farmersDoc.farmers) {
+              farmer = farmersDoc.farmers.find((f) => f._id === farmerId);
+            }
+          }
 
           if (farmer) {
             farmerName = farmer.name;
@@ -235,7 +231,6 @@ export async function GET(request) {
           console.log("Could not fetch farmer for name-based matching:", error);
         }
 
-        // Match by farmerId (various formats)
         query.$or.push(
           { farmerId: farmerId },
           { farmerId: { $eq: farmerId } },
@@ -243,33 +238,25 @@ export async function GET(request) {
           { "farmer._id": farmerId },
         );
 
-        // Match by farmer email (for real farmers)
-        if (farmerEmail) {
-          query.$or.push(
-            { farmerEmail: farmerEmail },
-            { "farmer.email": farmerEmail },
-          );
-        }
-
-        // Match by farmer name (if available)
         if (farmerName) {
           query.$or.push(
             { "farmer.name": farmerName },
             { "farmer.name": { $regex: new RegExp(`^${farmerName}$`, "i") } },
           );
         }
-
-        // Match by farm name (if available)
         if (farmerFarmName) {
           query.$or.push(
             { "farmer.farmName": farmerFarmName },
-            {
-              "farmer.farmName": {
-                $regex: new RegExp(`^${farmerFarmName}$`, "i"),
-              },
-            },
+            { farmerFarmName: farmerFarmName },
           );
         }
+      }
+
+      if (farmerEmail) {
+        query.$or.push(
+          { farmerEmail: farmerEmail },
+          { "farmer.email": farmerEmail },
+        );
       }
     }
 
@@ -293,6 +280,12 @@ export async function GET(request) {
       switch (sortBy) {
         case "price-low":
           sortOptions = { price: 1 };
+          if (farmerEmail) {
+            query.$or.push(
+              { farmerEmail: farmerEmail },
+              { "farmer.email": farmerEmail },
+            );
+          }
           break;
         case "price-high":
           sortOptions = { price: -1 };

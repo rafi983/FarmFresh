@@ -233,40 +233,8 @@ export default function FarmerPage() {
         const isMatch =
           matchesById || matchesByObjectId || matchesByName || matchesByEmail;
 
-        if (isMatch) {
-          console.log("✅ Found matching product:", {
-            productName: product.name,
-            productId: product._id,
-            productFarmerId,
-            productFarmerName,
-            productFarmerEmail,
-            farmerId,
-            farmerName,
-            farmerEmail,
-            matchType: matchesById
-              ? "ID"
-              : matchesByObjectId
-                ? "ObjectId"
-                : matchesByName
-                  ? "Name"
-                  : "Email",
-          });
-        }
-
         return isMatch;
       });
-
-      console.log("Farmer ID:", farmerId);
-      console.log("Farmer Name:", farmerData.farmer?.name);
-      console.log("Found products for farmer:", farmerProducts.length);
-      console.log(
-        "Products:",
-        farmerProducts.map((p) => ({
-          name: p.name,
-          farmerId: p.farmer?.id || p.farmerId,
-          farmerName: p.farmer?.name || p.farmerName,
-        })),
-      );
 
       // Now fetch orders with farmer information
       const ordersResponse = await fetch(
@@ -297,7 +265,6 @@ export default function FarmerPage() {
           : 0;
 
       // Enhanced average rating calculation
-      console.log("Calculating average rating for farmer:", farmerId);
 
       let averageRating = 0;
       if (farmerProducts.length > 0) {
@@ -306,8 +273,6 @@ export default function FarmerPage() {
           rating: parseFloat(p.averageRating) || 0,
           reviewsCount: p.reviews?.length || 0,
         }));
-
-        console.log("Products with ratings:", ratingsData);
 
         // Calculate simple average of product ratings (only products with ratings)
         const productsWithRatings = farmerProducts.filter(
@@ -320,11 +285,7 @@ export default function FarmerPage() {
 
           averageRating = (totalRating / productsWithRatings.length).toFixed(1);
         }
-
-        console.log("Products with ratings count:", productsWithRatings.length);
-        console.log("Calculated average rating:", averageRating);
       } else {
-        console.log("No products found for farmer");
       }
 
       // Get categories from products
@@ -390,10 +351,6 @@ export default function FarmerPage() {
       const allReviews = [...productReviews, ...separateReviews]
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         .slice(0, 10); // Get top 10 most recent reviews
-
-      console.log(
-        `Total reviews found: ${allReviews.length} (${productReviews.length} from products, ${separateReviews.length} from reviews collection)`,
-      );
 
       // Calculate revenue from orders - ONLY DELIVERED ORDERS (like analytics tab)
       const farmerOrders = (ordersData.orders || []).filter((order) => {
@@ -877,22 +834,6 @@ export default function FarmerPage() {
                                   {cert}
                                 </span>
                               ),
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                    {/* Farming Methods Section */}
-                    {farmer.farmInfo?.farmingMethods &&
-                      farmer.farmInfo.farmingMethods.length > 0 && (
-                        <div className="mt-8">
-                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                            Our Farming Methods
-                          </h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {farmer.farmInfo.farmingMethods.map(
-                              (method, index) =>
-                                renderMethodCard(method, index),
                             )}
                           </div>
                         </div>
@@ -1960,7 +1901,7 @@ export default function FarmerPage() {
                           </span>
                         </div>
                         <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mb-2">
-                          ${stats.monthlyRevenue}
+                          BDT {stats.monthlyRevenue}
                         </div>
                         <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
                           Monthly Revenue
@@ -1984,7 +1925,7 @@ export default function FarmerPage() {
                           </span>
                         </div>
                         <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                          ${stats.totalRevenue}
+                          BDT {stats.totalRevenue}
                         </div>
                         <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
                           Total Revenue
@@ -2008,7 +1949,7 @@ export default function FarmerPage() {
                           </span>
                         </div>
                         <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
-                          ${stats.inventoryValue}
+                          BDT {stats.inventoryValue}
                         </div>
                         <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
                           Inventory Value
@@ -2021,50 +1962,51 @@ export default function FarmerPage() {
                   </div>
                 </div>
 
-                {/* Farming Methods Showcase */}
-                {stats.farmingMethods && stats.farmingMethods.length > 0 && (
-                  <div className="mb-12">
-                    <div className="text-center mb-8">
-                      <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-                        🌱 Our Farming Philosophy
-                      </h3>
-                      <p className="text-gray-600 dark:text-gray-400">
-                        Sustainable and innovative agricultural practices
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {stats.farmingMethods.map((method, index) => {
-                        const config = methodConfig[method] || {
-                          icon: "fas fa-tractor",
-                          color: "text-gray-600 dark:text-gray-400",
-                          description: "Specialized farming technique",
-                        };
+                {/* Farming Methods Showcase - Updated to use database data */}
+                {farmer.farmInfo?.farmingMethods &&
+                  farmer.farmInfo.farmingMethods.length > 0 && (
+                    <div className="mb-12">
+                      <div className="text-center mb-8">
+                        <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                          🌱 Our Farming Philosophy
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-400">
+                          Sustainable and innovative agricultural practices
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {farmer.farmInfo.farmingMethods.map((method, index) => {
+                          const config = methodConfig[method] || {
+                            icon: "fas fa-tractor",
+                            color: "text-gray-600 dark:text-gray-400",
+                            description: "Specialized farming technique",
+                          };
 
-                        return (
-                          <div
-                            key={index}
-                            className="group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-lg hover:shadow-2xl transition-all duration-500 border-t-4 border-green-500"
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-br from-green-50/50 to-emerald-50/50 dark:from-green-900/10 dark:to-emerald-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                            <div className="relative z-10 text-center">
-                              <div className="w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                                <i
-                                  className={`${config.icon} text-4xl ${config.color}`}
-                                ></i>
+                          return (
+                            <div
+                              key={index}
+                              className="group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-8 shadow-lg hover:shadow-2xl transition-all duration-500 border-t-4 border-green-500"
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-br from-green-50/50 to-emerald-50/50 dark:from-green-900/10 dark:to-emerald-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                              <div className="relative z-10 text-center">
+                                <div className="w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                                  <i
+                                    className={`${config.icon} text-4xl ${config.color}`}
+                                  ></i>
+                                </div>
+                                <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                                  {method}
+                                </h4>
+                                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                                  {config.description}
+                                </p>
                               </div>
-                              <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
-                                {method}
-                              </h4>
-                              <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                                {config.description}
-                              </p>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Growth Metrics Footer */}
                 <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-3xl p-8 text-white">
