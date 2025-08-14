@@ -15,55 +15,18 @@ export default function Favorites() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { addToCart } = useCart();
-  const { removeFromFavorites } = useFavorites();
+  const {
+    favorites,
+    removeFromFavorites,
+    loading: favoritesLoading,
+  } = useFavorites();
 
-  const [favorites, setFavorites] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState("grid"); // grid, list
   const [sortBy, setSortBy] = useState("dateAdded"); // dateAdded, name, price, rating
   const [filterCategory, setFilterCategory] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
   const [isRemoving, setIsRemoving] = useState(false);
-
-  // Fetch favorites function
-  const fetchFavorites = useCallback(async () => {
-    if (!session?.user) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const userId =
-        session.user.userId ||
-        session.user.id ||
-        session.user._id ||
-        session.user.email;
-
-      if (!userId) {
-        console.error("No user ID found in session");
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetch(
-        `/api/favorites?userId=${encodeURIComponent(userId)}`,
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setFavorites(data.favorites || []);
-      } else {
-        console.error("Failed to fetch favorites:", response.status);
-        setFavorites([]);
-      }
-    } catch (error) {
-      console.error("Error fetching favorites:", error);
-      setFavorites([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [session?.user]);
 
   // Get unique categories
   const categories = useMemo(() => {
@@ -131,10 +94,6 @@ export default function Favorites() {
         await removeFromFavorites(productId);
       }
 
-      // Update local state
-      setFavorites((prev) =>
-        prev.filter((fav) => !selectedItems.includes(fav.product?._id)),
-      );
       setSelectedItems([]);
     } catch (error) {
       console.error("Error removing favorites:", error);
@@ -175,14 +134,10 @@ export default function Favorites() {
       router.push("/login");
       return;
     }
-
-    if (status === "authenticated" && session?.user) {
-      fetchFavorites();
-    }
-  }, [session, status, router, fetchFavorites]);
+  }, [session, status, router]);
 
   // Loading state
-  if (status === "loading" || loading) {
+  if (status === "loading" || favoritesLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
         <div className="text-center">

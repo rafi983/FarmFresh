@@ -12,14 +12,20 @@ import { usePathname, useRouter } from "next/navigation";
 
 export default function Navigation() {
   const { user, isAuthenticated, logout, updateUser } = useAuth();
-  const { isDarkMode, toggleDarkMode } = useTheme();
+  const { isDarkMode, toggleDarkMode, isLoaded } = useTheme();
   const { favorites } = useFavorites();
   const { cartItems, cartCount } = useCart();
   const { totalUnreadCount } = useMessaging();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [updatedUserName, setUpdatedUserName] = useState(user?.name || "");
+  const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  // Prevent hydration mismatch by only rendering theme-dependent content after mount
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Fetch updated name from the database for farmers
   useEffect(() => {
@@ -301,11 +307,19 @@ export default function Navigation() {
               onClick={toggleDarkMode}
               className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
               title={
-                isDarkMode ? "Switch to light mode" : "Switch to dark mode"
+                isMounted && isLoaded
+                  ? isDarkMode
+                    ? "Switch to light mode"
+                    : "Switch to dark mode"
+                  : "Toggle theme"
               }
             >
-              {isDarkMode ? (
-                <i className="fas fa-sun text-xl"></i>
+              {isMounted && isLoaded ? (
+                isDarkMode ? (
+                  <i className="fas fa-sun text-xl"></i>
+                ) : (
+                  <i className="fas fa-moon text-xl"></i>
+                )
               ) : (
                 <i className="fas fa-moon text-xl"></i>
               )}

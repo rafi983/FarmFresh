@@ -11,28 +11,51 @@ export default function Success() {
   const { data: session } = useSession();
   const orderId = searchParams.get("orderId");
 
-  // Initialize with a placeholder order to show success immediately
-  const [order, setOrder] = useState({
-    orderNumber: orderId || "LOADING...",
-    createdAt: new Date().toISOString(),
-    paymentMethod: "Processing...",
-    status: "confirmed",
-    deliveryAddress: {
-      name: "Loading...",
-      address: "Fetching address details...",
-      city: "",
-      phone: "",
-    },
-    items: [],
-    subtotal: 0,
-    deliveryFee: 0,
-    serviceFee: 0,
-    total: 0,
+  // Initialize with data from sessionStorage if available, otherwise use placeholder
+  const [order, setOrder] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const pendingOrder = sessionStorage.getItem("pendingOrder");
+        if (pendingOrder) {
+          const parsedOrder = JSON.parse(pendingOrder);
+          // Clean up sessionStorage after retrieving
+          sessionStorage.removeItem("pendingOrder");
+          return parsedOrder;
+        }
+      } catch (e) {
+        console.warn("Could not retrieve order from sessionStorage:", e);
+      }
+    }
+
+    // Fallback placeholder
+    return {
+      orderNumber: orderId || "LOADING...",
+      createdAt: new Date().toISOString(),
+      paymentMethod: "Processing...",
+      status: "confirmed",
+      deliveryAddress: {
+        name: "Loading...",
+        address: "Fetching address details...",
+        city: "",
+        phone: "",
+      },
+      items: [],
+      subtotal: 0,
+      deliveryFee: 0,
+      serviceFee: 0,
+      total: 0,
+    };
   });
+
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   useEffect(() => {
     if (orderId) {
-      fetchOrderDetails();
+      // Only fetch if we don't have complete order data
+      if (!order.orderId || order.orderNumber === "LOADING...") {
+        setIsLoadingDetails(true);
+        fetchOrderDetails();
+      }
     } else {
       router.push("/");
     }
@@ -40,7 +63,6 @@ export default function Success() {
 
   const fetchOrderDetails = async () => {
     try {
-      // Use the individual order API endpoint instead of query parameter
       const response = await fetch(`/api/orders/${orderId}`);
       if (response.ok) {
         const data = await response.json();
@@ -70,11 +92,11 @@ export default function Success() {
         }
       } else {
         console.error("Failed to fetch order details");
-        // Keep the placeholder data if API fails
       }
     } catch (error) {
       console.error("Error fetching order details:", error);
-      // Keep the placeholder data if there's an error
+    } finally {
+      setIsLoadingDetails(false);
     }
   };
 

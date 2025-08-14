@@ -30,6 +30,32 @@ export default function Cart() {
 
   const notificationTimeouts = useRef(new Map());
 
+  // Debug: Log cart state changes
+  useEffect(() => {
+    console.log("Cart Debug - Items changed:", items);
+    console.log("Cart Debug - Items count:", items.length);
+    console.log("Cart Debug - Cart count from hook:", getCartItemsCount());
+
+    // Debug: Check if any items are missing image data
+    if (items.length > 0) {
+      items.forEach((item) => {
+        if (!item.image && !item.images) {
+          console.warn(
+            `Cart Debug - MISSING IMAGE DATA for ${item.name}:`,
+            item,
+          );
+        } else {
+          console.log(`Cart Debug - ${item.name} has image data:`, {
+            hasImage: !!item.image,
+            hasImages: !!item.images,
+            imageType: typeof item.image,
+            imagesType: typeof item.images,
+          });
+        }
+      });
+    }
+  }, [items, getCartItemsCount]);
+
   // Get effective quantity (local or actual) - Move this up before it's used
   const getEffectiveQuantity = useCallback(
     (item) => {
@@ -40,34 +66,52 @@ export default function Cart() {
     [localQuantities],
   );
 
-  // Extract unique farmer IDs from cart items
+  // Extract unique farmer IDs from cart items with debugging
   const farmerIds = useMemo(() => {
     const ids = items
       .map((item) => {
+        console.log("Cart Debug - Processing item for farmer ID:", item);
+
         if (typeof item.farmer === "object" && item.farmer?._id) {
+          console.log(
+            "Cart Debug - Found farmer object with _id:",
+            item.farmer._id,
+          );
           return item.farmer._id;
         } else if (item.farmerId) {
+          console.log("Cart Debug - Found farmerId:", item.farmerId);
           return item.farmerId;
         }
+
+        console.log("Cart Debug - No farmer ID found for item:", item.name);
         return null;
       })
       .filter(Boolean);
 
-    return [...new Set(ids)];
+    console.log("Cart Debug - Extracted farmer IDs:", ids);
+    const uniqueIds = [...new Set(ids)];
+    console.log("Cart Debug - Unique farmer IDs:", uniqueIds);
+    return uniqueIds;
   }, [items]);
 
-  // Fetch farmer data dynamically
+  // Fetch farmer data dynamically with debugging
   const {
     farmers: farmersData,
     loading: farmersLoading,
     getFarmer,
   } = useFarmersData(farmerIds);
 
+  // Debug farmer data loading
+  useEffect(() => {
+    console.log("Cart Debug - Farmers loading:", farmersLoading);
+    console.log("Cart Debug - Farmers data:", farmersData);
+  }, [farmersLoading, farmersData]);
+
   // Enhanced cart items processing to properly extract and display farmer names and product images
   const enrichedCartItems = useMemo(() => {
     return items.map((item) => {
-      // Extract farmer information with comprehensive fallbacks
-      let farmerName = "Local Farmer";
+      // Extract farmer information with proper loading states
+      let farmerName = "Loading...";
       let farmerId = null;
 
       // Priority 1: Direct farmer object with name
@@ -84,33 +128,75 @@ export default function Cart() {
         farmerName = item.farmerName;
         farmerId = item.farmerId;
       }
-      // Priority 4: farmerId field - check database first, then fallback to hardcoded mapping
+      // Priority 4: farmerId field - get from database
       else if (item.farmerId) {
         farmerId = item.farmerId;
 
-        // Try to get farmer data from API
-        const farmerData = getFarmer(item.farmerId);
-        if (farmerData && farmerData.name) {
-          // Use database farmer name - this is the proper way
-          farmerName = farmerData.name;
-        } else if (!farmersLoading) {
-          // If not loading and no data found, show fallback
-          farmerName = "Local Farmer";
-        } else {
-          // Still loading, show loading state
+        if (farmersLoading) {
           farmerName = "Loading...";
+        } else {
+          const farmerData = getFarmer(item.farmerId);
+          if (farmerData && farmerData.name) {
+            farmerName = farmerData.name;
+          } else {
+            farmerName = "Unknown Farmer";
+          }
         }
+      } else {
+        farmerName = "Unknown Farmer";
       }
 
-      // Enhanced image handling with better fallbacks
+      // Enhanced image handling with better fallbacks and debugging
       let productImage = null;
+
+      // Debug: Log the item's image data
+      console.log(`Cart Debug - Image data for ${item.name}:`, {
+        image: item.image,
+        images: item.images,
+        category: item.category,
+      });
+
+      // Helper function to extract URL from various image formats
+      const extractImageUrl = (imageData) => {
+        if (!imageData) return null;
+
+        // Direct string URL
+        if (typeof imageData === "string" && imageData.trim()) {
+          return imageData.trim();
+        }
+
+        // Object with url property
+        if (typeof imageData === "object" && imageData.url) {
+          return imageData.url;
+        }
+
+        // Object with src property
+        if (typeof imageData === "object" && imageData.src) {
+          return imageData.src;
+        }
+
+        // Object with path property
+        if (typeof imageData === "object" && imageData.path) {
+          return imageData.path;
+        }
+
+        return null;
+      };
 
       // Priority 1: Direct image field
       if (item.image) {
         if (Array.isArray(item.image) && item.image.length > 0) {
-          productImage = item.image[0];
-        } else if (typeof item.image === "string" && item.image.trim()) {
-          productImage = item.image;
+          productImage = extractImageUrl(item.image[0]);
+          console.log(
+            `Cart Debug - Using image array[0] for ${item.name}:`,
+            productImage,
+          );
+        } else {
+          productImage = extractImageUrl(item.image);
+          console.log(
+            `Cart Debug - Using direct image for ${item.name}:`,
+            productImage,
+          );
         }
       }
 
@@ -121,11 +207,19 @@ export default function Cart() {
         Array.isArray(item.images) &&
         item.images.length > 0
       ) {
-        productImage = item.images[0];
+        productImage = extractImageUrl(item.images[0]);
+        console.log(
+          `Cart Debug - Using images array[0] for ${item.name}:`,
+          productImage,
+        );
       }
 
-      // Priority 3: Category-based default images
-      if (!productImage) {
+      // Priority 3: Only use category fallback if NO image data exists at all
+      if (!productImage && item.category) {
+        console.log(
+          `Cart Debug - No image found, using category fallback for ${item.name} (category: ${item.category})`,
+        );
+
         const categoryImages = {
           Vegetables:
             "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&h=300&fit=crop",
@@ -142,13 +236,29 @@ export default function Cart() {
           Spices:
             "https://images.unsplash.com/photo-1596040033229-a9821ebc227d?w=300&h=300&fit=crop",
           Meat: "https://images.unsplash.com/photo-1588347818505-d0e4dfe81f30?w=300&h=300&fit=crop",
+          // Add more specific category mappings
+          Leafy:
+            "https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=300&h=300&fit=crop",
+          Root: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=300&h=300&fit=crop",
+          Citrus:
+            "https://images.unsplash.com/photo-1557800634-7bf3c7e2d5ae?w=300&h=300&fit=crop",
+          Berries:
+            "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=300&fit=crop",
         };
 
+        // Try exact category match first, then fallback to generic vegetable image
         productImage =
-          categoryImages[item.category] ||
-          categoryImages["Vegetables"] ||
+          categoryImages[item.category] || categoryImages["Vegetables"];
+      }
+
+      // Priority 4: Ultimate fallback if no category or image
+      if (!productImage) {
+        console.log(`Cart Debug - Using ultimate fallback for ${item.name}`);
+        productImage =
           "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&h=300&fit=crop";
       }
+
+      console.log(`Cart Debug - Final image for ${item.name}:`, productImage);
 
       return {
         ...item,
@@ -185,9 +295,14 @@ export default function Cart() {
 
     const totalItems = getCartItemsCount();
     const totalAmount = getCartTotal();
+
+    // Only count non-loading farmers
     const farmers = new Set(
-      enrichedCartItems.map((item) => item.enrichedFarmerName),
+      enrichedCartItems
+        .map((item) => item.enrichedFarmerName)
+        .filter((name) => name !== "Loading..." && name !== "Unknown Farmer"),
     ).size;
+
     const categories = new Set(enrichedCartItems.map((item) => item.category))
       .size;
 
@@ -734,41 +849,100 @@ export default function Cart() {
                     {enrichedCartItems.map((item, index) => (
                       <div
                         key={item.id}
-                        className={`group relative bg-gradient-to-br from-gray-50 to-green-50 dark:from-gray-700 dark:to-gray-600 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-green-300 dark:hover:border-green-600 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-xl ${
-                          item.isRemoving ? "opacity-50 scale-95" : ""
-                        }`}
-                        style={{ animationDelay: `${index * 100}ms` }}
+                        className={`group relative overflow-hidden transition-all duration-300 transform ${
+                          viewMode === "compact"
+                            ? "bg-gradient-to-br from-white via-green-50/30 to-blue-50/30 dark:from-gray-800 dark:via-gray-700/50 dark:to-gray-600/50 rounded-3xl border-2 border-green-200/50 dark:border-green-600/30 hover:border-green-400 dark:hover:border-green-500 hover:-translate-y-3 hover:rotate-1 shadow-2xl hover:shadow-green-500/25 dark:hover:shadow-green-400/30"
+                            : "bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 hover:-translate-y-1 shadow-lg hover:shadow-xl"
+                        } ${item.isRemoving ? "opacity-50 scale-95" : ""}`}
+                        style={{
+                          animationDelay: `${index * 100}ms`,
+                          boxShadow:
+                            viewMode === "compact"
+                              ? "0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 20px 25px -5px rgba(16, 185, 129, 0.1), 0 0 0 1px rgba(16, 185, 129, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
+                              : "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                        }}
                       >
-                        <div className="p-6">
+                        {/* Enhanced gradient overlay for compact cards */}
+                        {viewMode === "compact" && (
+                          <>
+                            <div className="absolute inset-0 bg-gradient-to-br from-green-100/40 via-transparent to-blue-100/40 dark:from-green-900/20 dark:to-blue-900/20 rounded-3xl"></div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-transparent via-transparent to-white/20 dark:to-gray-700/20 rounded-3xl"></div>
+                          </>
+                        )}
+
+                        <div
+                          className={`relative z-10 ${viewMode === "compact" ? "p-8" : "p-6"}`}
+                        >
                           {/* Product Image & Quantity Badge */}
                           <div className="relative mb-4">
-                            <img
-                              src={item.enrichedImage}
-                              alt={item.name}
-                              className={`${
-                                viewMode === "detailed"
-                                  ? "w-32 h-32 mx-auto"
-                                  : "w-full h-48"
-                              } object-cover rounded-xl border-2 border-white dark:border-gray-600 shadow-lg`}
-                            />
-                            <div className="absolute -top-3 -right-3 bg-gradient-to-r from-green-600 to-blue-600 text-white text-sm rounded-full w-8 h-8 flex items-center justify-center font-bold shadow-lg">
+                            <div
+                              className={`relative overflow-hidden ${
+                                viewMode === "compact"
+                                  ? "rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 border-4 border-white/50 dark:border-gray-600/50"
+                                  : "rounded-xl shadow-sm"
+                              }`}
+                            >
+                              <img
+                                src={item.enrichedImage}
+                                alt={item.name}
+                                className={`${
+                                  viewMode === "detailed"
+                                    ? "w-32 h-32 mx-auto"
+                                    : "w-full h-52"
+                                } object-cover transition-transform duration-500 ${
+                                  viewMode === "compact"
+                                    ? "group-hover:scale-110 filter group-hover:brightness-110"
+                                    : "group-hover:scale-105"
+                                }`}
+                              />
+                              {/* Enhanced image overlay for compact view */}
+                              {viewMode === "compact" && (
+                                <>
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
+                                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-blue-500/10"></div>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Enhanced Quantity Badge */}
+                            <div
+                              className={`absolute ${viewMode === "compact" ? "-top-4 -right-4 w-12 h-12 text-base" : "-top-3 -right-3 w-10 h-10 text-sm"} bg-gradient-to-br from-green-500 via-green-600 to-emerald-600 text-white rounded-full flex items-center justify-center font-bold shadow-xl border-3 border-white dark:border-gray-800 transform transition-all duration-300 ${
+                                viewMode === "compact"
+                                  ? "group-hover:scale-125 group-hover:rotate-12 shadow-green-500/50"
+                                  : "group-hover:scale-110"
+                              }`}
+                            >
                               {item.quantity}
                             </div>
-                            <div className="absolute top-3 left-3 bg-white dark:bg-gray-800 px-2 py-1 rounded-full text-xs font-medium shadow-lg">
-                              <span className="text-green-600">
+
+                            {/* Enhanced Category Badge */}
+                            <div
+                              className={`absolute top-3 left-3 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold shadow-lg border ${
+                                viewMode === "compact"
+                                  ? "bg-white/80 dark:bg-gray-800/80 border-green-200 dark:border-green-600 shadow-xl"
+                                  : "bg-white/90 dark:bg-gray-800/90 border-gray-200 dark:border-gray-600 shadow-md"
+                              }`}
+                            >
+                              <span className="text-green-600 dark:text-green-400">
                                 {item.category}
                               </span>
                             </div>
                           </div>
 
-                          {/* Product Info */}
-                          <div className="space-y-3">
+                          {/* Enhanced Product Info */}
+                          <div className="space-y-4">
                             <div>
-                              <h3 className="font-bold text-gray-900 dark:text-white text-xl mb-2 line-clamp-2">
+                              <h3
+                                className={`font-bold text-gray-900 dark:text-white mb-3 line-clamp-2 transition-colors duration-300 ${
+                                  viewMode === "compact"
+                                    ? "text-2xl group-hover:text-green-600 dark:group-hover:text-green-400"
+                                    : "text-xl group-hover:text-green-600 dark:group-hover:text-green-400"
+                                }`}
+                              >
                                 {item.name}
                               </h3>
-                              <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2">
-                                <i className="fas fa-user-tie mr-2"></i>
+                              <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-3">
+                                <i className="fas fa-user-tie mr-2 text-green-500"></i>
                                 <span className="font-medium">
                                   {item.enrichedFarmerName}
                                 </span>
@@ -777,15 +951,27 @@ export default function Cart() {
                                 <span className="text-gray-600 dark:text-gray-400">
                                   {formatPrice(item.price)}/{item.unit || "kg"}
                                 </span>
-                                <span className="font-bold text-lg text-gray-900 dark:text-white">
+                                <span
+                                  className={`font-bold text-gray-900 dark:text-white rounded-lg ${
+                                    viewMode === "compact"
+                                      ? "text-xl bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/30 dark:to-blue-900/30 px-3 py-2 shadow-md"
+                                      : "text-lg bg-green-50 dark:bg-green-900/20 px-2 py-1"
+                                  }`}
+                                >
                                   {formatPrice(item.price * item.quantity)}
                                 </span>
                               </div>
                             </div>
 
-                            {/* Quantity Controls */}
+                            {/* Enhanced Quantity Controls */}
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl overflow-hidden shadow-sm">
+                              <div
+                                className={`flex items-center overflow-hidden transition-all duration-300 ${
+                                  viewMode === "compact"
+                                    ? "bg-white/70 dark:bg-gray-700/70 backdrop-blur-sm border-2 border-gray-200/50 dark:border-gray-600/50 rounded-2xl shadow-lg hover:shadow-xl hover:border-green-300/70"
+                                    : "bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm hover:shadow-md"
+                                }`}
+                              >
                                 <button
                                   onClick={() =>
                                     handleQuantityChange(
@@ -794,12 +980,22 @@ export default function Cart() {
                                     )
                                   }
                                   disabled={item.isUpdating}
-                                  className="px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900 text-red-600 transition-colors duration-200 disabled:opacity-50"
+                                  className={`px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900 text-red-600 transition-all duration-200 disabled:opacity-50 ${
+                                    viewMode === "compact"
+                                      ? "hover:scale-125"
+                                      : "hover:scale-110"
+                                  }`}
                                 >
                                   <i className="fas fa-minus"></i>
                                 </button>
 
-                                <div className="px-4 py-2 border-x border-gray-300 dark:border-gray-600 min-w-[80px] text-center bg-gray-50 dark:bg-gray-700">
+                                <div
+                                  className={`px-4 py-2 border-x min-w-[80px] text-center ${
+                                    viewMode === "compact"
+                                      ? "border-gray-200/50 dark:border-gray-600/50 bg-white/80 dark:bg-gray-800/80"
+                                      : "border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800"
+                                  }`}
+                                >
                                   {item.isUpdating ? (
                                     <i className="fas fa-spinner fa-spin text-green-600"></i>
                                   ) : (
@@ -817,17 +1013,25 @@ export default function Cart() {
                                     )
                                   }
                                   disabled={item.isUpdating}
-                                  className="px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900 text-green-600 transition-colors duration-200 disabled:opacity-50"
+                                  className={`px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900 text-green-600 transition-all duration-200 disabled:opacity-50 ${
+                                    viewMode === "compact"
+                                      ? "hover:scale-125"
+                                      : "hover:scale-110"
+                                  }`}
                                 >
                                   <i className="fas fa-plus"></i>
                                 </button>
                               </div>
 
-                              {/* Remove Button */}
+                              {/* Enhanced Remove Button */}
                               <button
                                 onClick={() => handleRemoveItem(item.id)}
                                 disabled={item.isRemoving}
-                                className="p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900 rounded-xl transition-colors duration-200 disabled:opacity-50 shadow-sm"
+                                className={`p-3 text-red-500 rounded-xl transition-all duration-200 disabled:opacity-50 transform ${
+                                  viewMode === "compact"
+                                    ? "hover:bg-red-50/80 dark:hover:bg-red-900/80 shadow-lg hover:shadow-xl hover:scale-125 backdrop-blur-sm"
+                                    : "hover:bg-red-50 dark:hover:bg-red-900 shadow-sm hover:shadow-md hover:scale-110"
+                                }`}
                               >
                                 {item.isRemoving ? (
                                   <i className="fas fa-spinner fa-spin"></i>
@@ -838,6 +1042,13 @@ export default function Cart() {
                             </div>
                           </div>
                         </div>
+
+                        {/* Enhanced shine effect for compact cards */}
+                        {viewMode === "compact" && (
+                          <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+                            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent transform rotate-12 translate-x-full group-hover:-translate-x-full transition-transform duration-1000"></div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

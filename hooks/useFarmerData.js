@@ -22,20 +22,16 @@ export function useFarmerData(farmerId) {
       setLoading(true);
       setError(null);
 
-      // Ensure proper URL construction
       const url = `/api/farmers/${encodeURIComponent(id)}`;
-
       const response = await fetch(url, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
-        // Add cache control to prevent browser cache issues
         cache: "no-cache",
       });
 
       if (!response.ok) {
-        // Better error handling for different status codes
         if (response.status === 404) {
           console.warn(`Farmer ${id} not found`);
           return null;
@@ -46,7 +42,6 @@ export function useFarmerData(farmerId) {
       const data = await response.json();
       const farmerData = data.farmer || data;
 
-      // Validate farmer data structure
       if (!farmerData || (!farmerData.name && !farmerData.farmName)) {
         console.warn(`Invalid farmer data for ${id}:`, farmerData);
         return null;
@@ -62,13 +57,7 @@ export function useFarmerData(farmerId) {
     } catch (err) {
       console.error(`Error fetching farmer ${id}:`, err);
       setError(err.message);
-
-      // Return fallback data structure to prevent UI breaks
-      return {
-        _id: id,
-        name: `Farmer ${id}`,
-        error: true,
-      };
+      return null;
     } finally {
       setLoading(false);
     }
@@ -94,7 +83,7 @@ export function useFarmersData(farmerIds) {
   const fetchFarmers = useCallback(async (ids) => {
     if (!ids || ids.length === 0) return {};
 
-    const uniqueIds = [...new Set(ids)].filter(Boolean); // Filter out null/undefined
+    const uniqueIds = [...new Set(ids)].filter(Boolean);
     const farmersData = {};
     const idsToFetch = [];
 
@@ -116,7 +105,7 @@ export function useFarmersData(farmerIds) {
       setLoading(true);
       setError(null);
 
-      // Fetch farmers concurrently with better error handling
+      // Fetch farmers concurrently
       const promises = idsToFetch.map(async (id) => {
         try {
           const url = `/api/farmers/${encodeURIComponent(id)}`;
@@ -132,14 +121,12 @@ export function useFarmersData(farmerIds) {
             const data = await response.json();
             const farmerData = data.farmer || data;
 
-            // Validate farmer data
             if (farmerData && (farmerData.name || farmerData.farmName)) {
               // Cache the result
               farmerCache.set(id, {
                 data: farmerData,
                 timestamp: Date.now(),
               });
-
               return { id, data: farmerData };
             }
           } else if (response.status === 404) {
@@ -151,16 +138,6 @@ export function useFarmersData(farmerIds) {
           }
         } catch (err) {
           console.error(`Error fetching farmer ${id}:`, err);
-
-          // Return fallback data for this farmer
-          return {
-            id,
-            data: {
-              _id: id,
-              name: `Farmer ${id}`,
-              error: true,
-            },
-          };
         }
         return { id, data: null };
       });
@@ -185,7 +162,9 @@ export function useFarmersData(farmerIds) {
 
   useEffect(() => {
     if (farmerIds && farmerIds.length > 0) {
-      fetchFarmers(farmerIds).then(setFarmers);
+      fetchFarmers(farmerIds).then((fetchedFarmers) => {
+        setFarmers(fetchedFarmers);
+      });
     } else {
       setFarmers({});
     }

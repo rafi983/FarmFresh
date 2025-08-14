@@ -397,16 +397,60 @@ export async function POST(request) {
     // Initialize indexes for optimal performance
     await initializeOrderIndexes(db);
 
-    // Optimize stock validation using aggregation pipeline
-    const productIds = orderData.items.map(
-      (item) => new ObjectId(item.productId),
-    );
+    // Optimize stock validation using aggregation pipeline with proper ObjectId handling
+    const productIds = [];
+    const productIdStrings = [];
+
+    for (const item of orderData.items) {
+      const productId = item.productId;
+
+      if (!productId) {
+        throw new Error(`Product ID is missing for item: ${item.name}`);
+      }
+
+      // Try to convert to ObjectId if it's a valid ObjectId format
+      try {
+        if (ObjectId.isValid(productId)) {
+          productIds.push(new ObjectId(productId));
+        } else {
+          // Handle string IDs that aren't ObjectId format
+          productIdStrings.push(productId);
+        }
+      } catch (error) {
+        // If ObjectId conversion fails, treat as string ID
+        productIdStrings.push(productId);
+      }
+    }
+
+    // Create query that handles both ObjectId and string IDs
+    const matchQuery = {
+      $or: [],
+    };
+
+    if (productIds.length > 0) {
+      matchQuery.$or.push({ _id: { $in: productIds } });
+    }
+
+    if (productIdStrings.length > 0) {
+      matchQuery.$or.push({
+        $or: [
+          { _id: { $in: productIdStrings } },
+          { productId: { $in: productIdStrings } },
+        ],
+      });
+    }
+
+    // If no valid IDs found, throw error
+    if (matchQuery.$or.length === 0) {
+      throw new Error("No valid product IDs found in order items");
+    }
 
     const stockValidationPipeline = [
-      { $match: { _id: { $in: productIds } } },
+      { $match: matchQuery },
       {
         $project: {
           _id: 1,
+          productId: 1, // Include productId field
           stock: 1,
           name: 1,
           image: 1, // Include main product image

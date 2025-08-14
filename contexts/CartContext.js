@@ -8,7 +8,7 @@ export function CartProvider({ children }) {
   const { data: session, status } = useSession();
   const [cartItems, setCartItems] = useState([]);
   const [cartCount, setCartCount] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start with loading true to prevent flash
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [recentlyOrderedItems, setRecentlyOrderedItems] = useState([]);
   const [cartInitialized, setCartInitialized] = useState(false);
@@ -18,44 +18,158 @@ export function CartProvider({ children }) {
   const [cartMessage, setCartMessage] = useState(null); // { type: 'success' | 'error' | 'info', message: string }
   const [addingItemId, setAddingItemId] = useState(null); // Track which item is being added
 
+  // Helper function to extract URL from various image formats
+  const extractImageUrl = (imageData) => {
+    if (!imageData) return null;
+
+    // Direct string URL
+    if (typeof imageData === "string" && imageData.trim()) {
+      return imageData.trim();
+    }
+
+    // Object with url property
+    if (typeof imageData === "object" && imageData.url) {
+      return imageData.url;
+    }
+
+    // Object with src property
+    if (typeof imageData === "object" && imageData.src) {
+      return imageData.src;
+    }
+
+    // Object with path property
+    if (typeof imageData === "object" && imageData.path) {
+      return imageData.path;
+    }
+
+    return null;
+  };
+
+  // Helper function to process cart item images
+  const processItemImage = (item) => {
+    let productImage = null;
+
+    // Priority 1: Direct image field
+    if (item.image) {
+      if (Array.isArray(item.image) && item.image.length > 0) {
+        productImage = extractImageUrl(item.image[0]);
+      } else {
+        productImage = extractImageUrl(item.image);
+      }
+    }
+
+    // Priority 2: images array field
+    if (!productImage && item.images && Array.isArray(item.images) && item.images.length > 0) {
+      productImage = extractImageUrl(item.images[0]);
+    }
+
+    // Priority 3: Category-based default images
+    if (!productImage && item.category) {
+      const categoryImages = {
+        Vegetables: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&h=300&fit=crop",
+        Fruits: "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=300&h=300&fit=crop",
+        Dairy: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&h=300&fit=crop",
+        Herbs: "https://images.unsplash.com/photo-1462536943532-57a629f6cc60?w=300&h=300&fit=crop",
+        Honey: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=300&h=300&fit=crop",
+        Grains: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&h=300&fit=crop",
+        Spices: "https://images.unsplash.com/photo-1596040033229-a9821ebc227d?w=300&h=300&fit=crop",
+        Meat: "https://images.unsplash.com/photo-1588347818505-d0e4dfe81f30?w=300&h=300&fit=crop",
+        Leafy: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=300&h=300&fit=crop",
+        Root: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=300&h=300&fit=crop",
+        Citrus: "https://images.unsplash.com/photo-1557800634-7bf3c7e2d5ae?w=300&h=300&fit=crop",
+        Berries: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=300&fit=crop",
+      };
+
+      productImage = categoryImages[item.category] || categoryImages["Vegetables"];
+    }
+
+    // Priority 4: Ultimate fallback
+    if (!productImage) {
+      productImage = "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&h=300&fit=crop";
+    }
+
+    return {
+      ...item,
+      enrichedImage: productImage
+    };
+  };
+
   // Initialize cart from localStorage immediately
   useEffect(() => {
     const initializeCart = () => {
+      console.log("CartContext Debug - Initializing cart from localStorage");
       try {
         const savedCart = localStorage.getItem("farmfresh-cart");
+        console.log(
+          "CartContext Debug - Saved cart from localStorage:",
+          savedCart,
+        );
+
         if (savedCart) {
           const items = JSON.parse(savedCart);
-          setCartItems(items);
-          updateCartCount(items);
+          console.log("CartContext Debug - Parsed items:", items);
+
+          // Process images for all loaded items
+          const processedItems = items.map(item => processItemImage(item));
+
+          setCartItems(processedItems);
+          updateCartCount(processedItems);
+          console.log(
+            "CartContext Debug - Cart initialized with processed items count:",
+            processedItems.length,
+          );
+        } else {
+          console.log(
+            "CartContext Debug - No saved cart found in localStorage",
+          );
         }
       } catch (error) {
-        console.error("Error loading cart from localStorage:", error);
+        console.error(
+          "CartContext Debug - Error loading cart from localStorage:",
+          error,
+        );
       } finally {
         setCartInitialized(true);
+        console.log("CartContext Debug - Cart initialization completed");
       }
     };
 
     // Only initialize once
     if (!cartInitialized) {
+      console.log("CartContext Debug - Starting cart initialization");
       initializeCart();
     }
   }, []); // Empty dependency array to run only once
 
-  // Handle session-based cart loading
+  // Handle session-based cart loading and set loading to false
   useEffect(() => {
+    console.log("CartContext Debug - Session effect triggered", {
+      status,
+      cartInitialized,
+      sessionUserId: session?.user?.id,
+    });
+
     if (status === "loading" || !cartInitialized) return;
 
     if (session?.user) {
+      console.log(
+        "CartContext Debug - User is logged in, fetching and merging cart",
+      );
       // User is logged in - fetch from server and merge with localStorage
       fetchCartAndMerge();
+    } else {
+      console.log(
+        "CartContext Debug - No user session, using localStorage cart only",
+      );
+      // For non-authenticated users, set loading to false only here
+      setLoading(false);
     }
-    // For non-authenticated users, cart is already loaded from localStorage
   }, [session?.user?.id, status, cartInitialized]); // More specific dependencies
 
   // Helper function to safely store data in localStorage with size management
   const safeLocalStorageSet = (key, data) => {
     try {
-      // First, clean and optimize the data
+      // First, clean and optimize the data - PRESERVE FARMER DATA
       const cleanedData = data.map((item) => ({
         id: item.id,
         name: item.name,
@@ -64,9 +178,13 @@ export function CartProvider({ children }) {
         stock: item.stock,
         unit: item.unit,
         image: Array.isArray(item.image) ? item.image[0] : item.image, // Take only first image
+        images: item.images, // Keep images array too
+        category: item.category,
+        description: item.description,
+        // PRESERVE FARMER DATA - This was missing!
         farmerId: item.farmerId,
         farmerName: item.farmerName,
-        category: item.category,
+        farmer: item.farmer, // Keep the full farmer object if it exists
       }));
 
       const dataString = JSON.stringify(cleanedData);
@@ -98,12 +216,14 @@ export function CartProvider({ children }) {
             }
           });
 
-          // Try minimal cart storage (only 5 most recent items)
+          // Try minimal cart storage but still preserve essential farmer data
           const minimalData = data.slice(-5).map((item) => ({
             id: item.id,
             name: item.name,
             price: item.price,
             quantity: item.quantity,
+            farmerId: item.farmerId, // Keep farmer ID even in minimal data
+            farmerName: item.farmerName, // Keep farmer name
           }));
 
           localStorage.setItem(key, JSON.stringify(minimalData));
@@ -191,14 +311,17 @@ export function CartProvider({ children }) {
           }
         });
 
-        setCartItems(mergedItems);
+        // Process images for all merged items
+        const processedItems = mergedItems.map(item => processItemImage(item));
+
+        setCartItems(processedItems);
 
         // Save merged cart back to server if there were local items
         if (
           localItems.length > 0 &&
           mergedItems.length !== serverItems.length
         ) {
-          saveCart(mergedItems);
+          saveCart(processedItems);
         }
       } else {
         console.error(
@@ -372,40 +495,83 @@ export function CartProvider({ children }) {
   };
 
   const clearCart = async () => {
-    setCartItems([]);
-    setCartCount(0); // Add this line to reset cart count
-
-    // Also clear localStorage
+    setLoading(true);
     try {
-      localStorage.removeItem("farmfresh-cart");
-    } catch (error) {
-      console.error("Error clearing localStorage:", error);
-    }
+      // Clear cart items first
+      setCartItems([]);
+      setCartCount(0); // Explicitly reset cart count
 
-    if (session?.user) {
+      // Clear localStorage immediately
       try {
-        await fetch("/api/cart", {
-          method: "DELETE",
-        });
+        localStorage.removeItem("farmfresh-cart");
       } catch (error) {
-        console.error("Error clearing cart:", error);
+        console.error("Error clearing localStorage:", error);
       }
+
+      // Clear server cart if user is authenticated
+      if (session?.user) {
+        const userId =
+          session.user.userId ||
+          session.user.id ||
+          session.user._id ||
+          session.user.email;
+        try {
+          const response = await fetch(
+            `/api/cart?userId=${encodeURIComponent(userId)}`,
+            {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            },
+          );
+
+          if (!response.ok) {
+            console.error(
+              "Failed to clear server cart:",
+              response.status,
+              response.statusText,
+            );
+          }
+        } catch (error) {
+          console.error("Error clearing server cart:", error);
+        }
+      }
+
+      setCartMessage({
+        type: "success",
+        message: "Cart cleared successfully",
+      });
+    } catch (error) {
+      console.error("Error clearing cart:", error);
+      setCartMessage({
+        type: "error",
+        message: "Failed to clear cart completely",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const clearCartAfterPayment = async () => {
-    // Store current cart items for display purposes
+  const clearCartAfterPayment = () => {
+    // Store recently ordered items before clearing
     setRecentlyOrderedItems([...cartItems]);
-    setPaymentProcessing(true);
 
-    // Clear the cart
-    await clearCart();
+    // Clear cart state
+    setCartItems([]);
+    setCartCount(0); // Explicitly reset cart count
 
-    // After a delay, reset the payment processing state
-    setTimeout(() => {
-      setPaymentProcessing(false);
-      setRecentlyOrderedItems([]);
-    }, 5000); // 5 seconds delay
+    // Clear localStorage
+    try {
+      localStorage.removeItem("farmfresh-cart");
+    } catch (error) {
+      console.error("Error clearing localStorage after payment:", error);
+    }
+
+    setCartMessage({
+      type: "success",
+      message: "Order placed successfully! Cart cleared.",
+    });
   };
 
   const getCartTotal = () => {

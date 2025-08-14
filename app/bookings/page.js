@@ -486,6 +486,46 @@ export default function BookingsPage() {
 
   // Custom hooks for better code organization
   const orderStats = useOrderStats(orders);
+
+  // Add comprehensive debugging for bookings page
+  useEffect(() => {
+    console.log("🔍 BOOKINGS PAGE DEBUG - Full Data Analysis:");
+    console.log("Raw orders from API:", orders.length);
+    console.log("Order stats calculated:", orderStats);
+
+    if (orders.length > 0) {
+      console.log("Sample orders data:");
+      orders.slice(0, 3).forEach((order, index) => {
+        console.log(`Order ${index + 1}:`, {
+          id: order._id,
+          total: order.total,
+          status: order.status,
+          createdAt: order.createdAt,
+          userId: order.userId,
+          itemCount: order.items?.length || 0,
+        });
+      });
+
+      // Debug total spending calculation
+      const totalSpentDebug = orders.reduce((sum, order) => {
+        const orderTotal = order.total || 0;
+        console.log(
+          `Order ${order._id}: total=${orderTotal}, status=${order.status}`,
+        );
+        return sum + orderTotal;
+      }, 0);
+      console.log("Total spent (manual calculation):", totalSpentDebug);
+      console.log("Total spent (hook calculation):", orderStats.totalSpent);
+
+      // Debug order count by status
+      const statusCounts = orders.reduce((acc, order) => {
+        acc[order.status] = (acc[order.status] || 0) + 1;
+        return acc;
+      }, {});
+      console.log("Orders by status:", statusCounts);
+    }
+  }, [orders, orderStats]);
+
   const {
     filteredOrders,
     statusFilter,
@@ -590,8 +630,15 @@ export default function BookingsPage() {
         // Show success feedback
         alert("Order cancelled successfully");
 
-        // Refresh orders
-        await refetchOrders();
+        // Invalidate cache first to ensure fresh data
+        if (userId) {
+          ordersCache.invalidateOrders(userId);
+        }
+
+        // Then refetch orders with a slight delay to ensure cache invalidation is processed
+        setTimeout(async () => {
+          await refetchOrders();
+        }, 100);
       } catch (error) {
         console.error("Error cancelling order:", error);
         alert(`Error cancelling order: ${error.message}`);
@@ -603,7 +650,7 @@ export default function BookingsPage() {
         });
       }
     },
-    [refetchOrders],
+    [refetchOrders, ordersCache, userId],
   );
 
   // Enhanced reorder handler

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiService } from "@/lib/api-service";
+import { useFarmersData } from "@/hooks/useFarmerData";
 import Link from "next/link";
 import Footer from "@/components/Footer";
 
@@ -63,7 +64,154 @@ export default function Payment() {
 
   const [editQuantities, setEditQuantities] = useState({});
   const [removedItems, setRemovedItems] = useState([]);
-  useRef(null);
+
+  // Extract unique farmer IDs from cart items
+  const farmerIds = useMemo(() => {
+    const ids = cartItems
+      .map((item) => {
+        if (typeof item.farmer === "object" && item.farmer?._id) {
+          return item.farmer._id;
+        } else if (item.farmerId) {
+          return item.farmerId;
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    return [...new Set(ids)];
+  }, [cartItems]);
+
+  // Fetch farmer data dynamically
+  const {
+    farmers: farmersData,
+    loading: farmersLoading,
+    getFarmer,
+  } = useFarmersData(farmerIds);
+
+  // Enhanced cart items processing with proper farmer name extraction
+  const enrichedCartItems = useMemo(() => {
+    return cartItems.map((item) => {
+      // Extract farmer information with proper loading states
+      let farmerName = "Loading...";
+      let farmerId = null;
+
+      // Priority 1: Direct farmer object with name
+      if (typeof item.farmer === "object" && item.farmer?.name) {
+        farmerName = item.farmer.name;
+        farmerId = item.farmer._id || item.farmer.id;
+      }
+      // Priority 2: Direct farmer name string
+      else if (typeof item.farmer === "string" && item.farmer.trim()) {
+        farmerName = item.farmer;
+      }
+      // Priority 3: farmerName field (from localStorage simplified data)
+      else if (item.farmerName && item.farmerName.trim()) {
+        farmerName = item.farmerName;
+        farmerId = item.farmerId;
+      }
+      // Priority 4: farmerId field - get from database
+      else if (item.farmerId) {
+        farmerId = item.farmerId;
+
+        if (farmersLoading) {
+          farmerName = "Loading...";
+        } else {
+          const farmerData = getFarmer(item.farmerId);
+          if (farmerData && farmerData.name) {
+            farmerName = farmerData.name;
+          } else {
+            farmerName = "Unknown Farmer";
+          }
+        }
+      } else {
+        farmerName = "Unknown Farmer";
+      }
+
+      // Enhanced image handling with better fallbacks
+      let productImage = null;
+
+      // Helper function to extract URL from various image formats
+      const extractImageUrl = (imageData) => {
+        if (!imageData) return null;
+
+        // Direct string URL
+        if (typeof imageData === "string" && imageData.trim()) {
+          return imageData.trim();
+        }
+
+        // Object with url property
+        if (typeof imageData === "object" && imageData.url) {
+          return imageData.url;
+        }
+
+        // Object with src property
+        if (typeof imageData === "object" && imageData.src) {
+          return imageData.src;
+        }
+
+        // Object with path property
+        if (typeof imageData === "object" && imageData.path) {
+          return imageData.path;
+        }
+
+        return null;
+      };
+
+      // Priority 1: Direct image field
+      if (item.image) {
+        if (Array.isArray(item.image) && item.image.length > 0) {
+          productImage = extractImageUrl(item.image[0]);
+        } else {
+          productImage = extractImageUrl(item.image);
+        }
+      }
+
+      // Priority 2: images array field
+      if (
+        !productImage &&
+        item.images &&
+        Array.isArray(item.images) &&
+        item.images.length > 0
+      ) {
+        productImage = extractImageUrl(item.images[0]);
+      }
+
+      // Priority 3: Category-based default images
+      if (!productImage) {
+        const categoryImages = {
+          Vegetables:
+            "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&h=300&fit=crop",
+          Fruits:
+            "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=300&h=300&fit=crop",
+          Dairy:
+            "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&h=300&fit=crop",
+          Herbs:
+            "https://images.unsplash.com/photo-1462536943532-57a629f6cc60?w=300&h=300&fit=crop",
+          Honey:
+            "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=300&h=300&fit=crop",
+          Grains:
+            "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&h=300&fit=crop",
+          Spices:
+            "https://images.unsplash.com/photo-1596040033229-a9821ebc227d?w=300&h=300&fit=crop",
+          Meat: "https://images.unsplash.com/photo-1588347818505-d0e4dfe81f30?w=300&h=300&fit=crop",
+        };
+
+        productImage =
+          categoryImages[item.category] ||
+          categoryImages["Vegetables"] ||
+          "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=300&h=300&fit=crop";
+      }
+
+      return {
+        ...item,
+        enrichedFarmerName: farmerName,
+        enrichedFarmerId: farmerId || item.farmerId,
+        enrichedImage: productImage,
+        quantity: editQuantities[item.id] || item.quantity,
+      };
+    });
+  }, [cartItems, editQuantities, getFarmer, farmersLoading]);
+
   useEffect(() => {
     console.log("Payment - Session status:", status, "Session:", session);
 
@@ -450,10 +598,46 @@ export default function Payment() {
       if (orderId) {
         setRedirectingToSuccess(true);
 
-        // Immediately redirect to success page BEFORE clearing cart
-        window.location.href = `/success?orderId=${orderId}`;
+        // Store order data temporarily to pass to success page
+        const orderSummary = {
+          orderId,
+          orderNumber: orderId,
+          createdAt: new Date().toISOString(),
+          paymentMethod: paymentForm.paymentMethod,
+          status: "confirmed",
+          deliveryAddress: {
+            ...deliveryAddress,
+            deliveryDate: selectedDeliveryDate,
+            timeSlot: selectedTimeSlot,
+          },
+          items: cartItems.map((item) => ({
+            ...item,
+            quantity: editQuantities[item.id || item._id] || item.quantity,
+            image: item.enrichedImage || item.image || item.images?.[0],
+            farmerName:
+              item.enrichedFarmerName || item.farmerName || "Local Farmer",
+          })),
+          subtotal,
+          deliveryFee,
+          serviceFee,
+          discountAmount,
+          total,
+          orderNotes,
+          promoCode: promoCode || null,
+          promoDiscount,
+        };
 
-        // Clear cart in the background after redirect has started
+        // Store order data in sessionStorage for immediate access on success page
+        try {
+          sessionStorage.setItem("pendingOrder", JSON.stringify(orderSummary));
+        } catch (e) {
+          console.warn("Could not store order in sessionStorage:", e);
+        }
+
+        // Navigate to success page first, then clear cart
+        router.push(`/success?orderId=${orderId}`);
+
+        // Clear cart AFTER navigation to prevent empty cart page flash
         setTimeout(async () => {
           try {
             await fetch(`/api/cart?userId=${encodeURIComponent(userId)}`, {
@@ -463,7 +647,7 @@ export default function Payment() {
           } catch (cartError) {
             console.error("Error clearing cart:", cartError);
           }
-        }, 100);
+        }, 1000);
       } else {
         addNotification(
           "Order created successfully! Redirecting...",
