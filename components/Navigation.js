@@ -400,20 +400,12 @@ export default function Navigation() {
                               My Orders
                             </Link>
                             <Link
-                              href="/favorites"
+                              href="/analytics"
                               className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                               onClick={() => setShowUserMenu(false)}
                             >
-                              <i className="fas fa-heart mr-2"></i>
-                              Favorites
-                            </Link>
-                            <Link
-                              href="/cart"
-                              className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                              onClick={() => setShowUserMenu(false)}
-                            >
-                              <i className="fas fa-shopping-cart mr-2"></i>
-                              Cart
+                              <i className="fas fa-chart-bar mr-2"></i>
+                              Analytics
                             </Link>
                           </>
                         )}

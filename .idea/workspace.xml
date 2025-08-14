@@ -15,17 +15,9 @@
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/orders/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/bookings/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/bookings/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/cart/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/cart/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/favorites/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/favorites/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/layout.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/layout.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/payment/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/payment/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/success/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/success/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/analytics/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/analytics/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/components/Navigation.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/Navigation.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/contexts/CartContext.js" beforeDir="false" afterPath="$PROJECT_DIR$/contexts/CartContext.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/contexts/ThemeContext.js" beforeDir="false" afterPath="$PROJECT_DIR$/contexts/ThemeContext.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hooks/useFarmerData.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useFarmerData.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
@@ -149,7 +141,7 @@
       <workItem from="1755008393891" duration="6000" />
       <workItem from="1755071664461" duration="20803000" />
       <workItem from="1755097630419" duration="8503000" />
-      <workItem from="1755155319473" duration="8054000" />
+      <workItem from="1755155319473" duration="13699000" />
     </task>
     <servers />
   </component>
