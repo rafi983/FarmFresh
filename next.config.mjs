@@ -16,16 +16,8 @@ const nextConfig = {
       },
     ],
   },
-  // Increase API payload size limit to handle multiple compressed images
-  api: {
-    bodyParser: {
-      sizeLimit: "50mb",
-    },
-  },
-  // Handle large request bodies in the new App Router
-  experimental: {
-    serverComponentsExternalPackages: [],
-  },
+  // Move serverComponentsExternalPackages out of experimental for Next.js 15
+  serverExternalPackages: [],
 };
 
 export default nextConfig;

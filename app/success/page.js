@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 
-export default function Success() {
+// Force dynamic rendering for this page
+export const dynamic = "force-dynamic";
+
+// Component that uses useSearchParams - must be wrapped in Suspense
+function SuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: session } = useSession();
@@ -718,8 +722,8 @@ export default function Success() {
                 Email Confirmation Sent
               </p>
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                We've sent your order confirmation and receipt to your email
-                address.
+                We&apos;ve sent your order confirmation and receipt to your
+                email address.
               </p>
             </div>
           </div>
@@ -809,5 +813,38 @@ export default function Success() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Loading component for Suspense fallback
+function SuccessPageSkeleton() {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center mb-12">
+          <div className="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-gray-200 dark:bg-gray-700 mb-6 animate-pulse"></div>
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-64 mx-auto mb-4"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48 mx-auto"></div>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
+          <div className="space-y-6">
+            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-48"></div>
+            <div className="space-y-4">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Success() {
+  return (
+    <Suspense fallback={<SuccessPageSkeleton />}>
+      <SuccessContent />
+    </Suspense>
   );
 }

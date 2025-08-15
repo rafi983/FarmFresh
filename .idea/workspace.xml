@@ -3,6 +3,9 @@
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
+  <component name="BackendCodeEditorMiscSettings">
+    <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
+  </component>
   <component name="CMakeProjectFlavorService">
     <option name="flavorId" value="CMakePlainProjectFlavor" />
   </component>
@@ -15,13 +18,13 @@
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/bookings/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/bookings/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/cart/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/cart/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/farmers/[id]/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmers/[id]/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/details/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/details/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/forgot-password/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/forgot-password/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/login/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/login/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/products/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/products/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/FarmerProfileView.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/FarmerProfileView.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/dashboard/tabs/DashboardTab.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/dashboard/tabs/DashboardTab.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/reset-password/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/reset-password/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/success/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/success/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/next.config.mjs" beforeDir="false" afterPath="$PROJECT_DIR$/next.config.mjs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -145,6 +148,7 @@
       <workItem from="1755097630419" duration="8503000" />
       <workItem from="1755155319473" duration="13699000" />
       <workItem from="1755262999850" duration="1924000" />
+      <workItem from="1755270852001" duration="2322000" />
     </task>
     <servers />
   </component>

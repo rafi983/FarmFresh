@@ -1,62 +1,52 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import ProductCard from "@/components/ProductCard";
-import Footer from "@/components/Footer";
-import { debounce } from "@/utils/debounce";
-import { useUnifiedProductsData } from "@/hooks/useUnifiedProductsData";
-import { useFarmersQuery, useFarmersCache } from "@/hooks/useFarmersQuery";
+import { useSession } from "next-auth/react";
+import ProductCard from "../../components/ProductCard";
+import Loading from "../../components/Loading";
+import Footer from "../../components/Footer";
+import { useUnifiedProductsData } from "../../hooks/useUnifiedProductsData";
+import { useFarmersQuery } from "../../hooks/useFarmersQuery";
+import { debounce } from "../../utils/debounce";
 
-// Move constants outside component to prevent recreations
-const CATEGORY_OPTIONS = [
-  "All Categories",
-  "Vegetables",
-  "Fruits",
-  "Grains",
-  "Dairy",
-  "Honey",
-  "Herbs",
-];
+// Force dynamic rendering for this page
+export const dynamic = "force-dynamic";
 
-const PRICE_RANGE_OPTIONS = [
-  { label: "Under ৳50", min: 0, max: 49 },
-  { label: "৳50 - ৳100", min: 50, max: 100 },
-  { label: "৳100 - ৳200", min: 101, max: 200 },
-  { label: "৳200 - ���500", min: 201, max: 500 },
-  { label: "Above ৳500", min: 501, max: 9999 },
-];
-
-const TAG_OPTIONS = [
-  "Organic",
-  "Fresh",
-  "Local",
-  "Premium",
-  "Seasonal",
-  "Limited Stock",
-];
-
-const ITEMS_PER_PAGE = 12;
-
-export default function Products() {
+// Component that uses useSearchParams - must be wrapped in Suspense
+function ProductsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Use unified caching system instead of separate caching
-  const farmersCache = useFarmersCache();
+  // Move constants outside component to prevent recreations
+  const CATEGORY_OPTIONS = [
+    "All Categories",
+    "Vegetables",
+    "Fruits",
+    "Grains",
+    "Dairy",
+    "Honey",
+    "Herbs",
+  ];
 
-  // Auto-refresh data when page becomes visible (handles browser tab switching)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        farmersCache.invalidateFarmers();
-      }
-    };
+  const PRICE_RANGE_OPTIONS = [
+    { label: "Under ৳50", min: 0, max: 49 },
+    { label: "৳50 - ৳100", min: 50, max: 100 },
+    { label: "৳100 - ৳200", min: 101, max: 200 },
+    { label: "৳200 - ���500", min: 201, max: 500 },
+    { label: "Above ৳500", min: 501, max: 9999 },
+  ];
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [farmersCache]);
+  const TAG_OPTIONS = [
+    "Organic",
+    "Fresh",
+    "Local",
+    "Premium",
+    "Seasonal",
+    "Limited Stock",
+  ];
+
+  const ITEMS_PER_PAGE = 12;
 
   // Filter states - Initialize from URL params
   const [filters, setFilters] = useState(() => ({
@@ -1400,5 +1390,14 @@ export default function Products() {
       </div>
       <Footer />
     </>
+  );
+}
+
+// Main component
+export default function Products() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <ProductsContent />
+    </Suspense>
   );
 }

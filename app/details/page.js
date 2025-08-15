@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCart } from "@/contexts/CartContext";
@@ -40,7 +40,11 @@ const formatPrice = (price) => {
   }).format(price);
 };
 
-export default function ProductDetails() {
+// Force dynamic rendering for this page
+export const dynamic = "force-dynamic";
+
+// Component that uses useSearchParams - must be wrapped in Suspense
+function ProductDetailsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const productId = searchParams.get("id");
@@ -2489,5 +2493,13 @@ export default function ProductDetails() {
       </div>
       <Footer />
     </>
+  );
+}
+
+export default function ProductDetails() {
+  return (
+    <Suspense fallback={<div>Loading product details...</div>}>
+      <ProductDetailsContent />
+    </Suspense>
   );
 }

@@ -74,7 +74,8 @@ export default function ForgotPassword() {
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Didn't receive the email? Check your spam folder or try again.
+                  Didn&apos;t receive the email? Check your spam folder or try
+                  again.
                 </p>
                 <div className="flex space-x-3">
                   <button
