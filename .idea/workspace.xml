@@ -15,17 +15,7 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/details/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/details/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/forgot-password/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/forgot-password/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/login/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/login/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/products/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/products/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/reset-password/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/reset-password/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/success/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/success/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/next.config.mjs" beforeDir="false" afterPath="$PROJECT_DIR$/next.config.mjs" afterDir="false" />
-    </list>
+    <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -148,7 +138,7 @@
       <workItem from="1755097630419" duration="8503000" />
       <workItem from="1755155319473" duration="13699000" />
       <workItem from="1755262999850" duration="1924000" />
-      <workItem from="1755270852001" duration="2322000" />
+      <workItem from="1755270852001" duration="2413000" />
     </task>
     <servers />
   </component>

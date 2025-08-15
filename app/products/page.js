@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import ProductCard from "../../components/ProductCard";
 import Loading from "../../components/Loading";
 import Footer from "../../components/Footer";
@@ -179,7 +178,7 @@ function ProductsContent() {
         console.log("🎉 Order completed, refreshing product data");
         // Longer delay to ensure backend has processed the update completely
         setTimeout(() => {
-          farmersCache.invalidateFarmers();
+          refetchProducts();
         }, 3000); // Increased to 3 seconds to prevent race conditions
       }
     };
@@ -188,7 +187,7 @@ function ProductsContent() {
       console.log("🛒 Cart checkout completed, refreshing product data");
       // Longer delay to ensure backend has processed the update completely
       setTimeout(() => {
-        farmersCache.invalidateFarmers();
+        refetchProducts();
       }, 3000); // Already correct at 3 seconds
     };
 
@@ -200,7 +199,7 @@ function ProductsContent() {
       window.removeEventListener("orderCompleted", handleOrderComplete);
       window.removeEventListener("cartCheckoutCompleted", handleCartCheckout);
     };
-  }, [farmersCache]);
+  }, [refetchProducts]);
 
   // Memoized filtered and sorted products
   const filteredProducts = useMemo(() => {
