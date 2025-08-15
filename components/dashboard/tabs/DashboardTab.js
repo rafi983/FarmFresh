@@ -426,7 +426,7 @@ export default function DashboardTab({
           <div>
             <h2 className="text-2xl font-bold">Good morning, Farmer!</h2>
             <p className="opacity-90">
-              Here's what's happening on your farm today
+              Here&apos;s what&apos;s happening on your farm today
             </p>
           </div>
           <div className="text-right">

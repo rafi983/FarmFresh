@@ -1562,7 +1562,7 @@ export default function FarmerPage() {
                     🌟 Farm Analytics Dashboard 🌟
                   </h2>
                   <p className="text-gray-600 dark:text-gray-400 text-lg max-w-3xl mx-auto leading-relaxed">
-                    Discover the comprehensive insights behind our farm's
+                    Discover the comprehensive insights behind our farm&apos;s
                     productivity, community impact, and sustainable growth
                     journey.
                   </p>

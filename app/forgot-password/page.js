@@ -168,7 +168,8 @@ export default function ForgotPassword() {
             </h3>
             <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
               <p>
-                • Check your spam/junk folder if you don't receive the email
+                • Check your spam/junk folder if you don&apos;t receive the
+                email
               </p>
               <p>• Make sure you entered the correct email address</p>
               <p>• Contact support if you continue having issues</p>

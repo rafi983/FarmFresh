@@ -1126,7 +1126,7 @@ export default function BookingsPage() {
               My Orders
             </h1>
             <p className="text-gray-600 dark:text-gray-400 text-lg">
-              You haven't placed any orders yet
+              You haven&apos;t placed any orders yet
             </p>
           </div>
 
@@ -1535,8 +1535,8 @@ export default function BookingsPage() {
                             {order.status === "pending" && (
                               <>
                                 <i className="fas fa-hourglass-half mr-2 text-yellow-500"></i>
-                                Waiting for farmer confirmation. We'll notify
-                                you once your order is confirmed.
+                                Waiting for farmer confirmation. We&apos;ll
+                                notify you once your order is confirmed.
                               </>
                             )}
                             {order.status === "confirmed" && (

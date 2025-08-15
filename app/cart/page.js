@@ -679,8 +679,8 @@ export default function Cart() {
                 Payment Processing
               </h3>
               <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto text-lg">
-                Your order has been placed successfully! We're clearing your
-                cart and preparing your fresh products for delivery.
+                Your order has been placed successfully! We&apos;re clearing
+                your cart and preparing your fresh products for delivery.
               </p>
 
               {recentlyOrderedItems.length > 0 && (
@@ -1113,7 +1113,7 @@ export default function Cart() {
                       {cartStats.totalAmount >= 500 && (
                         <span className="font-medium">
                           {" "}
-                          Plus, you've unlocked free premium packaging!
+                          Plus, you&apos;ve unlocked free premium packaging!
                         </span>
                       )}
                     </p>

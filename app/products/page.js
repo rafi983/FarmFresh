@@ -863,7 +863,7 @@ export default function Products() {
                       <p className="text-primary-100">
                         Search results for:{" "}
                         <span className="font-semibold text-white">
-                          "{filters.searchTerm}"
+                          &quot;{filters.searchTerm}&quot;
                         </span>
                       </p>
                     )}
