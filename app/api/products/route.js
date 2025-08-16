@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
 import { enhanceProductsWithRatings } from "@/lib/reviewUtils";
+import Product from "@/models/Product";
+import { getMongooseConnection } from "@/lib/mongoose";
 
 // Track if indexes have been initialized to avoid repeated calls
 let productIndexesInitialized = false;
-// Cache for database connection and collections
-let cachedDb = null;
-let cachedCollection = null;
 
 // Response cache for identical requests (5 minutes)
 const responseCache = new Map();
@@ -36,57 +33,11 @@ export function clearAllProductsCaches() {
 // Initialize indexes optimized for MongoDB Atlas performance
 async function initializeProductIndexes(db) {
   // Only initialize once per application lifecycle
-  if (productIndexesInitialized) {
-    return;
-  }
-
+  if (productIndexesInitialized) return;
   try {
-    const collection = db.collection("products");
-
-    // Check if indexes already exist before creating them
-    const existingIndexes = await collection.listIndexes().toArray();
-    const indexNames = existingIndexes.map((index) => index.name);
-
-    // Simplified Atlas-optimized compound indexes for better performance
-    const indexesToCreate = [
-      // Primary query index - most common pattern
-      {
-        key: { status: 1, category: 1, createdAt: -1 },
-        name: "primary_query_idx",
-        options: { background: true },
-      },
-      // Search index
-      {
-        key: { name: "text", description: "text", category: "text" },
-        name: "products_text_search_idx",
-        options: {
-          background: true,
-          weights: { name: 10, category: 5, description: 1 },
-        },
-      },
-      // Price and rating filters
-      {
-        key: { status: 1, price: 1, averageRating: -1 },
-        name: "price_rating_idx",
-        options: { background: true },
-      },
-      // Farmer queries
-      {
-        key: { "farmer._id": 1, status: 1 },
-        name: "farmer_status_idx",
-        options: { background: true },
-      },
-    ];
-
-    for (const indexSpec of indexesToCreate) {
-      if (!indexNames.includes(indexSpec.name)) {
-        await collection.createIndex(indexSpec.key, {
-          name: indexSpec.name,
-          ...indexSpec.options,
-        });
-      }
-    }
-
+    // Ensure mongoose connection & indexes
+    await getMongooseConnection();
+    await Product.init(); // builds declared indexes if not present
     productIndexesInitialized = true;
   } catch (error) {}
 }
@@ -131,148 +82,49 @@ function setCachedResponse(cacheKey, data) {
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-
-    // Check cache first
     const cacheKey = generateCacheKey(searchParams);
     const cachedResponse = getCachedResponse(cacheKey);
     if (cachedResponse) {
       const response = NextResponse.json(cachedResponse);
-      // Add cache headers to indicate this is cached data
       response.headers.set("X-Cache", "HIT");
-      response.headers.set("Cache-Control", "public, max-age=300"); // 5 minutes
+      response.headers.set("Cache-Control", "public, max-age=300");
       return response;
     }
 
-    const search = searchParams.get("search");
-    const category = searchParams.get("category");
-    const featured = searchParams.get("featured");
-    const sortBy = searchParams.get("sortBy");
-    const farmerId = searchParams.get("farmerId");
-    const farmerEmail = searchParams.get("farmerEmail");
-    const limit = parseInt(searchParams.get("limit")) || 50;
-    const page = parseInt(searchParams.get("page")) || 1;
+    // Parse params
+    const qp = (k) => searchParams.get(k);
+    const search = qp("search");
+    const category = qp("category");
+    const featured = qp("featured");
+    const sortBy = qp("sortBy");
+    const farmerId = qp("farmerId");
+    const farmerEmail = qp("farmerEmail");
+    const limit = parseInt(qp("limit")) || 50;
+    const page = parseInt(qp("page")) || 1;
     const skip = (page - 1) * limit;
+    const minPrice = qp("minPrice") ? parseFloat(qp("minPrice")) : null;
+    const maxPrice = qp("maxPrice") ? parseFloat(qp("maxPrice")) : null;
+    const minRating = qp("minRating") ? parseFloat(qp("minRating")) : null;
+    const dashboard = qp("dashboard");
 
-    // Simplified filtering parameters
-    const minPrice = searchParams.get("minPrice")
-      ? parseFloat(searchParams.get("minPrice"))
-      : null;
-    const maxPrice = searchParams.get("maxPrice")
-      ? parseFloat(searchParams.get("maxPrice"))
-      : null;
-    const minRating = searchParams.get("minRating")
-      ? parseFloat(searchParams.get("minRating"))
-      : null;
+    // Ensure connection & indexes
+    await getMongooseConnection();
+    await initializeProductIndexes();
 
-    // Reuse database connection and collection
-    if (!cachedDb) {
-      const client = await clientPromise;
-      cachedDb = client.db("farmfresh");
-      cachedCollection = cachedDb.collection("products");
-    }
+    // Build filter via schema helper for consistency
+    const filter = Product.buildFilter({
+      search,
+      category,
+      featured,
+      farmerId,
+      farmerEmail,
+      minPrice,
+      maxPrice,
+      minRating,
+      dashboard,
+    });
 
-    // Initialize indexes only once
-    await initializeProductIndexes(cachedDb);
-
-    // Build query - BACK TO ORIGINAL WORKING VERSION
-    const query = { status: { $ne: "deleted" } };
-
-    // Check if this is a dashboard context request
-    const isDashboardContext = searchParams.get("dashboard") === "true";
-
-    // For public access (non-farmer requests), exclude inactive products
-    if (!farmerId && !farmerEmail && !isDashboardContext) {
-      query.status = { $nin: ["deleted", "inactive"] };
-    }
-
-    // Add search filter
-    if (search) {
-      query.$text = { $search: search };
-    }
-
-    // Add category filter
-    if (category && category !== "All Categories") {
-      query.category = { $regex: new RegExp(category, "i") };
-    }
-
-    // Add featured filter
-    if (featured === "true") {
-      query.featured = true;
-    }
-
-    // Add farmer filters for dashboard
-    if (farmerId || farmerEmail) {
-      query.$or = [];
-      if (farmerId) {
-        let farmer = null;
-        let farmerName = null;
-        let farmerFarmName = null;
-
-        try {
-          const farmersCollection = cachedDb.collection("farmers");
-          if (farmerId.match(/^[0-9a-fA-F]{24}$/)) {
-            farmer = await farmersCollection.findOne({
-              _id: new ObjectId(farmerId),
-            });
-          } else {
-            const farmersDoc = await farmersCollection.findOne({
-              "farmers._id": farmerId,
-            });
-            if (farmersDoc && farmersDoc.farmers) {
-              farmer = farmersDoc.farmers.find((f) => f._id === farmerId);
-            }
-          }
-
-          if (farmer) {
-            farmerName = farmer.name;
-            farmerFarmName = farmer.farmName;
-          }
-        } catch (error) {
-          console.log("Could not fetch farmer for name-based matching:", error);
-        }
-
-        query.$or.push(
-          { farmerId: farmerId },
-          { farmerId: { $eq: farmerId } },
-          { "farmer.id": farmerId },
-          { "farmer._id": farmerId },
-        );
-
-        if (farmerName) {
-          query.$or.push(
-            { "farmer.name": farmerName },
-            { "farmer.name": { $regex: new RegExp(`^${farmerName}$`, "i") } },
-          );
-        }
-        if (farmerFarmName) {
-          query.$or.push(
-            { "farmer.farmName": farmerFarmName },
-            { farmerFarmName: farmerFarmName },
-          );
-        }
-      }
-
-      if (farmerEmail) {
-        query.$or.push(
-          { farmerEmail: farmerEmail },
-          { "farmer.email": farmerEmail },
-        );
-      }
-    }
-
-    // Add price range filter
-    if (minPrice !== null || maxPrice !== null) {
-      query.price = {};
-      if (minPrice !== null) query.price.$gte = minPrice;
-      if (maxPrice !== null) query.price.$lte = maxPrice;
-    }
-
-    // Add rating filter
-    if (minRating !== null) {
-      query.averageRating = { $gte: minRating };
-    }
-
-    // BACK TO ORIGINAL WORKING SORT
+    // Sorting
     let sortOptions = {};
     if (search) {
       sortOptions = { score: { $meta: "textScore" }, createdAt: -1 };
@@ -280,12 +132,6 @@ export async function GET(request) {
       switch (sortBy) {
         case "price-low":
           sortOptions = { price: 1 };
-          if (farmerEmail) {
-            query.$or.push(
-              { farmerEmail: farmerEmail },
-              { "farmer.email": farmerEmail },
-            );
-          }
           break;
         case "price-high":
           sortOptions = { price: -1 };
@@ -302,36 +148,25 @@ export async function GET(request) {
         case "newest":
         default:
           sortOptions = { createdAt: -1 };
-          break;
       }
     }
 
-    // BACK TO ORIGINAL WORKING QUERY EXECUTION
-    const startTime = Date.now();
+    const projection = search ? { score: { $meta: "textScore" } } : {};
 
-    // Execute query with original method
+    const startTime = Date.now();
     const [products, totalCount] = await Promise.all([
-      cachedCollection
-        .find(query)
+      Product.find(filter, projection)
         .sort(sortOptions)
         .skip(skip)
         .limit(limit)
-        .toArray(),
-      cachedCollection.countDocuments(query),
+        .lean(),
+      Product.countDocuments(filter),
     ]);
-
     const queryTime = Date.now() - startTime;
-    console.log(
-      `Query executed in ${queryTime}ms for ${products.length} products, total: ${totalCount}`,
-    );
 
-    // Enhance with ratings
-    const enhancedProducts = await enhanceProductsWithRatings(
-      products,
-      cachedDb,
-    );
+    // Use existing rating enhancement (still uses native driver under the hood)
+    const enhancedProducts = await enhanceProductsWithRatings(products);
 
-    // Prepare response data
     const responseData = {
       products: enhancedProducts,
       pagination: {
@@ -352,26 +187,19 @@ export async function GET(request) {
           maxPrice,
           minRating,
         },
-        performance: {
-          queryTime,
-          cached: false,
-        },
+        performance: { queryTime, cached: false },
         timestamp: new Date().toISOString(),
       },
     };
 
-    // Cache the response
     setCachedResponse(cacheKey, responseData);
-
     const response = NextResponse.json(responseData);
-    // Add cache headers
     response.headers.set("X-Cache", "MISS");
-    response.headers.set("Cache-Control", "public, max-age=300"); // 5 minutes
+    response.headers.set("Cache-Control", "public, max-age=300");
     response.headers.set("X-Generated-At", new Date().toISOString());
-
     return response;
   } catch (error) {
-    console.error("Error fetching products:", error);
+    console.error("Error fetching products (mongoose):", error);
     return NextResponse.json(
       {
         error: "Failed to fetch products",
@@ -394,31 +222,19 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    await getMongooseConnection();
+    await initializeProductIndexes();
+
     const body = await request.json();
-    const client = await clientPromise;
-    const db = client.db("farmfresh");
-
-    // Initialize indexes for the first POST operation
-    await initializeProductIndexes(db);
-
-    const result = await db.collection("products").insertOne({
+    const doc = await Product.create({
       ...body,
-      // Don't overwrite createdAt if it's already provided, but ensure it's a Date object
-      createdAt: body.createdAt ? new Date(body.createdAt) : new Date(),
-      updatedAt: new Date(),
-      status: "active",
-      averageRating: 0,
-      totalReviews: 0,
-      reviewCount: 0,
-      purchaseCount: 0,
+      createdAt: body.createdAt ? new Date(body.createdAt) : undefined,
+      // status, rating fields default via schema
     });
 
-    return NextResponse.json({
-      success: true,
-      productId: result.insertedId,
-    });
+    return NextResponse.json({ success: true, productId: doc._id });
   } catch (error) {
-    console.error("Error creating product:", error);
+    console.error("Error creating product (mongoose):", error);
     return NextResponse.json(
       { error: "Failed to create product", message: error.message },
       { status: 500 },

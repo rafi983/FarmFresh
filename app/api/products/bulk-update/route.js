@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { enhanceProductsWithRatings } from "@/lib/reviewUtils";
+import { getMongooseConnection } from "@/lib/mongoose";
+import Product from "@/models/Product";
 
 // Track if indexes have been initialized to avoid repeated calls
 let bulkUpdateIndexesInitialized = false;
-
-// Cache for database connection and collections
-let cachedDb = null;
-let cachedCollection = null;
 
 // Constants for validation
 const VALID_STATUSES = ["active", "inactive"];
@@ -194,28 +191,29 @@ function validateProductIds(productIds) {
   if (invalidIds.length > 0) {
     return {
       valid: false,
-      error: `Invalid product IDs: ${invalidIds.slice(0, 5).join(", ")}${invalidIds.length > 5 ? "..." : ""}`,
+      error: `Invalid product IDs: ${invalidIds.slice(0, 5).join(", ")}${
+        invalidIds.length > 5 ? "..." : ""
+      }`,
     };
   }
 
-  return { valid: true, objectIds: productIds.map((id) => new ObjectId(id)) };
+  return {
+    valid: true,
+    objectIds: productIds.map((id) => new ObjectId(id)),
+  };
 }
 
 export async function PUT(request) {
   const startTime = Date.now();
-
   try {
-    // Parse and validate request body
     const body = await request.json();
     const { productIds, updateData } = body;
 
-    // Validate product IDs
     const idValidation = validateProductIds(productIds);
     if (!idValidation.valid) {
       return NextResponse.json({ error: idValidation.error }, { status: 400 });
     }
 
-    // Validate and sanitize update data
     const { sanitizedData, errors } = validateUpdateData(updateData);
     if (errors.length > 0) {
       return NextResponse.json(
@@ -224,40 +222,20 @@ export async function PUT(request) {
       );
     }
 
-    // Reuse database connection and collection
-    if (!cachedDb) {
-      const client = await clientPromise;
-      cachedDb = client.db("farmfresh");
-      cachedCollection = cachedDb.collection("products");
-    }
+    await getMongooseConnection();
 
-    // Initialize indexes only once
-    await initializeBulkUpdateIndexes(cachedDb);
-
-    // Prepare update fields with metadata
     const updateFields = {
       ...sanitizedData,
       updatedAt: new Date(),
       lastBulkUpdate: new Date(),
     };
 
-    // Perform optimized bulk update with proper error handling
-    const updateQuery = {
-      _id: { $in: idValidation.objectIds },
-      status: { $ne: "deleted" }, // Only update non-deleted products
-    };
+    const res = await Product.updateMany(
+      { _id: { $in: idValidation.objectIds }, status: { $ne: "deleted" } },
+      { $set: updateFields },
+    );
 
-    const result = await cachedCollection.updateMany(updateQuery, {
-      $set: updateFields,
-    });
-
-    console.log(`Bulk update completed in ${Date.now() - startTime}ms:`, {
-      requested: productIds.length,
-      matched: result.matchedCount,
-      modified: result.modifiedCount,
-    });
-
-    if (result.matchedCount === 0) {
+    if (res.matchedCount === 0) {
       return NextResponse.json(
         {
           error: "No products found to update",
@@ -267,23 +245,20 @@ export async function PUT(request) {
       );
     }
 
-    // Clear all product-related caches
     clearProductsResponseCache();
 
-    // Get the updated products with enhanced data
-    const updatedProducts = await enhanceProductsWithRatings(
-      await cachedCollection
-        .find({ _id: { $in: idValidation.objectIds } })
-        .toArray(),
-      cachedDb,
-    );
+    const updatedProductsRaw = await Product.find({
+      _id: { $in: idValidation.objectIds },
+    }).lean();
+    const updatedProducts =
+      await enhanceProductsWithRatings(updatedProductsRaw);
 
     const response = NextResponse.json({
       success: true,
-      message: `Successfully updated ${result.modifiedCount} of ${result.matchedCount} products`,
+      message: `Successfully updated ${res.modifiedCount} of ${res.matchedCount} products`,
       data: {
-        updatedCount: result.modifiedCount,
-        matchedCount: result.matchedCount,
+        updatedCount: res.modifiedCount,
+        matchedCount: res.matchedCount,
         requestedCount: productIds.length,
         updatedProducts,
       },
@@ -295,7 +270,6 @@ export async function PUT(request) {
       },
     });
 
-    // Add comprehensive cache invalidation headers for dashboard updates
     response.headers.set(
       "Cache-Control",
       "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
@@ -303,21 +277,14 @@ export async function PUT(request) {
     response.headers.set("Pragma", "no-cache");
     response.headers.set("Expires", "0");
     response.headers.set("Surrogate-Control", "no-store");
-
-    // Custom headers to signal frontend cache invalidation
     response.headers.set("X-Cache-Invalidate", "products,dashboard");
     response.headers.set("X-Data-Updated", new Date().toISOString());
-    response.headers.set(
-      "X-Bulk-Update-Count",
-      result.modifiedCount.toString(),
-    );
+    response.headers.set("X-Bulk-Update-Count", String(res.modifiedCount));
 
     return response;
   } catch (error) {
     console.error("Bulk update error:", error);
-
-    // Handle specific MongoDB errors
-    if (error.name === "MongoError" || error.name === "MongoServerError") {
+    if (error.name?.includes("Mongo")) {
       return NextResponse.json(
         {
           error: "Database operation failed",
@@ -326,16 +293,12 @@ export async function PUT(request) {
         { status: 503 },
       );
     }
-
-    // Handle validation errors
-    if (error.message.includes("validation")) {
+    if (error.message?.includes("validation")) {
       return NextResponse.json(
         { error: "Validation error", details: error.message },
         { status: 400 },
       );
     }
-
-    // Generic error response
     return NextResponse.json(
       {
         error: "Internal server error",

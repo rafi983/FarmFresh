@@ -1,90 +1,13 @@
 import { NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]/route";
-
-// Track if indexes have been initialized to avoid repeated calls
-let farmersIndexesInitialized = false;
-// Cache for database connection and collections
-let cachedDb = null;
-let cachedFarmersCollection = null;
-let cachedProductsCollection = null;
+import { getMongooseConnection } from "@/lib/mongoose";
+import Farmer from "@/models/Farmer";
+import Product from "@/models/Product";
 
 // Response cache for identical requests (5 minutes)
 const responseCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000;
-
-// Initialize indexes optimized for MongoDB Atlas performance
-async function initializeFarmersIndexes(db) {
-  if (farmersIndexesInitialized) {
-    return;
-  }
-
-  try {
-    const farmersCollection = db.collection("farmers");
-
-    // Check existing indexes
-    const existingIndexes = await farmersCollection.listIndexes().toArray();
-    const indexNames = existingIndexes.map((index) => index.name);
-
-    // Simplified indexes for direct farmers only
-    const indexesToCreate = [
-      // Text search index with proper weights
-      {
-        key: {
-          name: "text",
-          description: "text",
-          location: "text",
-          farmName: "text",
-          specializations: "text",
-        },
-        name: "farmers_text_search_idx",
-        options: {
-          background: true,
-          weights: {
-            name: 10,
-            farmName: 8,
-            location: 5,
-            specializations: 3,
-            description: 1,
-          },
-        },
-      },
-      // Location-based queries
-      {
-        key: { location: 1, verified: 1 },
-        name: "location_verified_idx",
-        options: { background: true },
-      },
-      // Specialization queries
-      {
-        key: { specializations: 1, verified: 1 },
-        name: "specializations_verified_idx",
-        options: { background: true },
-      },
-      // Verified/certification status
-      {
-        key: { verified: 1, isCertified: 1, createdAt: -1 },
-        name: "status_created_idx",
-        options: { background: true },
-      },
-    ];
-
-    for (const indexSpec of indexesToCreate) {
-      if (!indexNames.includes(indexSpec.name)) {
-        await farmersCollection.createIndex(indexSpec.key, {
-          name: indexSpec.name,
-          ...indexSpec.options,
-        });
-      }
-    }
-
-    farmersIndexesInitialized = true;
-    console.log("Simplified farmers indexes initialized successfully");
-  } catch (error) {
-    console.log("Farmers index initialization note:", error.message);
-  }
-}
 
 // Generate cache key for request
 function generateCacheKey(searchParams) {
@@ -124,198 +47,123 @@ function setCachedResponse(cacheKey, data) {
 }
 
 // Enhanced farmer data with product statistics
-async function enhanceFarmersWithStats(
-  farmersCollection,
-  productsCollection,
-  farmers,
-) {
-  if (farmers.length === 0) return farmers;
-
-  // Get all farmer IDs and names for batch processing
-  const farmerIds = farmers.map((f) => f._id).filter(Boolean);
-  const farmerNames = farmers.map((f) => f.name).filter(Boolean);
-  const farmerEmails = farmers.map((f) => f.email).filter(Boolean);
-
-  // Calculate statistics for all farmers in a single aggregation
-  const statsAggregation = [
-    {
-      $match: {
-        $or: [
-          { farmerId: { $in: farmerIds } },
-          { "farmer._id": { $in: farmerIds } },
-          { "farmer.name": { $in: farmerNames } },
-          { farmerEmail: { $in: farmerEmails } },
-        ],
+async function enhanceFarmersWithStatsMongoose(farmers, includeStats) {
+  if (!includeStats || farmers.length === 0)
+    return farmers.map((f) => ({
+      ...f,
+      profilePicture: f.profilePicture || f.profileImage,
+      bio: f.bio || f.description,
+      verified: f.verified || f.isCertified || false,
+      stats: {
+        totalProducts: 0,
+        activeProducts: 0,
+        averageRating: 0,
+        totalSales: 0,
+        featuredProducts: 0,
       },
-    },
-    {
-      $group: {
-        _id: {
-          $cond: [
-            { $ne: ["$farmerId", null] },
-            "$farmerId",
-            {
-              $cond: [
-                { $ne: ["$farmer._id", null] },
-                "$farmer._id",
-                {
-                  $cond: [
-                    { $ne: ["$farmer.name", null] },
-                    "$farmer.name",
-                    "$farmerEmail",
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-        totalProducts: { $sum: 1 },
-        activeProducts: {
-          $sum: { $cond: [{ $gt: ["$stock", 0] }, 1, 0] },
-        },
-        averageRating: { $avg: "$averageRating" },
-        totalSales: { $sum: "$purchaseCount" },
-        featuredProducts: {
-          $sum: { $cond: ["$featured", 1, 0] },
-        },
-      },
-    },
-  ];
+    }));
 
-  const statsResults = await productsCollection
-    .aggregate(statsAggregation)
-    .toArray();
+  const ids = farmers.map((f) => f._id.toString());
+  const emails = farmers.map((f) => f.email).filter(Boolean);
+  const names = farmers.map((f) => f.name).filter(Boolean);
 
-  // Create a lookup map for quick stats access
+  const products = await Product.find({
+    $or: [
+      { farmerId: { $in: ids } },
+      { "farmer._id": { $in: ids } },
+      { "farmer.id": { $in: ids } },
+      { farmerEmail: { $in: emails } },
+      { "farmer.email": { $in: emails } },
+      { "farmer.name": { $in: names } },
+    ],
+  })
+    .select(
+      "farmerId farmer._id farmer.id farmer.email farmer.name farmerEmail stock averageRating purchaseCount featured",
+    )
+    .lean();
+
   const statsMap = new Map();
-  statsResults.forEach((stat) => {
-    statsMap.set(stat._id, {
-      totalProducts: stat.totalProducts || 0,
-      activeProducts: stat.activeProducts || 0,
-      averageRating: Math.round((stat.averageRating || 0) * 10) / 10,
-      totalSales: stat.totalSales || 0,
-      featuredProducts: stat.featuredProducts || 0,
-    });
-  });
+  for (const p of products) {
+    const key = (
+      p.farmerId ||
+      p.farmer?._id?.toString() ||
+      p.farmer?.id ||
+      p.farmerEmail ||
+      p.farmer?.email ||
+      p.farmer?.name
+    )?.toString();
+    if (!key) continue;
+    if (!statsMap.has(key)) {
+      statsMap.set(key, {
+        totalProducts: 0,
+        activeProducts: 0,
+        ratingSum: 0,
+        ratingCount: 0,
+        totalSales: 0,
+        featuredProducts: 0,
+      });
+    }
+    const s = statsMap.get(key);
+    s.totalProducts += 1;
+    if ((p.stock || 0) > 0) s.activeProducts += 1;
+    if (p.averageRating) {
+      s.ratingSum += p.averageRating;
+      s.ratingCount += 1;
+    }
+    s.totalSales += p.purchaseCount || 0;
+    if (p.featured) s.featuredProducts += 1;
+  }
 
-  // Enhance farmers with their statistics
-  return farmers.map((farmer) => {
-    const stats = statsMap.get(farmer._id) ||
-      statsMap.get(farmer.name) ||
-      statsMap.get(farmer.email) || {
+  return farmers.map((f) => {
+    const candidates = [f._id?.toString(), f.email, f.name].filter(Boolean);
+    let stat = null;
+    for (const c of candidates) {
+      if (statsMap.has(c)) {
+        stat = statsMap.get(c);
+        break;
+      }
+    }
+    let computed;
+    if (stat) {
+      computed = {
+        totalProducts: stat.totalProducts,
+        activeProducts: stat.activeProducts,
+        averageRating: stat.ratingCount
+          ? Math.round((stat.ratingSum / stat.ratingCount) * 10) / 10
+          : 0,
+        totalSales: stat.totalSales,
+        featuredProducts: stat.featuredProducts,
+      };
+    } else {
+      computed = {
         totalProducts: 0,
         activeProducts: 0,
         averageRating: 0,
         totalSales: 0,
         featuredProducts: 0,
       };
-
+    }
     return {
-      ...farmer,
-      // Normalize field names
-      profilePicture: farmer.profilePicture || farmer.profileImage,
-      bio: farmer.bio || farmer.description,
-      verified: farmer.verified || farmer.isCertified || false,
-      stats,
+      ...f,
+      profilePicture: f.profilePicture || f.profileImage,
+      bio: f.bio || f.description,
+      verified: f.verified || f.isCertified || false,
+      stats: computed,
     };
   });
 }
 
-// Simplified farmers query - only direct farmers
-async function getFarmersOptimized(
-  farmersCollection,
-  search,
-  specialization,
-  location,
-  limit,
-  page,
-) {
-  // Build match filter for direct farmers only
-  const matchFilter = {
-    // Only get documents that are direct farmers (have name and location fields)
-    name: { $exists: true, $ne: null },
-    location: { $exists: true, $ne: null },
-  };
-
-  // Add search filter
-  if (search) {
-    matchFilter.$text = { $search: search };
-  }
-
-  // Add specialization filter
-  if (specialization) {
-    matchFilter.specializations = {
-      $elemMatch: { $regex: specialization, $options: "i" },
-    };
-  }
-
-  // Add location filter
-  if (location) {
-    matchFilter.location = { $regex: location, $options: "i" };
-  }
-
-  // Build aggregation pipeline
-  const pipeline = [
-    { $match: matchFilter },
-    // Sort by verification status, then name
-    { $sort: { verified: -1, isCertified: -1, name: 1 } },
-  ];
-
-  // Add pagination
-  if (limit) {
-    const skip = (page - 1) * limit;
-    pipeline.push({ $skip: skip });
-    pipeline.push({ $limit: limit });
-  }
-
-  return await farmersCollection.aggregate(pipeline).toArray();
-}
-
-// Get total count for pagination - simplified for direct farmers only
-async function getFarmersCount(
-  farmersCollection,
-  search,
-  specialization,
-  location,
-) {
-  // Build match filter for direct farmers only
-  const matchFilter = {
-    name: { $exists: true, $ne: null },
-    location: { $exists: true, $ne: null },
-  };
-
-  // Add search filter
-  if (search) {
-    matchFilter.$text = { $search: search };
-  }
-
-  // Add specialization filter
-  if (specialization) {
-    matchFilter.specializations = {
-      $elemMatch: { $regex: specialization, $options: "i" },
-    };
-  }
-
-  // Add location filter
-  if (location) {
-    matchFilter.location = { $regex: location, $options: "i" };
-  }
-
-  return await farmersCollection.countDocuments(matchFilter);
-}
-
 export async function GET(request) {
   try {
+    await getMongooseConnection();
     const { searchParams } = new URL(request.url);
-
-    // Check cache first
     const cacheKey = generateCacheKey(searchParams);
-    const cachedResponse = getCachedResponse(cacheKey);
-    if (cachedResponse) {
-      const response = NextResponse.json(cachedResponse);
-      response.headers.set("X-Cache", "HIT");
-      response.headers.set("Cache-Control", "public, max-age=300");
-      return response;
+    const cached = getCachedResponse(cacheKey);
+    if (cached) {
+      const resp = NextResponse.json(cached);
+      resp.headers.set("X-Cache", "HIT");
+      resp.headers.set("Cache-Control", "public, max-age=300");
+      return resp;
     }
 
     const search = searchParams.get("search");
@@ -327,55 +175,24 @@ export async function GET(request) {
     const page = parseInt(searchParams.get("page")) || 1;
     const includeStats = searchParams.get("includeStats") !== "false";
 
-    // Reuse database connections
-    if (!cachedDb) {
-      const client = await clientPromise;
-      cachedDb = client.db("farmfresh");
-      cachedFarmersCollection = cachedDb.collection("farmers");
-      cachedProductsCollection = cachedDb.collection("products");
-    }
+    const filter = {};
+    // Only direct farmer docs (schema-based) expected
+    if (search) filter.$text = { $search: search };
+    if (specialization)
+      filter.specializations = { $regex: specialization, $options: "i" };
+    if (location) filter.location = { $regex: location, $options: "i" };
 
-    // Initialize indexes only once
-    await initializeFarmersIndexes(cachedDb);
+    const totalCount = await Farmer.countDocuments(filter);
+    const farmersDocs = await Farmer.find(filter)
+      .sort({ verified: -1, isCertified: -1, name: 1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
 
-    // Get farmers using simplified query
-    const [farmers, totalCount] = await Promise.all([
-      getFarmersOptimized(
-        cachedFarmersCollection,
-        search,
-        specialization,
-        location,
-        limit,
-        page,
-      ),
-      getFarmersCount(
-        cachedFarmersCollection,
-        search,
-        specialization,
-        location,
-      ),
-    ]);
-
-    // Enhance with stats if requested
-    const enhancedFarmers = includeStats
-      ? await enhanceFarmersWithStats(
-          cachedFarmersCollection,
-          cachedProductsCollection,
-          farmers,
-        )
-      : farmers.map((farmer) => ({
-          ...farmer,
-          profilePicture: farmer.profilePicture || farmer.profileImage,
-          bio: farmer.bio || farmer.description,
-          verified: farmer.verified || farmer.isCertified || false,
-          stats: {
-            totalProducts: 0,
-            activeProducts: 0,
-            averageRating: 0,
-            totalSales: 0,
-            featuredProducts: 0,
-          },
-        }));
+    const enhancedFarmers = await enhanceFarmersWithStatsMongoose(
+      farmersDocs,
+      includeStats,
+    );
 
     const responseData = {
       farmers: enhancedFarmers,
@@ -394,13 +211,11 @@ export async function GET(request) {
       },
     };
 
-    // Cache the response
     setCachedResponse(cacheKey, responseData);
-
-    const response = NextResponse.json(responseData);
-    response.headers.set("X-Cache", "MISS");
-    response.headers.set("Cache-Control", "public, max-age=300");
-    return response;
+    const resp = NextResponse.json(responseData);
+    resp.headers.set("X-Cache", "MISS");
+    resp.headers.set("Cache-Control", "public, max-age=300");
+    return resp;
   } catch (error) {
     console.error("Error in farmers API:", error);
     return NextResponse.json(
@@ -410,109 +225,56 @@ export async function GET(request) {
   }
 }
 
-// PUT method to update farmer profile
 export async function PUT(request) {
   try {
-    // Get the session to verify user authentication
+    await getMongooseConnection();
     const session = await getServerSession(authOptions);
-
-    if (!session || !session.user) {
+    if (!session || !session.user)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Check if user is a farmer
-    if (session.user.userType !== "farmer") {
+    if (session.user.userType !== "farmer")
       return NextResponse.json(
         { error: "Access denied. Farmers only." },
         { status: 403 },
       );
-    }
 
     const body = await request.json();
-    const client = await clientPromise;
-    const db = client.db("farmfresh");
-
-    // Find the farmer by email (session email)
-    const farmer = await db
-      .collection("farmers")
-      .findOne({ email: session.user.email });
-
-    if (!farmer) {
+    const farmer = await Farmer.findOne({ email: session.user.email }).lean();
+    if (!farmer)
       return NextResponse.json({ error: "Farmer not found" }, { status: 404 });
-    }
 
-    // Prepare update data - only include fields that can be updated
-    const updateData = {
-      updatedAt: new Date(),
-    };
-
-    // Update basic profile fields
+    const updateData = { updatedAt: new Date() };
     if (body.name) updateData.name = body.name;
     if (body.phone) updateData.phone = body.phone;
-
-    // Update farm information
-    if (body.farmInfo) {
-      updateData.farmInfo = {
-        ...farmer.farmInfo, // Keep existing farm info
-        ...body.farmInfo, // Override with new data
-      };
-    }
-
-    // Update address
+    if (body.farmInfo)
+      updateData.farmInfo = { ...(farmer.farmInfo || {}), ...body.farmInfo };
     if (body.address) {
-      updateData.address = {
-        ...farmer.address, // Keep existing address
-        ...body.address, // Override with new data
-      };
-
-      // IMPORTANT: Also update the location field for display compatibility
-      // Combine address fields into a location string for farmer page display
-      const addressParts = [];
-      if (body.address.street) addressParts.push(body.address.street);
-      if (body.address.city) addressParts.push(body.address.city);
-      if (body.address.state) addressParts.push(body.address.state);
-      if (body.address.country) addressParts.push(body.address.country);
-
-      // Update location field with formatted address string
-      if (addressParts.length > 0) {
-        updateData.location = addressParts.join(", ");
-      }
+      updateData.address = { ...(farmer.address || {}), ...body.address };
+      const parts = [];
+      ["street", "city", "state", "country"].forEach((k) => {
+        if (body.address[k]) parts.push(body.address[k]);
+      });
+      if (parts.length) updateData.location = parts.join(", ");
     }
-
-    // Update business information
-    if (body.businessInfo) {
+    if (body.businessInfo)
       updateData.businessInfo = {
-        ...farmer.businessInfo, // Keep existing business info
-        ...body.businessInfo, // Override with new data
+        ...(farmer.businessInfo || {}),
+        ...body.businessInfo,
       };
-    }
-
-    // Update preferences
-    if (body.preferences) {
+    if (body.preferences)
       updateData.preferences = {
-        ...farmer.preferences, // Keep existing preferences
-        ...body.preferences, // Override with new data
+        ...(farmer.preferences || {}),
+        ...body.preferences,
       };
-    }
+    if (body.specializations) updateData.specializations = body.specializations;
 
-    // Update farmer in database
-    const result = await db
-      .collection("farmers")
-      .updateOne({ _id: farmer._id }, { $set: updateData });
-
-    if (result.modifiedCount === 0) {
-      return NextResponse.json(
-        { error: "No changes made to farmer profile" },
-        { status: 400 },
-      );
-    }
+    await Farmer.updateOne({ _id: farmer._id }, { $set: updateData });
 
     if (body.name) {
       try {
-        await db.collection("products").updateMany(
+        await Product.updateMany(
           {
             $or: [
-              { farmerId: farmer._id },
+              { farmerId: farmer._id.toString() },
               { farmerEmail: farmer.email },
               { "farmer._id": farmer._id },
               { "farmer.email": farmer.email },
@@ -521,26 +283,20 @@ export async function PUT(request) {
           {
             $set: {
               "farmer.name": body.name,
-              farmerName: body.name, // Update if this field exists
+              farmerName: body.name,
               updatedAt: new Date(),
             },
           },
         );
-      } catch (error) {
-        console.error("Error updating farmer name in products:", error);
-        // Don't fail the whole request if product update fails
+      } catch (e) {
+        /* ignore product update failure */
       }
     }
 
-    // Fetch updated farmer data
-    const updatedFarmer = await db.collection("farmers").findOne(
-      { _id: farmer._id },
-      { projection: { password: 0 } }, // Exclude password
-    );
-
-    // CRITICAL: Clear server-side response cache to prevent serving stale farmer data
     responseCache.clear();
-
+    const updatedFarmer = await Farmer.findById(farmer._id)
+      .select("-password")
+      .lean();
     return NextResponse.json(
       {
         success: true,
@@ -560,10 +316,7 @@ export async function PUT(request) {
   } catch (error) {
     console.error("Error updating farmer profile:", error);
     return NextResponse.json(
-      {
-        error: "Failed to update farmer profile",
-        details: error.message,
-      },
+      { error: "Failed to update farmer profile", details: error.message },
       { status: 500 },
     );
   }

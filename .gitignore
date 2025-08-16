@@ -6,6 +6,9 @@
 .pnp.js
 .yarn/install-state.gz
 
+MONGODB_URI=mongodb+srv://rafiirfan211:vtdqnDTwUlhWhqsV@cluster0.fleqzua.mongodb.net/farmfresh
+
+
 # testing
 /coverage
 

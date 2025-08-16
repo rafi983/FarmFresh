@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 
 // API functions
 const fetchReviews = async (productId, page = 1, userId = null) => {
@@ -79,6 +80,10 @@ const deleteReview = async ({ reviewId, userId }) => {
 
 export const useReviewsQuery = (productId, userId = null) => {
   const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
+  const [allReviews, setAllReviews] = useState([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Query for fetching reviews
   const {
@@ -87,19 +92,41 @@ export const useReviewsQuery = (productId, userId = null) => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["reviews", productId, userId],
+    queryKey: ["reviews", productId, userId, page],
     queryFn: () => fetchReviews(productId, 1, userId),
     enabled: !!productId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
   });
+
+  useEffect(() => {
+    if (reviewsData) {
+      setAllReviews(reviewsData.reviews || []);
+      setHasMore(reviewsData?.pagination?.hasMore || false);
+      setPage(1);
+    }
+  }, [reviewsData]);
+
+  const loadMoreReviews = async () => {
+    if (!hasMore || isLoadingMore) return;
+    try {
+      setIsLoadingMore(true);
+      const nextPage = page + 1;
+      const next = await fetchReviews(productId, nextPage, userId);
+      setAllReviews((prev) => [...prev, ...(next.reviews || [])]);
+      setHasMore(next?.pagination?.hasMore || false);
+      setPage(nextPage);
+    } catch (e) {
+      // swallow
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   // Mutation for submitting new reviews
   const submitReviewMutation = useMutation({
     mutationFn: submitReview,
     onSuccess: (data, variables) => {
-      console.log("✅ React Query: Review submitted successfully:", data);
-
       // Immediately invalidate cache after successful submission
       queryClient.invalidateQueries(["reviews", productId]);
       queryClient.invalidateQueries(["products", productId]);
@@ -143,8 +170,6 @@ export const useReviewsQuery = (productId, userId = null) => {
   const updateReviewMutation = useMutation({
     mutationFn: updateReview,
     onSuccess: (data, variables) => {
-      console.log("✅ React Query: Review updated successfully:", data);
-
       // Immediately invalidate cache after successful update
       queryClient.invalidateQueries(["reviews", productId]);
       queryClient.invalidateQueries(["products", productId]);
@@ -172,8 +197,6 @@ export const useReviewsQuery = (productId, userId = null) => {
   const deleteReviewMutation = useMutation({
     mutationFn: deleteReview,
     onSuccess: (data, variables) => {
-      console.log("✅ React Query: Review deleted successfully:", data);
-
       // Immediately invalidate cache after successful deletion
       queryClient.invalidateQueries(["reviews", productId]);
       queryClient.invalidateQueries(["products", productId]);
@@ -214,32 +237,25 @@ export const useReviewsQuery = (productId, userId = null) => {
   });
 
   return {
-    // Data
-    reviews: reviewsData?.reviews || [],
+    reviews: allReviews,
     pagination: reviewsData?.pagination || {},
-    hasMoreReviews: reviewsData?.pagination?.hasMore || false,
-
-    // Loading states
+    hasMoreReviews: hasMore,
     isLoading,
     isSubmitting: submitReviewMutation.isLoading,
     isUpdating: updateReviewMutation.isLoading,
     isDeleting: deleteReviewMutation.isLoading,
-
-    // Error states
+    isLoadingMore,
     error,
     submitError: submitReviewMutation.error,
     updateError: updateReviewMutation.error,
     deleteError: deleteReviewMutation.error,
-
-    // Actions
     refetch,
     submitReview: submitReviewMutation.mutate,
     updateReview: updateReviewMutation.mutate,
     deleteReview: deleteReviewMutation.mutate,
-
-    // Async actions for when you need to await the result
     submitReviewAsync: submitReviewMutation.mutateAsync,
     updateReviewAsync: updateReviewMutation.mutateAsync,
     deleteReviewAsync: deleteReviewMutation.mutateAsync,
+    loadMoreReviews,
   };
 };

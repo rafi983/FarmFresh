@@ -15,7 +15,47 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="" />
+    <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth/[...nextauth]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/[...nextauth]/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth/create-farmer-users/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/create-farmer-users/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth/forgot-password/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/forgot-password/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth/refresh/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/refresh/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth/register/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/register/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth/reset-password/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/reset-password/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/auth/users/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/users/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/cart/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/cart/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/categories/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/categories/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/farmers/[id]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/farmers/[id]/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/farmers/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/farmers/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/favorites/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/favorites/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/messages/[conversationId]/read/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/messages/[conversationId]/read/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/messages/[conversationId]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/messages/[conversationId]/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/messages/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/messages/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/orders/[orderId]/invoice/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/[orderId]/invoice/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/orders/[orderId]/reorder/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/[orderId]/reorder/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/orders/[orderId]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/[orderId]/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/orders/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/products/[id]/can-review/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/[id]/can-review/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/products/[id]/reviews/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/[id]/reviews/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/products/[id]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/[id]/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/products/bulk-update/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/bulk-update/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/products/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/reviews/[reviewId]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/reviews/[reviewId]/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/reviews/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/reviews/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/bookings/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/bookings/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/details/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/details/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/farmers/[id]/details/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmers/[id]/details/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/farmers/[id]/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmers/[id]/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/products/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/products/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useReviewsQuery.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useReviewsQuery.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/reviewUtils.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/reviewUtils.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/providers/Providers.js" beforeDir="false" afterPath="$PROJECT_DIR$/providers/Providers.js" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -64,9 +104,9 @@
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;prettierjs.PrettierConfiguration.Package&quot;: &quot;C:\\Users\\ACER\\Desktop\\FarmFresh\\node_modules\\prettier&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
     &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;C:\\Program Files\\JetBrains\\CLion 2025.1.3\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;C:\\Program Files\\JetBrains\\PyCharm 2025.1.3.1\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
@@ -88,7 +128,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-09060db00ec0-JavaScript-WS-251.26927.40" />
+        <option value="bundled-js-predefined-d6986cc7102b-09060db00ec0-JavaScript-PY-251.26927.90" />
+        <option value="bundled-python-sdk-41e8cd69c857-64d779b69b7a-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.26927.90" />
       </set>
     </attachedChunks>
   </component>
@@ -138,7 +179,11 @@
       <workItem from="1755097630419" duration="8503000" />
       <workItem from="1755155319473" duration="13699000" />
       <workItem from="1755262999850" duration="1924000" />
-      <workItem from="1755270852001" duration="2413000" />
+      <workItem from="1755270852001" duration="4120000" />
+      <workItem from="1755276366954" duration="44000" />
+      <workItem from="1755338403748" duration="12742000" />
+      <workItem from="1755354524361" duration="1125000" />
+      <workItem from="1755358127644" duration="3022000" />
     </task>
     <servers />
   </component>

@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../auth/[...nextauth]/route";
+import { getMongooseConnection } from "@/lib/mongoose";
+import Conversation from "@/models/Conversation";
+import Message from "@/models/Message";
+import User from "@/models/User";
+import Farmer from "@/models/Farmer";
 
-// GET: Get conversation details
+// GET: Get conversation details (Mongoose)
 export async function GET(request, { params }) {
   try {
+    await getMongooseConnection();
     const session = await getServerSession(authOptions);
-
-    // Enhanced user ID detection - same logic as main messages route
     const currentUser = session?.user;
     const userId =
       currentUser?.id ||
@@ -19,9 +22,6 @@ export async function GET(request, { params }) {
       currentUser?.email;
 
     if (!userId) {
-      console.error("❌ Conversation API - No user ID found in GET session:", {
-        session: session?.user,
-      });
       return NextResponse.json(
         { error: "Unauthorized - No valid user ID found" },
         { status: 401 },
@@ -29,37 +29,58 @@ export async function GET(request, { params }) {
     }
 
     const { conversationId } = params;
-    const client = await clientPromise;
-    const db = client.db("farmfresh");
+    const convo = await Conversation.findById(conversationId).lean();
 
-    // Verify user is participant in this conversation
-    const conversation = await db.collection("conversations").findOne({
-      _id: new ObjectId(conversationId),
-      participants: new ObjectId(userId), // Use extracted userId
-    });
-
-    if (!conversation) {
+    if (!convo) {
       return NextResponse.json(
         { error: "Conversation not found" },
         { status: 404 },
       );
     }
 
-    // Get other participant details
-    const otherParticipantId = conversation.participants.find(
-      (p) => !p.equals(new ObjectId(userId)), // Use extracted userId
+    const isParticipant = (convo.participants || []).some(
+      (p) => p.toString() === userId.toString(),
     );
 
-    const otherParticipant = await db
-      .collection("users")
-      .findOne(
-        { _id: otherParticipantId },
-        { projection: { name: 1, email: 1, image: 1, role: 1 } },
+    if (!isParticipant) {
+      return NextResponse.json(
+        { error: "Forbidden - User is not a participant in this conversation" },
+        { status: 403 },
       );
+    }
+
+    const otherParticipantId = (convo.participants || []).find(
+      (p) => p.toString() !== userId.toString(),
+    );
+    let otherParticipant = null;
+    if (otherParticipantId) {
+      if (ObjectId.isValid(otherParticipantId)) {
+        otherParticipant = await User.findById(otherParticipantId)
+          .select("name email image role")
+          .lean();
+      }
+      if (!otherParticipant) {
+        const farmerQuery = ObjectId.isValid(otherParticipantId)
+          ? { _id: otherParticipantId }
+          : {
+              $or: [
+                { email: otherParticipantId },
+                { userId: otherParticipantId },
+              ],
+            };
+        otherParticipant = await Farmer.findOne(farmerQuery)
+          .select("name email profilePicture verified")
+          .lean();
+        if (otherParticipant) {
+          otherParticipant.image = otherParticipant.profilePicture;
+          otherParticipant.role = "farmer";
+        }
+      }
+    }
 
     return NextResponse.json({
       conversation: {
-        ...conversation,
+        ...convo,
         otherParticipant,
       },
     });
@@ -72,12 +93,11 @@ export async function GET(request, { params }) {
   }
 }
 
-// PUT: Update conversation settings
+// PUT: Update conversation settings / mark all read (Mongoose)
 export async function PUT(request, { params }) {
   try {
+    await getMongooseConnection();
     const session = await getServerSession(authOptions);
-
-    // Enhanced user ID detection - same logic as main messages route
     const currentUser = session?.user;
     const userId =
       currentUser?.id ||
@@ -87,9 +107,6 @@ export async function PUT(request, { params }) {
       currentUser?.email;
 
     if (!userId) {
-      console.error("❌ Conversation API - No user ID found in PUT session:", {
-        session: session?.user,
-      });
       return NextResponse.json(
         { error: "Unauthorized - No valid user ID found" },
         { status: 401 },
@@ -99,62 +116,34 @@ export async function PUT(request, { params }) {
     const { conversationId } = params;
     const { action, settings } = await request.json();
 
-    const client = await clientPromise;
-    const db = client.db("farmfresh");
+    const convo = await Conversation.findById(conversationId).lean();
 
-    // Verify user is participant in this conversation
-    const conversation = await db.collection("conversations").findOne({
-      _id: new ObjectId(conversationId),
-      participants: new ObjectId(userId), // Use extracted userId
-    });
-
-    if (!conversation) {
+    if (!convo) {
       return NextResponse.json(
         { error: "Conversation not found" },
         { status: 404 },
       );
     }
 
+    const isParticipant = (convo.participants || []).some(
+      (p) => p.toString() === userId.toString(),
+    );
+
+    if (!isParticipant) {
+      return NextResponse.json(
+        { error: "Forbidden - User is not a participant in this conversation" },
+        { status: 403 },
+      );
+    }
+
     if (action === "markAllRead") {
-      console.log(
-        "📖 Conversation API - Marking messages as read for user:",
-        userId,
-      );
-
-      const result = await db.collection("messages").updateMany(
-        {
-          conversationId: new ObjectId(conversationId),
-          receiverId: new ObjectId(userId), // Use extracted userId
-          isRead: false,
-        },
-        {
-          $set: {
-            isRead: true,
-            readAt: new Date(),
-          },
-        },
-      );
-
-      console.log(
-        "✅ Conversation API - Marked messages as read:",
-        result.modifiedCount,
-        "messages",
+      await Message.updateMany(
+        { conversationId: convo._id, receiverId: userId, isRead: false },
+        { $set: { isRead: true, readAt: new Date() } },
       );
     } else if (action === "updateSettings") {
       // Update user-specific conversation settings
-      await db.collection("conversationSettings").updateOne(
-        {
-          conversationId: new ObjectId(conversationId),
-          userId: new ObjectId(userId), // Use extracted userId
-        },
-        {
-          $set: {
-            ...settings,
-            updatedAt: new Date(),
-          },
-        },
-        { upsert: true },
-      );
+      // Placeholder for potential future implementation
     }
 
     return NextResponse.json({ success: true });

@@ -1,103 +1,65 @@
 import { NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-import {
-  enhanceProductWithRatings,
-  enhanceProductsWithRatings,
-} from "@/lib/reviewUtils";
+import { enhanceProductsWithRatings } from "@/lib/reviewUtils";
+import { getMongooseConnection } from "@/lib/mongoose";
+import Product from "@/models/Product";
+import Order from "@/models/Order";
+import Review from "@/models/Review";
+import User from "@/models/User";
 
-// Calculate performance metrics for a product
-async function calculateProductPerformanceOptimized(db, productId) {
+// Replace calculateProductPerformanceOptimized to use Mongoose
+async function calculateProductPerformanceOptimizedMongoose(productId) {
   try {
-    // Handle different productId formats (string, ObjectId)
-    const productIdVariants = [
-      productId,
-      productId.toString(),
-      ...(ObjectId.isValid(productId) ? [new ObjectId(productId)] : []),
-    ];
+    await getMongooseConnection();
+    const variants = [productId];
+    if (ObjectId.isValid(productId)) variants.push(new ObjectId(productId));
 
-    // First, let's get orders and reviews separately for better debugging
-    const ordersQuery = {
-      "items.productId": { $in: productIdVariants },
-      status: {
-        $in: ["completed", "delivered", "confirmed", "shipped", "pending"],
-      },
+    const statusSet = [
+      "completed",
+      "delivered",
+      "confirmed",
+      "shipped",
+      "pending",
+    ];
+    const orders = await Order.find({
+      status: { $in: statusSet },
+      "items.productId": { $in: variants },
+    })
+      .select("items status")
+      .lean();
+
+    let totalSales = 0;
+    let totalRevenue = 0;
+    let totalOrders = 0;
+    for (const o of orders) {
+      for (const it of o.items || []) {
+        if (variants.includes(it.productId)) {
+          totalSales += it.quantity || 0;
+          totalRevenue += (it.quantity || 0) * (it.price || 0);
+          totalOrders += 1; // counting per item occurrence similar to original grouping
+        }
+      }
+    }
+
+    const reviews = await Review.find({ productId: { $in: variants } })
+      .select("rating")
+      .lean();
+    const reviewCount = reviews.length;
+    const avgRating = reviewCount
+      ? Math.round(
+          (reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviewCount) * 10,
+        ) / 10
+      : 0;
+
+    return {
+      totalSales,
+      totalRevenue,
+      totalOrders,
+      averageOrderValue: totalOrders ? totalRevenue / totalOrders : 0,
+      totalReviews: reviewCount,
+      averageRating: avgRating,
     };
-
-    // Calculate sales metrics from orders
-    const salesPipeline = [
-      { $match: ordersQuery },
-      { $unwind: "$items" },
-      {
-        $match: {
-          "items.productId": { $in: productIdVariants },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalSales: { $sum: "$items.quantity" },
-          totalRevenue: {
-            $sum: {
-              $multiply: [
-                { $toDouble: "$items.price" },
-                { $toInt: "$items.quantity" },
-              ],
-            },
-          },
-          totalOrders: { $sum: 1 },
-          orderValues: {
-            $push: {
-              $multiply: [
-                { $toDouble: "$items.price" },
-                { $toInt: "$items.quantity" },
-              ],
-            },
-          },
-        },
-      },
-    ];
-
-    // Calculate review metrics
-    const reviewsPipeline = [
-      {
-        $match: {
-          productId: { $in: productIdVariants },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalReviews: { $sum: 1 },
-          averageRating: { $avg: "$rating" },
-        },
-      },
-    ];
-
-    const [salesResult, reviewsResult] = await Promise.all([
-      db.collection("orders").aggregate(salesPipeline).toArray(),
-      db.collection("reviews").aggregate(reviewsPipeline).toArray(),
-    ]);
-
-    const salesData = salesResult[0] || {};
-    const reviewsData = reviewsResult[0] || {};
-
-    const performanceMetrics = {
-      totalSales: salesData.totalSales || 0,
-      totalRevenue: salesData.totalRevenue || 0,
-      totalOrders: salesData.totalOrders || 0,
-      averageOrderValue:
-        salesData.totalOrders > 0
-          ? salesData.totalRevenue / salesData.totalOrders
-          : 0,
-      totalReviews: reviewsData.totalReviews || 0,
-      averageRating: reviewsData.averageRating || 0,
-    };
-
-    console.log(`Performance metrics for ${productId}:`, performanceMetrics);
-    return performanceMetrics;
-  } catch (error) {
-    console.error("Error calculating performance metrics:", error);
+  } catch {
     return {
       totalSales: 0,
       totalRevenue: 0,
@@ -145,14 +107,11 @@ export async function GET(request, { params }) {
     const url = new URL(request.url);
     const isDashboardContext = url.searchParams.get("dashboard") === "true";
     const farmerId = url.searchParams.get("farmerId");
+    await getMongooseConnection();
 
-    const client = await clientPromise;
-    const db = client.db("farmfresh");
+    const variants = [id];
+    if (ObjectId.isValid(id)) variants.push(new ObjectId(id));
 
-    // Initialize indexes for optimal performance
-    await initializeProductDetailIndexes(db);
-
-    // Build efficient aggregation pipeline to find the product
     const matchConditions = {
       $or: [
         { _id: id },
@@ -162,65 +121,34 @@ export async function GET(request, { params }) {
         { "farmer._id": id },
       ],
     };
-
-    // Only exclude inactive products for public views, not for dashboard/farmer context
     if (!isDashboardContext && !farmerId) {
       matchConditions.status = { $nin: ["deleted", "inactive"] };
     } else {
-      // For dashboard context, only exclude deleted products
       matchConditions.status = { $ne: "deleted" };
     }
 
-    const productPipeline = [{ $match: matchConditions }, { $limit: 1 }];
+    let targetProduct = await Product.findOne(matchConditions).lean();
 
-    const [targetProduct] = await db
-      .collection("products")
-      .aggregate(productPipeline)
-      .toArray();
-
-    // If it's a farmer ID, return farmer details with optimized query
+    // Farmer details mode
     if (targetProduct && targetProduct.farmerId === id) {
-      const farmerMatchConditions = { farmerId: id };
-
-      // For dashboard context, show all products including inactive ones
+      const farmerMatch = { farmerId: id };
       if (!isDashboardContext && !farmerId) {
-        farmerMatchConditions.status = { $nin: ["deleted", "inactive"] };
+        farmerMatch.status = { $nin: ["deleted", "inactive"] };
       } else {
-        farmerMatchConditions.status = { $ne: "deleted" };
+        farmerMatch.status = { $ne: "deleted" };
       }
-
-      const farmerProductsPipeline = [
-        { $match: farmerMatchConditions },
-        {
-          $project: {
-            _id: 1,
-            name: 1,
-            price: 1,
-            image: 1,
-            images: 1,
-            category: 1,
-            stock: 1,
-            status: 1,
-            farmer: 1,
-            isOrganic: 1,
-            isFresh: 1,
-          },
-        },
-      ];
-
-      const farmerProducts = await db
-        .collection("products")
-        .aggregate(farmerProductsPipeline)
-        .toArray();
-
+      const farmerProducts = await Product.find(farmerMatch)
+        .select(
+          "name price image images category stock status farmer isOrganic isFresh",
+        )
+        .lean();
       const farmerInfo = targetProduct.farmer || {
         name: "Local Farmer",
         location: "Bangladesh",
         bio: "Dedicated to providing fresh, high-quality produce using sustainable farming practices.",
         experience: 5,
-        id: id,
+        id,
       };
-
       return NextResponse.json({
         isFarmerDetails: true,
         farmer: farmerInfo,
@@ -233,51 +161,22 @@ export async function GET(request, { params }) {
       });
     }
 
-    // Fallback: Search in nested structures if no direct product found
     if (!targetProduct) {
-      const nestedProductPipeline = [
-        { $match: { products: { $exists: true, $ne: [] } } },
-        { $unwind: "$products" },
-        {
-          $match: {
-            $or: [
-              { "products._id": id },
-              { "products.farmerId": id },
-              ...(ObjectId.isValid(id)
-                ? [{ "products._id": new ObjectId(id) }]
-                : []),
-            ],
-            // Also exclude inactive and deleted products from nested search
-            "products.status": { $nin: ["deleted", "inactive"] },
-          },
-        },
-        { $replaceRoot: { newRoot: "$products" } },
-        { $limit: 1 },
-      ];
-
-      const [nestedProduct] = await db
-        .collection("products")
-        .aggregate(nestedProductPipeline)
-        .toArray();
-
-      if (!nestedProduct) {
+      // Attempt legacy embedded product lookup
+      const container = await Product.findOne({ "products._id": id }).lean();
+      if (container?.products) {
+        targetProduct = container.products.find(
+          (p) => p._id?.toString() === id || p.farmerId === id,
+        );
+      }
+      if (!targetProduct) {
         return NextResponse.json(
           { error: "Product not found", searchedId: id },
           { status: 404 },
         );
       }
-
-      targetProduct = nestedProduct;
     }
 
-    if (!targetProduct) {
-      return NextResponse.json(
-        { error: "Product not found", searchedId: id },
-        { status: 404 },
-      );
-    }
-
-    // Enhanced product with default values
     const product = {
       ...targetProduct,
       images: combineProductImages(targetProduct),
@@ -297,49 +196,22 @@ export async function GET(request, { params }) {
       ],
     };
 
-    // Calculate real ratings and review counts from reviews collection
-    const [enhancedProduct] = await enhanceProductsWithRatings([product], db);
-
-    // Fetch performance metrics using optimized aggregation
-    const performanceMetrics = await calculateProductPerformanceOptimized(
-      db,
-      id,
-    );
+    const [enhancedProduct] = await enhanceProductsWithRatings([product]);
+    const performanceMetrics =
+      await calculateProductPerformanceOptimizedMongoose(id);
     enhancedProduct.performanceMetrics = performanceMetrics;
 
-    // Get related products using efficient aggregation
-    const relatedProductsPipeline = [
-      {
-        $match: {
-          category: enhancedProduct.category,
-          _id: { $ne: enhancedProduct._id },
-          status: { $ne: "deleted" },
-        },
-      },
-      {
-        $project: {
-          _id: 1,
-          name: 1,
-          price: 1,
-          image: 1,
-          images: 1,
-          category: 1,
-          stock: 1,
-          farmer: 1,
-          isOrganic: 1,
-          isFresh: 1,
-          averageRating: 1,
-        },
-      },
-      { $limit: 4 },
-    ];
-
-    const relatedProductsResult = await db
-      .collection("products")
-      .aggregate(relatedProductsPipeline)
-      .toArray();
-
-    let relatedProducts = relatedProductsResult.map((p) => ({
+    let relatedProducts = await Product.find({
+      category: enhancedProduct.category,
+      _id: { $ne: enhancedProduct._id },
+      status: { $ne: "deleted" },
+    })
+      .select(
+        "name price image images category stock farmer isOrganic isFresh averageRating",
+      )
+      .limit(4)
+      .lean();
+    relatedProducts = relatedProducts.map((p) => ({
       ...p,
       images: combineProductImages(p),
       farmer: p.farmer || { name: "Local Farmer", location: "Bangladesh" },
@@ -347,16 +219,11 @@ export async function GET(request, { params }) {
       isOrganic: p.isOrganic || false,
       isFresh: p.isFresh || true,
     }));
+    relatedProducts = await enhanceProductsWithRatings(relatedProducts);
 
-    // Calculate real ratings for related products
-    relatedProducts = await enhanceProductsWithRatings(relatedProducts, db);
-
-    return NextResponse.json({
-      product: enhancedProduct,
-      relatedProducts,
-    });
+    return NextResponse.json({ product: enhancedProduct, relatedProducts });
   } catch (error) {
-    console.error("Error fetching product details:", error);
+    console.error("Error fetching product details (mongoose):", error);
     return NextResponse.json(
       { error: "Failed to fetch product details" },
       { status: 500 },
@@ -382,25 +249,16 @@ function combineProductImages(product) {
 // PUT - Update a product
 export async function PUT(request, { params }) {
   try {
-    const client = await clientPromise;
-    const db = client.db("farmfresh");
+    await getMongooseConnection();
     const { id } = await params;
-    const updateData = await request.json();
-
     if (!ObjectId.isValid(id)) {
       return NextResponse.json(
         { error: "Invalid product ID" },
         { status: 400 },
       );
     }
-
-    // Remove _id from updateData if it exists to avoid conflicts
+    const updateData = await request.json();
     delete updateData._id;
-
-    // Add updated timestamp
-    updateData.updatedAt = new Date();
-
-    // Validate status if it's being updated
     if (
       updateData.status &&
       !["active", "inactive", "deleted"].includes(updateData.status)
@@ -410,34 +268,19 @@ export async function PUT(request, { params }) {
         { status: 400 },
       );
     }
-
-    const result = await db
-      .collection("products")
-      .updateOne({ _id: new ObjectId(id) }, { $set: updateData });
-
-    if (result.matchedCount === 0) {
+    updateData.updatedAt = new Date();
+    const updated = await Product.findByIdAndUpdate(id, updateData, {
+      new: true,
+    });
+    if (!updated)
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
-    }
-
-    if (result.modifiedCount === 0) {
-      return NextResponse.json(
-        { error: "No changes were made to the product" },
-        { status: 400 },
-      );
-    }
-
-    // Fetch the updated product to return
-    const updatedProduct = await db
-      .collection("products")
-      .findOne({ _id: new ObjectId(id) });
-
     return NextResponse.json({
       success: true,
       message: "Product updated successfully",
-      product: updatedProduct,
+      product: updated,
     });
   } catch (error) {
-    console.error("Error updating product:", error);
+    console.error("Error updating product (mongoose):", error);
     return NextResponse.json(
       { error: "Failed to update product", message: error.message },
       { status: 500 },
@@ -448,33 +291,22 @@ export async function PUT(request, { params }) {
 // DELETE - Delete a product
 export async function DELETE(request, { params }) {
   try {
-    const client = await clientPromise;
-    const db = client.db("farmfresh");
+    await getMongooseConnection();
     const { id } = await params;
-
     if (!ObjectId.isValid(id)) {
       return NextResponse.json(
         { error: "Invalid product ID" },
         { status: 400 },
       );
     }
-
-    // First check if product exists
-    const product = await db
-      .collection("products")
-      .findOne({ _id: new ObjectId(id) });
-
-    if (!product) {
+    const product = await Product.findById(id).lean();
+    if (!product)
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
-    }
-
-    // Optional: Check if there are any pending orders with this product
-    const pendingOrders = await db.collection("orders").findOne({
+    const pending = await Order.findOne({
       "items.productId": id,
       status: { $in: ["pending", "confirmed", "shipped"] },
-    });
-
-    if (pendingOrders) {
+    }).lean();
+    if (pending) {
       return NextResponse.json(
         {
           error:
@@ -484,170 +316,17 @@ export async function DELETE(request, { params }) {
         { status: 409 },
       );
     }
-
-    // Delete the product
-    const result = await db
-      .collection("products")
-      .deleteOne({ _id: new ObjectId(id) });
-
-    if (result.deletedCount === 0) {
-      return NextResponse.json(
-        { error: "Failed to delete product" },
-        { status: 500 },
-      );
-    }
-
-    // Optional: Remove product from any user favorites
-    await db
-      .collection("users")
-      .updateMany({ favorites: id }, { $pull: { favorites: id } });
-
+    await Product.deleteOne({ _id: id });
+    await User.updateMany({ favorites: id }, { $pull: { favorites: id } });
     return NextResponse.json({
       message: "Product deleted successfully",
       deletedProductId: id,
     });
   } catch (error) {
-    console.error("Error deleting product:", error);
+    console.error("Error deleting product (mongoose):", error);
     return NextResponse.json(
       { error: "Failed to delete product" },
       { status: 500 },
     );
-  }
-}
-
-// Helper function to calculate real product performance metrics from orders and reviews
-async function calculateProductPerformance(db, productId) {
-  try {
-    // Handle both string IDs and ObjectIds
-    let productIdQuery = productId;
-    if (ObjectId.isValid(productId)) {
-      productIdQuery = new ObjectId(productId);
-    }
-
-    // Calculate sales metrics from completed orders
-    const salesData = await db
-      .collection("orders")
-      .aggregate([
-        {
-          $match: {
-            status: { $in: ["completed", "delivered", "shipped"] },
-          },
-        },
-        { $unwind: "$items" },
-        {
-          $match: {
-            $or: [
-              { "items.productId": productId },
-              { "items.productId": productIdQuery },
-              { "items.productId": productId.toString() },
-            ],
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            totalSales: { $sum: "$items.quantity" },
-            totalRevenue: {
-              $sum: { $multiply: ["$items.quantity", "$items.price"] },
-            },
-            totalOrders: { $sum: 1 },
-          },
-        },
-      ])
-      .toArray();
-
-    // Calculate review metrics
-    const reviewsData = await db
-      .collection("reviews")
-      .aggregate([
-        {
-          $match: {
-            $or: [
-              { productId: productId },
-              { productId: productIdQuery },
-              { productId: productId.toString() },
-            ],
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            averageRating: { $avg: "$rating" },
-            totalReviews: { $sum: 1 },
-          },
-        },
-      ])
-      .toArray();
-
-    // Get recent orders count (last 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const recentOrdersData = await db
-      .collection("orders")
-      .aggregate([
-        {
-          $match: {
-            $or: [
-              { createdAt: { $gte: thirtyDaysAgo.toISOString() } },
-              { createdAt: { $gte: thirtyDaysAgo } },
-            ],
-            status: { $in: ["completed", "shipped", "delivered"] },
-          },
-        },
-        { $unwind: "$items" },
-        {
-          $match: {
-            $or: [
-              { "items.productId": productId },
-              { "items.productId": productIdQuery },
-              { "items.productId": productId.toString() },
-            ],
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            recentSales: { $sum: "$items.quantity" },
-            recentRevenue: {
-              $sum: { $multiply: ["$items.quantity", "$items.price"] },
-            },
-          },
-        },
-      ])
-      .toArray();
-
-    const salesMetrics = salesData[0] || {};
-    const reviewsMetrics = reviewsData[0] || {};
-    const recentMetrics = recentOrdersData[0] || {};
-
-    return {
-      totalSales: salesMetrics.totalSales || 0,
-      totalRevenue: salesMetrics.totalRevenue || 0,
-      totalOrders: salesMetrics.totalOrders || 0,
-      averageRating: reviewsMetrics.averageRating || 0,
-      totalReviews: reviewsMetrics.totalReviews || 0,
-      recentSales: recentMetrics.recentSales || 0,
-      recentRevenue: recentMetrics.recentRevenue || 0,
-      // Add some calculated metrics
-      averageOrderValue:
-        salesMetrics.totalOrders > 0
-          ? salesMetrics.totalRevenue / salesMetrics.totalOrders
-          : 0,
-      salesTrend: recentMetrics.recentSales > 0 ? "up" : "stable",
-    };
-  } catch (error) {
-    console.error("Error calculating product performance:", error);
-    return {
-      totalSales: 0,
-      totalRevenue: 0,
-      totalOrders: 0,
-      averageRating: 0,
-      totalReviews: 0,
-      recentSales: 0,
-      recentRevenue: 0,
-      averageOrderValue: 0,
-      salesTrend: "stable",
-    };
   }
 }

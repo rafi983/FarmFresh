@@ -1,609 +1,224 @@
 import { NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { getMongooseConnection } from "@/lib/mongoose";
+import Farmer from "@/models/Farmer";
+import Product from "@/models/Product";
 
-// Track if indexes have been initialized to avoid repeated calls
-let farmerIndexesInitialized = false;
-// Cache for database connection and collections
-let cachedDb = null;
-let cachedFarmersCollection = null;
-let cachedProductsCollection = null;
-
-// Response cache for identical requests (5 minutes)
-const responseCache = new Map();
-const CACHE_TTL = 5 * 60 * 1000;
-
-// Initialize indexes optimized for MongoDB Atlas performance
-async function initializeFarmerIndexes(db) {
-  if (farmerIndexesInitialized) {
-    return;
-  }
-
-  try {
-    const farmersCollection = db.collection("farmers");
-    const productsCollection = db.collection("products");
-
-    // Check existing indexes
-    const [farmerIndexes, productIndexes] = await Promise.all([
-      farmersCollection.listIndexes().toArray(),
-      productsCollection.listIndexes().toArray(),
-    ]);
-
-    const farmerIndexNames = farmerIndexes.map((idx) => idx.name);
-    const productIndexNames = productIndexes.map((idx) => idx.name);
-
-    // Farmers collection indexes
-    const farmerIndexesToCreate = [
-      {
-        key: { _id: 1 },
-        name: "farmer_id_idx",
-        options: { background: true },
-      },
-      {
-        key: { "farmers._id": 1 },
-        name: "nested_farmers_id_idx",
-        options: { background: true },
-      },
-      {
-        key: { email: 1 },
-        name: "farmer_email_idx",
-        options: { background: true },
-      },
-      {
-        key: { name: 1, farmName: 1 },
-        name: "farmer_names_idx",
-        options: { background: true },
-      },
-    ];
-
-    // Products collection indexes for farmer queries
-    const productIndexesToCreate = [
-      {
-        key: { farmerId: 1, status: 1 },
-        name: "farmer_products_idx",
-        options: { background: true },
-      },
-      {
-        key: { "farmer._id": 1, status: 1 },
-        name: "farmer_nested_id_idx",
-        options: { background: true },
-      },
-      {
-        key: { "farmer.name": 1, status: 1 },
-        name: "farmer_name_idx",
-        options: { background: true },
-      },
-      {
-        key: { farmerEmail: 1, status: 1 },
-        name: "farmer_email_products_idx",
-        options: { background: true },
-      },
-      {
-        key: { stock: 1, status: 1 },
-        name: "stock_status_idx",
-        options: { background: true },
-      },
-    ];
-
-    // Create farmer indexes
-    for (const indexSpec of farmerIndexesToCreate) {
-      if (!farmerIndexNames.includes(indexSpec.name)) {
-        await farmersCollection.createIndex(indexSpec.key, {
-          name: indexSpec.name,
-          ...indexSpec.options,
-        });
-      }
-    }
-
-    // Create product indexes
-    for (const indexSpec of productIndexesToCreate) {
-      if (!productIndexNames.includes(indexSpec.name)) {
-        await productsCollection.createIndex(indexSpec.key, {
-          name: indexSpec.name,
-          ...indexSpec.options,
-        });
-      }
-    }
-
-    farmerIndexesInitialized = true;
-    console.log("Atlas-optimized farmer indexes initialized successfully");
-  } catch (error) {
-    console.log("Farmer index initialization note:", error.message);
-  }
+// Simple in-memory cache (5 min) for farmer details
+const farmerCache = new Map();
+const TTL = 5 * 60 * 1000;
+function cacheKey(id) {
+  return `farmer:${id}`;
 }
-
-// Generate cache key for request
-function generateCacheKey(id) {
-  return `farmer_${id}`;
-}
-
-// Get cached response if available and not expired
-function getCachedResponse(cacheKey) {
-  const cached = responseCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data;
-  }
-  responseCache.delete(cacheKey);
+function getCache(id) {
+  const k = cacheKey(id);
+  const e = farmerCache.get(k);
+  if (e && Date.now() - e.t < TTL) return e.v;
+  farmerCache.delete(k);
   return null;
 }
-
-// Set response in cache
-function setCachedResponse(cacheKey, data) {
-  responseCache.set(cacheKey, {
-    data,
-    timestamp: Date.now(),
-  });
-
-  // Clear cache if it gets too large
-  if (responseCache.size > 100) {
-    const now = Date.now();
-    for (const [key, value] of responseCache.entries()) {
-      if (now - value.timestamp >= CACHE_TTL) {
-        responseCache.delete(key);
-      }
-    }
-  }
+function setCache(id, v) {
+  farmerCache.set(cacheKey(id), { v, t: Date.now() });
+  if (farmerCache.size > 200) farmerCache.clear();
 }
 
-// Optimized farmer lookup with proper indexing
-async function findFarmerOptimized(farmersCollection, id) {
-  // First, try to find farmer by string ID (for hardcoded farmers like "farmer_001")
-  // This should find the individual farmer documents we created for hardcoded farmers
-  let farmer = await farmersCollection.findOne({
-    _id: id,
-    farmers: { $exists: false }, // Ensure it's an individual document, not nested
-  });
-
-  if (farmer) {
-    console.log(`Found individual farmer document for ID: ${id}`);
-    return farmer;
-  }
-
-  // Second, try to find farmer by ObjectId (for new farmers) - uses primary index
-  if (ObjectId.isValid(id)) {
-    farmer = await farmersCollection.findOne({
-      _id: new ObjectId(id),
-      farmers: { $exists: false }, // Ensure it's an individual document, not nested
-    });
-    if (farmer) {
-      console.log(`Found farmer by ObjectId: ${id}`);
-      return farmer;
-    }
-  }
-
-  // Fallback: Search in the farmers array (for legacy hardcoded farmers) - uses nested_farmers_id_idx
-  console.log(`Falling back to nested structure for ID: ${id}`);
-  const farmersDoc = await farmersCollection.findOne(
-    { "farmers._id": id },
-    { projection: { farmers: { $elemMatch: { _id: id } } } }, // Project only matching farmer
-  );
-
-  if (farmersDoc?.farmers?.[0]) {
-    const farmer = farmersDoc.farmers[0];
-    farmer._id = id; // Ensure consistent _id field
-    console.log(`Found farmer in nested structure: ${farmer.name}`);
-    return farmer;
-  }
-
-  console.log(`No farmer found for ID: ${id}`);
-  return null;
-}
-
-// Optimized product statistics calculation using aggregation pipeline
-async function calculateFarmerStatsOptimized(productsCollection, farmer, id) {
-  const pipeline = [
-    {
-      $match: {
-        $or: [
-          { farmerId: id },
-          { farmerId: farmer._id },
-          { "farmer.id": id },
-          { "farmer._id": id },
-          { farmerEmail: farmer.email },
-          { "farmer.name": { $regex: new RegExp(`^${farmer.name}$`, "i") } },
-          ...(farmer.farmName
-            ? [
-                {
-                  "farmer.farmName": {
-                    $regex: new RegExp(`^${farmer.farmName}$`, "i"),
-                  },
-                },
-              ]
-            : []),
-        ],
-      },
-    },
-    {
-      $facet: {
-        // Get all products for the farmer (excluding large base64 images)
-        products: [
-          {
-            $project: {
-              _id: 1,
-              name: 1,
-              price: 1,
-              stock: 1,
-              category: 1,
-              // Only include image count and first image thumbnail if needed
-              imageCount: { $size: { $ifNull: ["$images", []] } },
-              // Optionally include a small preview or just the first few characters
-              hasImages: { $gt: [{ $size: { $ifNull: ["$images", []] } }, 0] },
-              description: 1,
-              farmer: 1,
-              farmerId: 1,
-              farmerEmail: 1,
-              averageRating: 1,
-              reviews: 1, // Add reviews field to include review data
-              purchaseCount: 1,
-              status: 1,
-              featured: 1,
-              createdAt: 1,
-            },
-          },
-        ],
-        // Calculate statistics
-        stats: [
-          {
-            $group: {
-              _id: null,
-              totalProducts: { $sum: 1 },
-              activeProducts: {
-                $sum: {
-                  $cond: [{ $gt: ["$stock", 0] }, 1, 0],
-                },
-              },
-              averageRating: { $avg: "$averageRating" },
-              totalSales: { $sum: "$purchaseCount" },
-              totalStock: { $sum: "$stock" },
-              featuredProducts: {
-                $sum: {
-                  $cond: ["$featured", 1, 0],
-                },
-              },
-            },
-          },
-        ],
-      },
-    },
+async function buildFarmerStats(farmerId, farmerDoc) {
+  const idStr = farmerId.toString();
+  const email = farmerDoc?.email;
+  const name = farmerDoc?.name;
+  const orMatch = [
+    { farmerId: idStr },
+    { "farmer._id": farmerId },
+    { "farmer.id": idStr },
   ];
-
-  const result = await productsCollection.aggregate(pipeline).toArray();
-
-  if (result.length === 0) {
-    return {
-      products: [],
-      stats: {
-        totalProducts: 0,
-        activeProducts: 0,
-        averageRating: 0,
-        totalSales: 0,
-        totalStock: 0,
-        featuredProducts: 0,
-      },
-    };
+  if (email) orMatch.push({ farmerEmail: email }, { "farmer.email": email });
+  if (name) orMatch.push({ "farmer.name": name });
+  const products = await Product.find({ $or: orMatch })
+    .select("stock averageRating purchaseCount featured")
+    .lean();
+  let totalProducts = products.length;
+  let activeProducts = 0;
+  let ratingSum = 0;
+  let ratingCount = 0;
+  let totalSales = 0;
+  let totalStock = 0;
+  let featuredProducts = 0;
+  for (const p of products) {
+    totalStock += p.stock || 0;
+    if ((p.stock || 0) > 0) activeProducts += 1;
+    if (p.averageRating) {
+      ratingSum += p.averageRating;
+      ratingCount += 1;
+    }
+    totalSales += p.purchaseCount || 0;
+    if (p.featured) featuredProducts += 1;
   }
-
-  const { products, stats } = result[0];
-  const statsData = stats[0] || {
-    totalProducts: 0,
-    activeProducts: 0,
-    averageRating: 0,
-    totalSales: 0,
-    totalStock: 0,
-    featuredProducts: 0,
-  };
-
-  // If images are needed for the response, fetch them separately for a limited number of products
-  // This prevents the aggregation from failing due to size limits
-  if (products.length > 0) {
-    // Optionally fetch images for the first few products or implement pagination
-    const productIds = products.slice(0, 10).map((p) => p._id); // Limit to first 10 products
-
-    const productsWithImages = await productsCollection
-      .find(
-        { _id: { $in: productIds } },
-        {
-          projection: {
-            _id: 1,
-            images: { $slice: ["$images", 1] }, // Only get the first image to reduce size
-          },
-        },
-      )
-      .toArray();
-
-    // Merge the image data back into the products
-    const imageMap = new Map(
-      productsWithImages.map((p) => [p._id.toString(), p.images]),
-    );
-    products.forEach((product) => {
-      const images = imageMap.get(product._id.toString());
-      if (images && images.length > 0) {
-        product.images = images;
-      } else {
-        product.images = [];
-      }
-    });
-  }
-
   return {
-    products,
-    stats: {
-      ...statsData,
-      averageRating: Math.round((statsData.averageRating || 0) * 10) / 10,
-    },
+    totalProducts,
+    activeProducts,
+    averageRating: ratingCount
+      ? Math.round((ratingSum / ratingCount) * 10) / 10
+      : 0,
+    totalSales,
+    totalStock,
+    featuredProducts,
   };
 }
 
-export async function GET(request, { params }) {
+async function fetchFarmerProducts(farmerId, farmerDoc) {
+  const idStr = farmerId.toString();
+  const email = farmerDoc?.email;
+  const name = farmerDoc?.name;
+  const match = {
+    $or: [
+      { farmerId: idStr },
+      { "farmer._id": farmerId },
+      { "farmer.id": idStr },
+    ],
+  };
+  if (email) match.$or.push({ farmerEmail: email });
+  if (name) match.$or.push({ "farmer.name": name });
+  return Product.find(match)
+    .select(
+      "name price stock category image images farmer farmerId farmerEmail averageRating reviewCount purchaseCount status featured createdAt",
+    )
+    .lean();
+}
+
+export async function GET(_req, { params }) {
   try {
+    await getMongooseConnection();
     const { id } = params;
-
-    if (!id) {
+    if (!id)
       return NextResponse.json({ error: "Invalid farmer ID" }, { status: 400 });
+
+    const cached = getCache(id);
+    if (cached) {
+      const res = NextResponse.json(cached);
+      res.headers.set("X-Cache", "HIT");
+      return res;
     }
 
-    // Check cache first
-    const cacheKey = generateCacheKey(id);
-    const cachedResponse = getCachedResponse(cacheKey);
-    if (cachedResponse) {
-      const response = NextResponse.json(cachedResponse);
-      response.headers.set("X-Cache", "HIT");
-      response.headers.set("Cache-Control", "public, max-age=300");
-      return response;
-    }
-
-    // Reuse database connections
-    if (!cachedDb) {
-      const client = await clientPromise;
-      cachedDb = client.db("farmfresh");
-      cachedFarmersCollection = cachedDb.collection("farmers");
-      cachedProductsCollection = cachedDb.collection("products");
-    }
-
-    // Initialize indexes only once
-    await initializeFarmerIndexes(cachedDb);
-
-    // Find farmer using optimized lookup
-    const farmer = await findFarmerOptimized(cachedFarmersCollection, id);
-
-    if (!farmer) {
+    // Try direct ID (string _id) then ObjectId
+    let farmer = await Farmer.findOne({ _id: id }).lean();
+    if (!farmer && ObjectId.isValid(id))
+      farmer = await Farmer.findById(id).lean();
+    if (!farmer)
       return NextResponse.json({ error: "Farmer not found" }, { status: 404 });
-    }
 
-    // Calculate farmer statistics using optimized aggregation
-    const { products, stats } = await calculateFarmerStatsOptimized(
-      cachedProductsCollection,
-      farmer,
-      id,
-    );
+    const stats = await buildFarmerStats(farmer._id, farmer);
+    const products = await fetchFarmerProducts(farmer._id, farmer);
 
-    // Enhance farmer data with calculated statistics
-    const enhancedFarmer = {
+    const enhanced = {
       ...farmer,
-      // Ensure consistent field names for both hardcoded and new farmers
       profilePicture: farmer.profilePicture || farmer.profileImage,
       bio: farmer.bio || farmer.description,
-      isCertified: farmer.isCertified || false,
       verified: farmer.verified || farmer.isCertified || false,
       stats,
       products,
     };
 
-    const responseData = {
-      success: true,
-      farmer: enhancedFarmer,
-    };
-
-    // Cache the response
-    setCachedResponse(cacheKey, responseData);
-
-    const response = NextResponse.json(responseData);
-    response.headers.set("X-Cache", "MISS");
-    response.headers.set("Cache-Control", "public, max-age=300");
-
-    return response;
-  } catch (error) {
-    console.error("Error fetching farmer:", error);
+    const payload = { success: true, farmer: enhanced };
+    setCache(id, payload);
+    const res = NextResponse.json(payload);
+    res.headers.set("X-Cache", "MISS");
+    return res;
+  } catch (e) {
     return NextResponse.json(
-      { error: "Failed to fetch farmer data" },
+      { error: "Failed to fetch farmer data", details: e.message },
       { status: 500 },
     );
   }
 }
 
-// Add PUT handler to update a specific farmer by ID
 export async function PUT(request, { params }) {
   try {
+    await getMongooseConnection();
     const { id } = params;
-
-    if (!id) {
+    if (!id)
       return NextResponse.json({ error: "Invalid farmer ID" }, { status: 400 });
+    const body = await request.json();
+
+    // Only allow updating known fields
+    const updatable = [
+      "name",
+      "phone",
+      "location",
+      "bio",
+      "description",
+      "farmName",
+      "profilePicture",
+      "profileImage",
+      "specializations",
+      "verified",
+      "isCertified",
+      "address",
+      "farmInfo",
+      "businessInfo",
+      "preferences",
+      "farmSize",
+      "farmSizeUnit",
+    ];
+    const updateObj = { updatedAt: new Date() };
+    for (const k of updatable)
+      if (body[k] !== undefined) updateObj[k] = body[k];
+
+    // Compute location if address provided
+    if (body.address) {
+      const parts = [];
+      ["street", "city", "state", "country"].forEach((k) => {
+        if (body.address[k]) parts.push(body.address[k]);
+      });
+      if (parts.length) updateObj.location = parts.join(", ");
     }
 
-    console.log(`Updating farmer with ID: ${id}`);
-
-    // Parse the updated farmer data from the request body
-    const updatedFarmerData = await request.json();
-    console.log(
-      "Received farmer update data:",
-      JSON.stringify(updatedFarmerData, null, 2),
-    );
-
-    // Reuse database connections
-    if (!cachedDb) {
-      const client = await clientPromise;
-      cachedDb = client.db("farmfresh");
-      cachedFarmersCollection = cachedDb.collection("farmers");
-      cachedProductsCollection = cachedDb.collection("products");
-
-      // Initialize optimized indexes
-      await initializeFarmerIndexes(cachedDb);
-    }
-
-    // First, try to update the farmer by ObjectId (for MongoDB farmers)
-    if (ObjectId.isValid(id)) {
-      // Remove _id from the update data if present to avoid MongoDB errors
-      const { _id, ...updateData } = updatedFarmerData;
-
-      // Always update the updatedAt timestamp
-      updateData.updatedAt = new Date();
-
-      console.log("Original update data:", JSON.stringify(updateData, null, 2));
-
-      // Create a clean update object for MongoDB
-      // IMPORTANT: For MongoDB dot notation to work correctly, we need to start with a fresh object
-      const updateObj = {};
-
-      // Handle top-level fields
-      if (updateData.name) updateObj.name = updateData.name;
-      if (updateData.phone) updateObj.phone = updateData.phone;
-      if (updateData.location) updateObj.location = updateData.location;
-      if (updateData.email) updateObj.email = updateData.email;
-      if (updateData.bio) updateObj.bio = updateData.bio;
-
-      // IMPORTANT: For nested objects like address, we must update the entire object at once
-      // Do NOT use dot notation for these objects, as it will overwrite only specific fields
-      if (updateData.address) {
-        console.log(
-          "Updating entire address object:",
-          JSON.stringify(updateData.address),
-        );
-        updateObj.address = updateData.address;
-      }
-
-      // For farmInfo, also update the entire object to ensure all fields are saved
-      if (updateData.farmInfo) {
-        console.log(
-          "Updating entire farmInfo object:",
-          JSON.stringify(updateData.farmInfo),
-        );
-        updateObj.farmInfo = updateData.farmInfo;
-      }
-
-      // For businessInfo and preferences, update entire objects
-      if (updateData.businessInfo)
-        updateObj.businessInfo = updateData.businessInfo;
-      if (updateData.preferences)
-        updateObj.preferences = updateData.preferences;
-
-      // Handle top-level farmSize directly (some schemas have it at root level)
-      if (updateData.farmSize !== undefined) {
-        updateObj.farmSize = updateData.farmSize;
-        console.log("Updating root farmSize to:", updateData.farmSize);
-      }
-
-      // Handle farmSizeUnit directly (some schemas have it at root level)
-      if (updateData.farmSizeUnit !== undefined) {
-        updateObj.farmSizeUnit = updateData.farmSizeUnit;
-      }
-
-      // Handle specializations array
-      if (updateData.specializations) {
-        updateObj.specializations = updateData.specializations;
-      }
-
-      // Always update timestamp
-      updateObj.updatedAt = new Date();
-
-      console.log("Final update object keys:", Object.keys(updateObj));
-      console.log(
-        "Final update object content:",
-        JSON.stringify(updateObj, null, 2),
-      );
-
-      // Now perform the update with our carefully constructed object
-      // IMPORTANT: For MongoDB to correctly update nested objects, use $set with the entire object
-      // This ensures the update is atomic and replaces entire objects instead of patching fields
-      const updateResult = await cachedFarmersCollection.findOneAndUpdate(
+    let farmer = await Farmer.findOneAndUpdate(
+      { _id: id },
+      { $set: updateObj },
+      { new: true },
+    ).lean();
+    if (!farmer && ObjectId.isValid(id))
+      farmer = await Farmer.findOneAndUpdate(
         { _id: new ObjectId(id) },
         { $set: updateObj },
-        { returnDocument: "after" },
-      );
+        { new: true },
+      ).lean();
+    if (!farmer)
+      return NextResponse.json({ error: "Farmer not found" }, { status: 404 });
 
-      // If found and updated
-      if (updateResult) {
-        // Clear any caches
-        responseCache.clear();
-
-        console.log("Farmer updated successfully:", updateResult.name);
-
-        // Return the updated farmer
-        return NextResponse.json({
-          success: true,
-          farmer: updateResult,
-          message: "Farmer updated successfully",
-        });
-      } else {
-        console.log("No document found to update with ID:", id);
-      }
+    // Propagate name change to products if applicable
+    if (body.name) {
+      try {
+        await Product.updateMany(
+          {
+            $or: [
+              { farmerId: farmer._id.toString() },
+              { "farmer._id": farmer._id },
+              { "farmer.id": farmer._id.toString() },
+              { farmerEmail: farmer.email },
+              { "farmer.email": farmer.email },
+            ],
+          },
+          {
+            $set: {
+              "farmer.name": body.name,
+              farmerName: body.name,
+              updatedAt: new Date(),
+            },
+          },
+        );
+      } catch {}
     }
 
-    // For hardcoded farmers in the farmers array (legacy support)
-    // Use the arrayFilters to update a specific element in the farmers array
-    const result = await cachedFarmersCollection.findOneAndUpdate(
-      { "farmers._id": id },
-      {
-        $set: {
-          "farmers.$[elem].name": updatedFarmerData.name,
-          "farmers.$[elem].phone": updatedFarmerData.phone,
-          "farmers.$[elem].location": updatedFarmerData.location,
-          "farmers.$[elem].description": updatedFarmerData.description,
-          "farmers.$[elem].farmSize": updatedFarmerData.farmSize,
-          "farmers.$[elem].farmSizeUnit": updatedFarmerData.farmSizeUnit,
-          "farmers.$[elem].specializations": updatedFarmerData.specializations,
-          "farmers.$[elem].farmingMethods": updatedFarmerData.farmingMethods,
-          "farmers.$[elem].address": updatedFarmerData.address,
-          "farmers.$[elem].farmInfo": updatedFarmerData.farmInfo,
-          "farmers.$[elem].lastUpdated": new Date(),
-        },
-      },
-      {
-        arrayFilters: [{ "elem._id": id }],
-        returnDocument: "after",
-      },
-    );
-
-    if (result) {
-      // Get the updated farmer from the array
-      const updatedFarmer = result.farmers?.find((f) => f._id === id);
-
-      if (updatedFarmer) {
-        // Clear any caches
-        responseCache.clear();
-
-        // Update related products with the new farmer name for consistency
-        if (updatedFarmerData.name) {
-          await cachedProductsCollection.updateMany(
-            {
-              $or: [
-                { farmerId: id },
-                { "farmer._id": id },
-                { "farmer.id": id },
-              ],
-            },
-            {
-              $set: {
-                "farmer.name": updatedFarmerData.name,
-                lastUpdated: new Date(),
-              },
-            },
-          );
-        }
-
-        return NextResponse.json({
-          success: true,
-          farmer: updatedFarmer,
-          message: "Farmer updated successfully",
-        });
-      }
-    }
-
-    // If we reach here, no farmer was found with the given ID
-    return NextResponse.json({ error: "Farmer not found" }, { status: 404 });
-  } catch (error) {
-    console.error("Error updating farmer:", error);
+    farmerCache.delete(cacheKey(id));
+    return NextResponse.json({
+      success: true,
+      farmer,
+      message: "Farmer updated successfully",
+    });
+  } catch (e) {
     return NextResponse.json(
-      { error: "Failed to update farmer", details: error.message },
+      { error: "Failed to update farmer", details: e.message },
       { status: 500 },
     );
   }

@@ -1,105 +1,8 @@
 import { NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
-
-// Track if indexes have been initialized to avoid repeated calls
-let indexesInitialized = false;
-
-// Initialize indexes optimized for MongoDB Atlas performance
-async function initializeOrderIndexes(db) {
-  // Only initialize once per application lifecycle
-  if (indexesInitialized) {
-    return;
-  }
-
-  try {
-    const ordersCollection = db.collection("orders");
-    const productsCollection = db.collection("products");
-
-    // Check if indexes already exist before creating them
-    const existingIndexes = await ordersCollection.listIndexes().toArray();
-    const indexNames = existingIndexes.map((index) => index.name);
-
-    // Atlas-optimized compound indexes for better performance
-    const indexesToCreate = [
-      // Core user queries
-      {
-        key: { userId: 1, createdAt: -1 },
-        name: "userId_createdAt_idx",
-        options: { background: true },
-      },
-      // Farmer queries - optimized for Atlas
-      {
-        key: { "items.farmerId": 1, status: 1, createdAt: -1 },
-        name: "items_farmerId_status_date_idx",
-        options: { background: true },
-      },
-      {
-        key: { "items.farmerEmail": 1, status: 1, createdAt: -1 },
-        name: "items_farmerEmail_status_date_idx",
-        options: { background: true },
-      },
-      // Alternative farmer fields
-      {
-        key: { farmerIds: 1, createdAt: -1 },
-        name: "farmerIds_createdAt_idx",
-        options: { background: true },
-      },
-      {
-        key: { farmerEmails: 1, createdAt: -1 },
-        name: "farmerEmails_createdAt_idx",
-        options: { background: true },
-      },
-      // Product queries
-      {
-        key: { "items.productId": 1, createdAt: -1 },
-        name: "items_productId_createdAt_idx",
-        options: { background: true },
-      },
-      // Status and date queries
-      {
-        key: { status: 1, createdAt: -1 },
-        name: "status_createdAt_idx",
-        options: { background: true },
-      },
-      // General date sorting
-      {
-        key: { createdAt: -1 },
-        name: "createdAt_idx",
-        options: { background: true },
-      },
-    ];
-
-    for (const indexSpec of indexesToCreate) {
-      if (!indexNames.includes(indexSpec.name)) {
-        await ordersCollection.createIndex(indexSpec.key, {
-          name: indexSpec.name,
-          ...indexSpec.options,
-        });
-      }
-    }
-
-    // Products collection indexes for order operations
-    const productIndexes = await productsCollection.listIndexes().toArray();
-    const productIndexNames = productIndexes.map((index) => index.name);
-
-    if (!productIndexNames.includes("stock_status_idx")) {
-      await productsCollection.createIndex(
-        { stock: 1, status: 1 },
-        { name: "stock_status_idx", background: true },
-      );
-    }
-
-    indexesInitialized = true;
-    console.log("Atlas-optimized order indexes initialized successfully");
-  } catch (error) {
-    console.log("Order index initialization note:", error.message);
-  }
-}
-
-// Cache for database connection and collections
-let cachedDb = null;
-let cachedOrdersCollection = null;
+import { getMongooseConnection } from "@/lib/mongoose";
+import Order from "@/models/Order";
+import Product from "@/models/Product";
+import User from "@/models/User";
 
 // Response cache for identical requests (3 minutes for orders - shorter than products)
 const responseCache = new Map();
@@ -151,75 +54,26 @@ function setCachedResponse(cacheKey, data) {
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-
-    // Check cache first
     const cacheKey = generateCacheKey(searchParams);
     const cachedResponse = getCachedResponse(cacheKey);
-    if (cachedResponse) {
-      return NextResponse.json(cachedResponse);
-    }
+    if (cachedResponse) return NextResponse.json(cachedResponse);
 
-    const userId = searchParams.get("userId");
-    const farmerId = searchParams.get("farmerId");
-    const farmerEmail = searchParams.get("farmerEmail");
-    const productId = searchParams.get("productId"); // Add productId parameter
-    const status = searchParams.get("status");
+    await getMongooseConnection();
+
+    const params = {
+      userId: searchParams.get("userId"),
+      farmerId: searchParams.get("farmerId"),
+      farmerEmail: searchParams.get("farmerEmail"),
+      productId: searchParams.get("productId"),
+      status: searchParams.get("status"),
+    };
     const limit = parseInt(searchParams.get("limit")) || 50;
     const page = parseInt(searchParams.get("page")) || 1;
+    const skip = (page - 1) * limit;
 
-    // Reuse database connection
-    if (!cachedDb) {
-      const client = await clientPromise;
-      cachedDb = client.db("farmfresh");
-      cachedOrdersCollection = cachedDb.collection("orders");
-    }
+    const query = Order.buildFilter(params);
 
-    // Initialize indexes
-    await initializeOrderIndexes(cachedDb);
-
-    // Build optimized query
-    const query = {};
-
-    if (userId) {
-      query.userId = userId;
-    }
-
-    if (status) {
-      query.status = status;
-    }
-
-    // Add productId filtering - only show orders containing this specific product
-    if (productId) {
-      query["items.productId"] = productId;
-    }
-
-    // Optimized farmer filtering for better Atlas performance
-    if (farmerId || farmerEmail) {
-      const farmerConditions = [];
-
-      if (farmerId) {
-        farmerConditions.push(
-          { "items.farmerId": farmerId },
-          { "items.farmer.id": farmerId },
-          { "items.farmer._id": farmerId },
-          { farmerIds: farmerId },
-        );
-      }
-
-      if (farmerEmail) {
-        farmerConditions.push(
-          { "items.farmerEmail": farmerEmail },
-          { "items.farmer.email": farmerEmail },
-          { farmerEmails: farmerEmail },
-        );
-      }
-
-      query.$or = farmerConditions;
-    }
-
-    // Optimized projection - reduce data transfer
     const projection = {
-      _id: 1,
       userId: 1,
       customerName: 1,
       customerEmail: 1,
@@ -232,120 +86,48 @@ export async function GET(request) {
       serviceFee: 1,
       farmerSubtotal: 1,
       shippingAddress: 1,
-      deliveryAddress: 1, // Add delivery address
+      deliveryAddress: 1,
       paymentMethod: 1,
       createdAt: 1,
       updatedAt: 1,
-      // Include essential item fields including images
-      "items._id": 1,
-      "items.productId": 1,
-      "items.name": 1,
-      "items.productName": 1,
-      "items.price": 1,
-      "items.quantity": 1,
-      "items.subtotal": 1,
-      "items.farmerId": 1,
-      "items.farmerEmail": 1,
-      "items.farmerName": 1,
-      "items.farmer": 1,
-      "items.image": 1, // Include item image
-      "items.productImage": 1, // Include product image
-      "items.images": 1, // Include images array
+      items: 1,
     };
 
-    // Use aggregation pipeline for better Atlas performance
-    const pipeline = [
-      { $match: query },
-      { $project: projection },
-      { $sort: { createdAt: -1 } },
-    ];
-
-    // Add pagination
-    if (limit < 1000) {
-      pipeline.push({ $skip: (page - 1) * limit }, { $limit: limit });
-    }
-
-    // Execute optimized query
     const startTime = Date.now();
+    let [orders, totalCount] = await Promise.all([
+      Order.find(query)
+        .select(projection)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Order.countDocuments(query),
+    ]);
 
-    // First get the orders
-    let orders = await cachedOrdersCollection.aggregate(pipeline).toArray();
-
-    // Then get the total count BEFORE filtering for accurate pagination
-    const totalCount =
-      limit < 1000
-        ? await cachedOrdersCollection.countDocuments(query)
-        : orders.length;
-
-    // IMPORTANT: Filter order items for farmers to show only their products
+    const { farmerId, farmerEmail } = params;
     if (farmerId || farmerEmail) {
-      console.log(
-        `Filtering order items for farmer: ${farmerId || farmerEmail}`,
-      );
-
-      orders = orders.map((order) => {
-        // Filter items to only include those belonging to the current farmer
-        const filteredItems =
-          order.items?.filter((item) => {
-            // Check multiple ways the farmer might be identified in the item
+      orders = orders
+        .map((order) => {
+          const filteredItems = (order.items || []).filter((item) => {
             const itemFarmerId =
               item.farmerId || item.farmer?.id || item.farmer?._id;
             const itemFarmerEmail = item.farmerEmail || item.farmer?.email;
-            const itemFarmerName = item.farmerName || item.farmer?.name;
-
-            // Match by farmer ID
-            if (
-              farmerId &&
-              (itemFarmerId === farmerId || itemFarmerId === farmerId)
-            ) {
-              return true;
-            }
-
-            // Match by farmer email
-            if (farmerEmail && itemFarmerEmail === farmerEmail) {
-              return true;
-            }
-
-            // For hardcoded farmers, also try matching by name if we have it
-            // This is a fallback for older orders that might not have proper farmer IDs
-            if (farmerEmail && itemFarmerName) {
-              // We need to get the farmer name from the farmer collection
-              // For now, we'll rely on the ID and email matching
-              return false;
-            }
-
+            if (farmerId && itemFarmerId === farmerId) return true;
+            if (farmerEmail && itemFarmerEmail === farmerEmail) return true;
             return false;
-          }) || [];
-
-        // Calculate the farmer-specific subtotal from filtered items
-        const farmerSubtotal = filteredItems.reduce((sum, item) => {
-          return sum + (item.subtotal || item.price * item.quantity || 0);
-        }, 0);
-
-        // Return order with filtered items and updated subtotal
-        return {
-          ...order,
-          items: filteredItems,
-          farmerSubtotal: farmerSubtotal,
-          originalItemCount: order.items?.length || 0, // For debugging
-          filteredItemCount: filteredItems.length, // For debugging
-        };
-      });
-
-      // Remove orders that have no items after filtering (shouldn't happen with proper query, but safety check)
-      orders = orders.filter((order) => order.items && order.items.length > 0);
-
-      console.log(
-        `Filtered orders: ${orders.length} orders with farmer-specific items`,
-      );
+          });
+          if (!filteredItems.length) return null;
+          const farmerSubtotal = filteredItems.reduce(
+            (sum, item) =>
+              sum + (item.subtotal || item.price * item.quantity || 0),
+            0,
+          );
+          return { ...order, items: filteredItems, farmerSubtotal };
+        })
+        .filter(Boolean);
     }
 
     const queryTime = Date.now() - startTime;
-    console.log(
-      `Atlas orders query executed in ${queryTime}ms for ${orders.length} orders`,
-    );
-
-    // Build response
     const response = {
       orders,
       pagination: {
@@ -356,18 +138,13 @@ export async function GET(request) {
         hasNext: page * limit < totalCount,
         hasPrev: page > 1,
       },
-      meta: {
-        queryTime,
-        cached: false,
-      },
+      meta: { queryTime, cached: false },
     };
 
-    // Cache the response
     setCachedResponse(cacheKey, response);
-
     return NextResponse.json(response);
   } catch (error) {
-    console.error("Orders API Error:", error);
+    console.error("Orders API Error (mongoose):", error);
     return NextResponse.json(
       {
         error: "Failed to fetch orders",
@@ -389,204 +166,100 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    await getMongooseConnection();
     const orderData = await request.json();
 
-    const client = await clientPromise;
-    const db = client.db("farmfresh");
-
-    // Initialize indexes for optimal performance
-    await initializeOrderIndexes(db);
-
-    // Optimize stock validation using aggregation pipeline with proper ObjectId handling
-    const productIds = [];
-    const productIdStrings = [];
-
-    for (const item of orderData.items) {
-      const productId = item.productId;
-
-      if (!productId) {
-        throw new Error(`Product ID is missing for item: ${item.name}`);
-      }
-
-      // Try to convert to ObjectId if it's a valid ObjectId format
-      try {
-        if (ObjectId.isValid(productId)) {
-          productIds.push(new ObjectId(productId));
-        } else {
-          // Handle string IDs that aren't ObjectId format
-          productIdStrings.push(productId);
-        }
-      } catch (error) {
-        // If ObjectId conversion fails, treat as string ID
-        productIdStrings.push(productId);
-      }
+    if (
+      !orderData.items ||
+      !Array.isArray(orderData.items) ||
+      !orderData.items.length
+    ) {
+      return NextResponse.json(
+        { error: "Order items required" },
+        { status: 400 },
+      );
     }
 
-    // Create query that handles both ObjectId and string IDs
-    const matchQuery = {
-      $or: [],
-    };
-
-    if (productIds.length > 0) {
-      matchQuery.$or.push({ _id: { $in: productIds } });
-    }
-
-    if (productIdStrings.length > 0) {
-      matchQuery.$or.push({
-        $or: [
-          { _id: { $in: productIdStrings } },
-          { productId: { $in: productIdStrings } },
-        ],
-      });
-    }
-
-    // If no valid IDs found, throw error
-    if (matchQuery.$or.length === 0) {
-      throw new Error("No valid product IDs found in order items");
-    }
-
-    const stockValidationPipeline = [
-      { $match: matchQuery },
-      {
-        $project: {
-          _id: 1,
-          productId: 1, // Include productId field
-          stock: 1,
-          name: 1,
-          image: 1, // Include main product image
-          images: 1, // Include product images array
-          price: 1, // Include current price
-          farmer: 1, // Include farmer info
-        },
-      },
-    ];
-
-    const products = await db
-      .collection("products")
-      .aggregate(stockValidationPipeline)
-      .toArray();
-
-    // Create lookup map for faster validation
+    // Gather product docs
+    const itemIds = orderData.items.map((i) => i.productId).filter(Boolean);
+    const products = await Product.find({ _id: { $in: itemIds } })
+      .select("stock price image images farmer name farmerId")
+      .lean();
     const productMap = new Map(products.map((p) => [p._id.toString(), p]));
 
-    // Validate stock availability
-    const stockUpdates = [];
+    // Validate stock & prepare bulk updates
+    const bulkOps = [];
     for (const item of orderData.items) {
-      const product = productMap.get(item.productId);
-
-      if (!product) {
-        throw new Error(`Product ${item.name} not found`);
+      const p = productMap.get(item.productId);
+      if (!p) throw new Error(`Product ${item.productId} not found`);
+      if (p.stock < item.quantity) {
+        throw new Error(`Insufficient stock for ${p.name}`);
       }
-
-      if (product.stock < item.quantity) {
-        throw new Error(
-          `Insufficient stock for ${item.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
-        );
-      }
-
-      stockUpdates.push({
+      bulkOps.push({
         updateOne: {
-          filter: { _id: new ObjectId(item.productId) },
+          filter: { _id: p._id },
           update: {
             $inc: { stock: -item.quantity },
             $set: { updatedAt: new Date() },
           },
         },
       });
+      // Enrich item
+      item.price = p.price;
+      item.image = p.image;
+      item.productImage = p.image || p.images?.[0];
+      item.images = p.images || [];
+      item.productName = item.productName || item.name || p.name;
+      item.farmerName = item.farmerName || p.farmer?.name || "Local Farmer";
+      item.farmerEmail = item.farmerEmail || p.farmer?.email;
+      item.farmerId = item.farmerId || p.farmerId || p.farmer?._id?.toString();
+      item.subtotal = item.subtotal || p.price * item.quantity;
     }
+    if (bulkOps.length) await Product.collection.bulkWrite(bulkOps);
 
-    // Perform bulk stock updates for better performance
-    if (stockUpdates.length > 0) {
-      await db.collection("products").bulkWrite(stockUpdates);
-    }
-
-    // Enrich order items with product data including images
-    const enrichedItems = orderData.items.map((item) => {
-      const product = productMap.get(item.productId);
-      return {
-        ...item,
-        // Add product images to order item
-        image: product?.image || item.image,
-        productImage: product?.image || product?.images?.[0],
-        images: product?.images || [],
-        // Store current product name in case it changes later
-        productName: item.productName || item.name || product?.name,
-        // Store farmer info
-        farmerName: item.farmerName || product?.farmer?.name || "Local Farmer",
-        farmerEmail: item.farmerEmail || product?.farmer?.email,
-        farmerId: item.farmerId || product?.farmer?.id || product?.farmerId,
-      };
-    });
-
-    // Enrich order data with customer information
-    let customerInfo = {};
+    // Attach user info
+    let userInfo = {};
     if (orderData.userId) {
-      try {
-        const user = await db.collection("users").findOne({
-          $or: [
-            { _id: new ObjectId(orderData.userId) },
-            { _id: orderData.userId },
-            { email: orderData.userId },
-          ],
-        });
-
-        if (user) {
-          customerInfo = {
-            customerName:
-              user.name || user.username || user.email || "Customer",
-            customerEmail: user.email,
-            customerPhone: user.phone,
-            customerInfo: {
-              name: user.name || user.username || "Customer",
-              email: user.email,
-              phone: user.phone,
-            },
-          };
-        }
-      } catch (error) {
-        console.log("Could not fetch user details:", error.message);
+      const user = await User.findOne({
+        $or: [{ _id: orderData.userId }, { email: orderData.userId }],
+      })
+        .select("name email phone")
+        .lean();
+      if (user) {
+        userInfo = {
+          customerName: user.name || user.username || user.email || "Customer",
+          customerEmail: user.email,
+          customerPhone: user.phone,
+          customerInfo: {
+            name: user.name || user.username || "Customer",
+            email: user.email,
+            phone: user.phone,
+          },
+        };
       }
     }
 
-    // Add timestamps and customer info to order
-    const newOrder = {
+    const doc = await Order.create({
       ...orderData,
-      ...customerInfo,
-      items: enrichedItems, // Use enriched items
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+      ...userInfo,
+      items: orderData.items,
+    });
 
-    // Create the order
-    const result = await db.collection("orders").insertOne(newOrder);
-
-    // Clear ALL caches after creating new order to ensure fresh data
     responseCache.clear();
-
-    // Clear products cache immediately after purchase count update
     try {
-      // Import and clear products cache
       const { responseCache: productsCache } = await import(
         "@/app/api/products/route"
       );
-      if (productsCache && productsCache.clear) {
-        productsCache.clear();
-        console.log(
-          "🧹 Products cache cleared after purchase count update on order creation",
-        );
-      }
-    } catch (error) {
-      console.log("Note: Could not clear products cache:", error.message);
-    }
+      productsCache?.clear?.();
+    } catch {}
 
     return NextResponse.json({
       message: "Order created successfully",
-      orderId: result.insertedId,
-      order: { ...newOrder, _id: result.insertedId },
-      testMode: "Purchase counts updated immediately for testing",
+      orderId: doc._id,
+      order: doc,
     });
   } catch (error) {
-    console.error("Create order error:", error);
+    console.error("Create order error (mongoose):", error);
     return NextResponse.json(
       { error: "Failed to create order", details: error.message },
       { status: 500 },
@@ -596,166 +269,76 @@ export async function POST(request) {
 
 export async function PATCH(request) {
   try {
+    await getMongooseConnection();
     const { orderId, ...updateData } = await request.json();
-
-    if (!orderId) {
+    if (!orderId)
       return NextResponse.json(
         { error: "Order ID is required" },
         { status: 400 },
       );
-    }
 
-    const client = await clientPromise;
-    const db = client.db("farmfresh");
-
-    // Get the current order to check status changes (without transactions)
-    const currentOrder = await db
-      .collection("orders")
-      .findOne({ _id: new ObjectId(orderId) });
-
-    if (!currentOrder) {
+    const current = await Order.findById(orderId).lean();
+    if (!current)
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
 
-    // Check if order status is being changed to cancelled/returned
     const isBeingCancelled =
       updateData.status &&
-      (updateData.status === "cancelled" || updateData.status === "returned") &&
-      currentOrder.status !== "cancelled" &&
-      currentOrder.status !== "returned";
-
-    // Check if order status is being changed to delivered (purchase completed)
+      ["cancelled", "returned"].includes(updateData.status) &&
+      !["cancelled", "returned"].includes(current.status);
     const isBeingDelivered =
-      updateData.status &&
-      updateData.status === "delivered" &&
-      currentOrder.status !== "delivered";
+      updateData.status === "delivered" && current.status !== "delivered";
 
-    // If order is being delivered, increment purchase count for each product
-    if (isBeingDelivered && currentOrder.items) {
-      console.log(
-        `Order ${orderId} is being delivered, updating purchase counts...`,
-      );
-
-      const purchaseCountUpdates = [];
-      for (const item of currentOrder.items) {
-        const productId = item.productId;
-        const orderQuantity = item.quantity;
-
-        purchaseCountUpdates.push({
+    const bulkOps = [];
+    if (isBeingDelivered) {
+      for (const item of current.items || []) {
+        bulkOps.push({
           updateOne: {
-            filter: { _id: new ObjectId(productId) },
+            filter: { _id: item.productId },
             update: {
-              $inc: {
-                purchaseCount: orderQuantity, // Increment by the quantity purchased
-              },
-              $set: {
-                updatedAt: new Date(),
-              },
+              $inc: { purchaseCount: item.quantity },
+              $set: { updatedAt: new Date() },
             },
           },
         });
       }
-
-      // Perform bulk purchase count updates for better performance
-      if (purchaseCountUpdates.length > 0) {
-        try {
-          await db.collection("products").bulkWrite(purchaseCountUpdates);
-          console.log(
-            `Updated purchase counts for ${purchaseCountUpdates.length} products`,
-          );
-        } catch (error) {
-          console.error("Error updating purchase counts:", error);
-        }
-      }
-    }
-
-    // If order is being cancelled, restore stock
-    if (isBeingCancelled && currentOrder.items) {
-      console.log(
-        `Order ${orderId} is being cancelled/returned, restoring stock...`,
-      );
-
-      const stockRestoreUpdates = [];
-      for (const item of currentOrder.items) {
-        const productId = item.productId;
-        const orderQuantity = item.quantity;
-
-        stockRestoreUpdates.push({
+    } else if (isBeingCancelled) {
+      for (const item of current.items || []) {
+        bulkOps.push({
           updateOne: {
-            filter: { _id: new ObjectId(productId) },
+            filter: { _id: item.productId },
             update: {
-              $inc: {
-                stock: orderQuantity, // Restore the stock
-              },
-              $set: {
-                updatedAt: new Date(),
-              },
+              $inc: { stock: item.quantity },
+              $set: { updatedAt: new Date() },
             },
           },
         });
       }
-
-      // Perform bulk stock restore updates for better performance
-      if (stockRestoreUpdates.length > 0) {
-        try {
-          await db.collection("products").bulkWrite(stockRestoreUpdates);
-          console.log(
-            `Restored stock for ${stockRestoreUpdates.length} products`,
-          );
-        } catch (error) {
-          console.error("Error restoring stock:", error);
-        }
-      }
     }
+    if (bulkOps.length) await Product.collection.bulkWrite(bulkOps);
 
-    // Update the order
-    const result = await db.collection("orders").updateOne(
-      { _id: new ObjectId(orderId) },
-      {
-        $set: {
-          ...updateData,
-          updatedAt: new Date(),
-        },
-      },
-    );
+    const updated = await Order.findByIdAndUpdate(
+      orderId,
+      { ...updateData, updatedAt: new Date() },
+      { new: true },
+    ).lean();
 
-    if (result.matchedCount === 0) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-
-    // Clear caches after updating order to ensure fresh data
     responseCache.clear();
-
-    // Also clear products cache if purchase count was updated
     if (isBeingDelivered) {
       try {
-        // Import and clear products cache
         const { responseCache: productsCache } = await import(
           "@/app/api/products/route"
         );
-        if (productsCache) {
-          productsCache.clear();
-          console.log("🧹 Products cache cleared after purchase count update");
-        }
-      } catch (error) {
-        console.log("Note: Could not clear products cache:", error.message);
-      }
+        productsCache?.clear?.();
+      } catch {}
     }
-
-    // Get the updated order
-    const updatedOrder = await db
-      .collection("orders")
-      .findOne({ _id: new ObjectId(orderId) });
 
     return NextResponse.json({
       message: "Order updated successfully",
-      order: updatedOrder,
-      purchaseCountUpdated: isBeingDelivered
-        ? "Purchase counts have been updated for delivered products"
-        : undefined,
+      order: updated,
+      purchaseCountUpdated: isBeingDelivered || undefined,
     });
   } catch (error) {
-    console.error("Update order error:", error);
+    console.error("Update order error (mongoose):", error);
     return NextResponse.json(
       { error: "Failed to update order", details: error.message },
       { status: 500 },

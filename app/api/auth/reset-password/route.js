@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import clientPromise from "@/lib/mongodb";
+import { getMongooseConnection } from "@/lib/mongoose";
+import User from "@/models/User";
 
 export async function POST(request) {
   try {
+    await getMongooseConnection();
     const { token, password, confirmPassword } = await request.json();
 
     if (!token || !password || !confirmPassword) {
@@ -27,12 +29,7 @@ export async function POST(request) {
       );
     }
 
-    const client = await clientPromise;
-    const db = client.db("farmfresh");
-    const users = db.collection("users");
-
-    // Find user with valid reset token
-    const user = await users.findOne({
+    const user = await User.findOne({
       resetToken: token,
       resetTokenExpiry: { $gt: new Date() },
     });
@@ -44,30 +41,16 @@ export async function POST(request) {
       );
     }
 
-    // Hash new password
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Update user password and remove reset token
-    await users.updateOne(
-      { _id: user._id },
-      {
-        $set: {
-          password: hashedPassword,
-          updatedAt: new Date(),
-        },
-        $unset: {
-          resetToken: "",
-          resetTokenExpiry: "",
-        },
-      },
-    );
+    user.password = await bcrypt.hash(password, 12);
+    user.resetToken = undefined;
+    user.resetTokenExpiry = undefined;
+    await user.save();
 
     return NextResponse.json({
       success: true,
       message: "Password reset successfully",
     });
   } catch (error) {
-    console.error("Password reset error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

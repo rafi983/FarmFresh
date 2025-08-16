@@ -8,6 +8,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
 import { OrderUpdateProvider } from "@/contexts/OrderUpdateContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
+import { ToastProvider } from "@/contexts/ToastContext";
 import { useState } from "react";
 
 export default function Providers({ children }) {
@@ -35,7 +36,9 @@ export default function Providers({ children }) {
             <CartProvider>
               <FavoritesProvider>
                 <OrderUpdateProvider>
-                  <MessagingProvider>{children}</MessagingProvider>
+                  <MessagingProvider>
+                    <ToastProvider>{children}</ToastProvider>
+                  </MessagingProvider>
                 </OrderUpdateProvider>
               </FavoritesProvider>
             </CartProvider>

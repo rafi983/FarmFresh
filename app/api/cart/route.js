@@ -1,122 +1,38 @@
 import { NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
 import { getToken } from "next-auth/jwt";
-
-// Cache to track if indexes have been initialized
-let cartIndexesInitialized = false;
-
-// Initialize indexes for better performance on cart operations (only once)
-async function initializeCartIndexes(db) {
-  // Skip if already initialized in this session
-  if (cartIndexesInitialized) return;
-
-  try {
-    const cartsCollection = db.collection("carts");
-    const productsCollection = db.collection("products");
-
-    // Check existing indexes first to avoid conflicts
-    const existingCartIndexes = await cartsCollection.listIndexes().toArray();
-    const cartIndexNames = existingCartIndexes.map((idx) => idx.name);
-
-    // Carts collection indexes for efficient lookups - only create if they don't exist
-    if (
-      !cartIndexNames.some(
-        (name) => name.includes("userId_1") && !name.includes("updatedAt"),
-      )
-    ) {
-      await cartsCollection.createIndex(
-        { userId: 1 },
-        { name: "carts_user_idx", background: true, unique: true },
-      );
-    }
-
-    if (!cartIndexNames.some((name) => name.includes("userId_1_updatedAt"))) {
-      await cartsCollection.createIndex(
-        { userId: 1, updatedAt: -1 },
-        { name: "carts_user_updated_idx", background: true },
-      );
-    }
-
-    if (!cartIndexNames.some((name) => name.includes("items.productId"))) {
-      await cartsCollection.createIndex(
-        { "items.productId": 1 },
-        { name: "carts_items_product_idx", background: true },
-      );
-    }
-
-    // Products collection indexes for cart item validation
-    const existingProductIndexes = await productsCollection
-      .listIndexes()
-      .toArray();
-    const productIndexNames = existingProductIndexes.map((idx) => idx.name);
-
-    if (!productIndexNames.some((name) => name.includes("stock_1_status"))) {
-      await productsCollection.createIndex(
-        { stock: 1, status: 1 },
-        { name: "products_stock_status_idx", background: true },
-      );
-    }
-
-    cartIndexesInitialized = true;
-    console.log("Cart indexes initialized successfully");
-  } catch (error) {
-    console.log("Index initialization note:", error.message);
-    // Don't throw error, just log it - indexes might already exist
-  }
-}
+import { getMongooseConnection } from "@/lib/mongoose";
+import Cart from "@/models/Cart";
+import Product from "@/models/Product";
+import { ObjectId } from "mongodb";
 
 export async function GET(request) {
   try {
-    // Use NextAuth's getToken to properly decode the session token
+    await getMongooseConnection();
     const token = await getToken({
       req: request,
       secret: process.env.NEXTAUTH_SECRET,
     });
-
-    if (!token || !token.sub) {
+    if (!token?.sub) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const client = await clientPromise;
-    const db = client.db("farmfresh");
+    const cart = await Cart.findOne({ userId: token.sub }).lean();
+    if (!cart)
+      return NextResponse.json({
+        items: [],
+        total: 0,
+        itemCount: 0,
+        totalItems: 0,
+      });
 
-    // Initialize indexes once per application lifecycle
-    await initializeCartIndexes(db);
-
-    // Use aggregation pipeline to get cart with enhanced data
-    const cartPipeline = [
-      { $match: { userId: token.sub } },
-      {
-        $addFields: {
-          itemCount: { $size: { $ifNull: ["$items", []] } },
-          totalItems: {
-            $sum: {
-              $map: {
-                input: { $ifNull: ["$items", []] },
-                as: "item",
-                in: { $toInt: { $ifNull: ["$$item.quantity", 0] } },
-              },
-            },
-          },
-        },
-      },
-      { $limit: 1 },
-    ];
-
-    const [cart] = await db
-      .collection("carts")
-      .aggregate(cartPipeline)
-      .toArray();
-
+    const totalItems = cart.items.reduce((s, i) => s + (i.quantity || 0), 0);
     return NextResponse.json({
-      items: cart?.items || [],
-      total: cart?.total || 0,
-      itemCount: cart?.itemCount || 0,
-      totalItems: cart?.totalItems || 0,
+      items: cart.items,
+      total: cart.total || 0,
+      itemCount: cart.items.length,
+      totalItems,
     });
-  } catch (error) {
-    console.error("Cart GET error:", error);
+  } catch (e) {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -126,115 +42,80 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    // Use NextAuth's getToken to properly decode the session token
+    await getMongooseConnection();
     const token = await getToken({
       req: request,
       secret: process.env.NEXTAUTH_SECRET,
     });
-
-    if (!token || !token.sub) {
+    if (!token?.sub) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const body = await request.json();
-    const { items } = body;
-
-    if (!items || !Array.isArray(items)) {
+    const { items } = await request.json();
+    if (!Array.isArray(items)) {
       return NextResponse.json(
         { error: "Items array is required" },
         { status: 400 },
       );
     }
 
-    const client = await clientPromise;
-    const db = client.db("farmfresh");
-
-    // Initialize indexes once per application lifecycle
-    await initializeCartIndexes(db);
-
-    // Validate items and calculate total using aggregation
     const productIds = items
-      .map((item) => {
+      .map((i) => {
         try {
-          return new ObjectId(item.productId);
+          return new ObjectId(i.productId);
         } catch {
           return null;
         }
       })
       .filter(Boolean);
+    const products = await Product.find({
+      _id: { $in: productIds },
+      status: { $ne: "deleted" },
+    })
+      .select("stock price name image images")
+      .lean();
+    const pMap = new Map(products.map((p) => [p._id.toString(), p]));
 
-    // Get product information for validation
-    const productValidationPipeline = [
-      { $match: { _id: { $in: productIds }, status: { $ne: "deleted" } } },
-      {
-        $project: {
-          _id: 1,
-          stock: 1,
-          price: 1,
-          name: 1,
-        },
-      },
-    ];
-
-    const validProducts = await db
-      .collection("products")
-      .aggregate(productValidationPipeline)
-      .toArray();
-    const productMap = new Map(validProducts.map((p) => [p._id.toString(), p]));
-
-    // Validate items and calculate total with proper error handling
-    const validatedItems = [];
+    const validated = [];
     let total = 0;
-
     for (const item of items) {
-      const product = productMap.get(item.productId);
-      if (!product) {
-        continue; // Skip invalid products
-      }
-
+      const p = pMap.get(item.productId);
+      if (!p) continue;
       const quantity = Math.max(1, parseInt(item.quantity) || 1);
-      const price = parseFloat(item.price) || product.price || 0;
-
-      // Check stock availability
-      if (quantity > product.stock) {
+      if (quantity > p.stock) {
         return NextResponse.json(
           {
-            error: `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${quantity}`,
+            error: `Insufficient stock for ${p.name}. Available: ${p.stock}, Requested: ${quantity}`,
           },
           { status: 400 },
         );
       }
-
-      validatedItems.push({
-        ...item,
-        quantity,
+      const price =
+        typeof item.price === "number" && item.price > 0
+          ? item.price
+          : p.price || 0;
+      validated.push({
+        productId: item.productId,
+        name: p.name,
         price,
+        quantity,
+        image: p.image || p.images?.[0],
       });
-
       total += price * quantity;
     }
+    total = Math.round(total * 100) / 100;
 
-    // Use optimized upsert operation
-    const result = await db.collection("carts").updateOne(
+    await Cart.updateOne(
       { userId: token.sub },
-      {
-        $set: {
-          items: validatedItems,
-          total: Math.round(total * 100) / 100, // Round to 2 decimal places
-          updatedAt: new Date(),
-        },
-      },
+      { $set: { items: validated, total } },
       { upsert: true },
     );
-
     return NextResponse.json({
       message: "Cart updated successfully",
-      items: validatedItems,
-      total: Math.round(total * 100) / 100,
-      itemCount: validatedItems.length,
+      items: validated,
+      total,
+      itemCount: validated.length,
     });
-  } catch (error) {
-    console.error("Cart POST error:", error);
+  } catch (e) {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -244,34 +125,21 @@ export async function POST(request) {
 
 export async function DELETE(request) {
   try {
-    // Use NextAuth's getToken to properly decode the session token
+    await getMongooseConnection();
     const token = await getToken({
       req: request,
       secret: process.env.NEXTAUTH_SECRET,
     });
-
-    if (!token || !token.sub) {
+    if (!token?.sub) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const client = await clientPromise;
-    const db = client.db("farmfresh");
-
-    // Initialize indexes once per application lifecycle
-    await initializeCartIndexes(db);
-
-    // Use optimized delete operation with verification
-    const result = await db.collection("carts").deleteOne({
-      userId: token.sub,
-    });
-
+    const res = await Cart.deleteOne({ userId: token.sub });
     return NextResponse.json({
       message: "Cart cleared successfully",
-      deletedCount: result.deletedCount,
-      wasCleared: result.deletedCount > 0,
+      deletedCount: res.deletedCount,
+      wasCleared: res.deletedCount > 0,
     });
-  } catch (error) {
-    console.error("Cart DELETE error:", error);
+  } catch (e) {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
