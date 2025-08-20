@@ -1,4 +1,3 @@
-// filepath: components/details/ReviewSection.js
 "use client";
 import StarRating from "@/components/products/StarRating";
 import EnhancedReviewModal from "@/components/reviews/EnhancedReviewModal";

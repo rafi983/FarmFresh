@@ -6,9 +6,12 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiService } from "@/lib/api-service";
+import { useOrderUpdates } from "@/contexts/OrderUpdateContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { useFarmersData } from "@/hooks/useFarmerData";
 import Link from "next/link";
 import Footer from "@/components/Footer";
+import { safeInsertOrderIntoCache } from "@/lib/order-cache-utils";
 
 export default function Payment() {
   const { data: session, status } = useSession();
@@ -21,6 +24,8 @@ export default function Payment() {
     updateQuantity,
     removeFromCart,
   } = useCart();
+  const queryClient = useQueryClient();
+  const { broadcastNewOrder } = useOrderUpdates();
 
   // Enhanced state management
   const [loading, setLoading] = useState(true);
@@ -211,6 +216,8 @@ export default function Payment() {
       };
     });
   }, [cartItems, editQuantities, getFarmer, farmersLoading]);
+
+  const previousOrdersSnapshotRef = useRef(null);
 
   useEffect(() => {
     console.log("Payment - Session status:", status, "Session:", session);
@@ -488,6 +495,14 @@ export default function Payment() {
 
     setProcessing(true);
     setPaymentProcessingStep(1);
+    // Capture existing orders cache snapshot before createOrder invalidates
+    if (queryClient && session?.user) {
+      const existing = queryClient.getQueryData([
+        "orders",
+        session.user.userId || session.user.id,
+      ]);
+      if (existing) previousOrdersSnapshotRef.current = existing;
+    }
 
     try {
       // Simulate multi-step payment processing
@@ -591,9 +606,84 @@ export default function Payment() {
         newsletterSubscribe,
       };
 
-      // Use apiService.createOrder instead of direct fetch for proper cache invalidation
       const data = await apiService.createOrder(orderData);
       const orderId = data.orderId || data.order?._id;
+
+      // Prepare full order object for optimistic UI
+      const createdOrder = {
+        _id: orderId,
+        id: orderId,
+        userId,
+        status: orderData.status || "pending",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        items: orderData.items,
+        subtotal: orderData.subtotal,
+        deliveryFee: orderData.deliveryFee,
+        serviceFee: orderData.serviceFee,
+        total: orderData.total,
+        customerName: orderData.customerName,
+        customerEmail: orderData.customerEmail,
+        customerPhone: orderData.customerPhone,
+        deliveryAddress: orderData.deliveryAddress,
+        paymentMethod: orderData.paymentMethod,
+        orderNotes: orderData.orderNotes,
+      };
+
+      // Optimistically update orders query cache immediately
+      if (orderId && queryClient) {
+        const cacheKey = ["orders", userId];
+        queryClient.setQueryData(cacheKey, (oldData) => {
+          const base = oldData || previousOrdersSnapshotRef.current || null;
+          return safeInsertOrderIntoCache(base, createdOrder);
+        });
+
+        // If we had no previous snapshot (user never visited bookings this session), eagerly fetch full list to avoid showing only new order
+        if (!previousOrdersSnapshotRef.current) {
+          try {
+            const resp = await fetch(
+              `/api/orders?userId=${encodeURIComponent(userId)}&limit=1000`,
+              { headers: { "Content-Type": "application/json" } },
+            );
+            if (resp.ok) {
+              const full = await resp.json();
+              const existingInserted = queryClient.getQueryData(cacheKey);
+              const existingArray = existingInserted?.orders || [];
+              const merged = [];
+              const seen = new Set();
+              // Ensure new order stays at top
+              [createdOrder, ...full.orders].forEach((o) => {
+                const id = o._id || o.id;
+                if (!seen.has(id)) {
+                  seen.add(id);
+                  merged.push(o);
+                }
+              });
+              // Add any other locally cached orders not in full list
+              existingArray.forEach((o) => {
+                const id = o._id || o.id;
+                if (!seen.has(id)) {
+                  seen.add(id);
+                  merged.push(o);
+                }
+              });
+              queryClient.setQueryData(cacheKey, { orders: merged });
+            }
+          } catch (e) {
+            // swallow
+          }
+        }
+        // Mark query stale to ensure background refetch merges authoritative data
+        queryClient.invalidateQueries({
+          queryKey: cacheKey,
+          refetchType: "inactive",
+        });
+      }
+
+      // Broadcast via context for any live listeners
+      try {
+        broadcastNewOrder(data.order || createdOrder);
+      } catch {}
 
       if (orderId) {
         setRedirectingToSuccess(true);

@@ -9,7 +9,7 @@ import { FavoritesProvider } from "@/contexts/FavoritesContext";
 import { OrderUpdateProvider } from "@/contexts/OrderUpdateContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
 import { ToastProvider } from "@/contexts/ToastContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Providers({ children }) {
   const [queryClient] = useState(
@@ -27,6 +27,12 @@ export default function Providers({ children }) {
         },
       }),
   );
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.__REACT_QUERY_CLIENT__ = queryClient;
+    }
+  }, [queryClient]);
 
   return (
     <SessionProvider>

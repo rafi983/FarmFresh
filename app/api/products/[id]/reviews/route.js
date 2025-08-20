@@ -33,8 +33,8 @@ export async function GET(request, { params }) {
     }
 
     const totalReviews = allReviews.length;
-    const pageSlice = allReviews.slice(skip, skip + limit);
-    const hasMore = totalReviews > page * limit;
+    let pageSlice = allReviews.slice(skip, skip + limit);
+    let hasMore = totalReviews > page * limit;
 
     // Fallback embedded reviews if none
     if (totalReviews === 0) {
@@ -47,11 +47,25 @@ export async function GET(request, { params }) {
           _id: r._id || new ObjectId(),
           rating: r.rating || 5,
           comment: r.comment || r.text || r.content || "",
+          // Preserve existing createdAt logic
           createdAt: r.createdAt || r.date || r.timestamp || new Date(),
-          reviewer: r.reviewer || "Anonymous",
-          userId: r.userId,
+          reviewer: r.reviewer || r.userName || "Anonymous",
+          userId: r.userId || r.userID || r.user || null,
           productId: id,
         }));
+        // Recompute pagination from fallback reviews
+        const newTotal = allReviews.length;
+        pageSlice = allReviews.slice(0, limit); // page is always 1 here since previous total was 0
+        hasMore = newTotal > limit;
+        return NextResponse.json({
+          reviews: pageSlice,
+          pagination: {
+            currentPage: 1,
+            totalPages: Math.ceil(newTotal / limit),
+            totalReviews: newTotal,
+            hasMore,
+          },
+        });
       }
     }
 

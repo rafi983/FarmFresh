@@ -3,6 +3,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { apiService } from "@/lib/api-service";
+import { applyOrderStatusOverrides } from "@/lib/order-status-overrides";
+import {
+  computeFarmerScopedData,
+  mergePreserveMedia,
+} from "@/lib/order-farmer-utils";
 import {
   updateProductAcrossCaches,
   bulkUpdateProductsAcrossCaches,
@@ -51,9 +56,82 @@ export function useDashboardData() {
         meta: productsData?.meta || {},
       };
 
+      // Apply local status overrides (prevents optimistic flip then revert)
+      let finalOrders = applyOrderStatusOverrides(dashboardData.orders);
+
+      // Merge with existing cached orders to preserve advanced local statuses
+      const cached = queryClient.getQueryData([
+        "dashboard",
+        userIds?.userEmail,
+      ]);
+      if (cached?.orders?.length) {
+        const statusRank = {
+          pending: 0,
+          confirmed: 1,
+          shipped: 2,
+          delivered: 3,
+          cancelled: 3,
+          returned: 3,
+        };
+        finalOrders = finalOrders.map((incoming) => {
+          const local = cached.orders.find(
+            (o) => o._id === incoming._id || o.id === incoming._id,
+          );
+          if (!local) return incoming;
+          const lr = statusRank[(local.status || "").toLowerCase()] ?? -1;
+          const ir = statusRank[(incoming.status || "").toLowerCase()] ?? -1;
+          // If local status has progressed further, keep it and retain farmerSubtotal
+          if (lr > ir) {
+            return {
+              ...incoming,
+              status: local.status,
+              farmerSubtotal:
+                typeof local.farmerSubtotal === "number"
+                  ? local.farmerSubtotal
+                  : incoming.farmerSubtotal,
+            };
+          }
+          // If same status and local has a farmerSubtotal but incoming doesn't or differs by minor rounding noise, keep local
+          if (lr === ir && typeof local.farmerSubtotal === "number") {
+            const incVal = incoming.farmerSubtotal;
+            if (
+              incVal == null ||
+              Math.abs(incVal - local.farmerSubtotal) <= 1
+            ) {
+              return { ...incoming, farmerSubtotal: local.farmerSubtotal };
+            }
+          }
+          return incoming;
+        });
+      }
+
+      // Stabilize farmer-specific subtotal & media if farmer context
+      if (userIds?.userEmail) {
+        const cachedMap = new Map(
+          (cached?.orders || []).map((o) => [o._id || o.id, o]),
+        );
+        finalOrders = finalOrders.map((o) => {
+          const id = o._id || o.id;
+          const prev = cachedMap.get(id);
+          const { stableFarmerSubtotal, items } = computeFarmerScopedData(
+            o,
+            userIds.userEmail,
+          );
+          const resolvedStable =
+            prev && typeof prev.stableFarmerSubtotal === "number"
+              ? prev.stableFarmerSubtotal
+              : stableFarmerSubtotal;
+          return {
+            ...o,
+            items: mergePreserveMedia(prev?.items, items),
+            stableFarmerSubtotal: resolvedStable,
+          };
+        });
+      }
+
       return {
         products: dashboardData.products || [],
-        orders: dashboardData.orders || [],
+        orders: finalOrders || [],
         analytics: dashboardData.analytics || {},
         meta: dashboardData.meta || {},
       };

@@ -21,6 +21,7 @@ export default function FarmerOrders() {
     isRefetching: refreshing,
     refetch: refetchOrders,
     refreshDashboard,
+    updateOrderInCache, // added
   } = useDashboardData();
   const refreshOrders = refreshDashboard; // maintain existing variable naming
 
@@ -232,7 +233,7 @@ export default function FarmerOrders() {
     }
 
     try {
-      await updateOrderStatus(orderId, newStatus, {
+      const result = await updateOrderStatus(orderId, newStatus, {
         estimatedDeliveryDate:
           newStatus === "shipped"
             ? (() => {
@@ -242,6 +243,11 @@ export default function FarmerOrders() {
               })()
             : undefined,
       });
+
+      // Explicit local cache update (defensive) to ensure immediate UI response
+      if (result?.order) {
+        updateOrderInCache(orderId, newStatus, result.order);
+      }
 
       const successMessages = {
         confirmed: "Order confirmed! Dashboard updated automatically.",
@@ -1085,6 +1091,9 @@ export default function FarmerOrders() {
                               <img
                                 src={
                                   item.image ||
+                                  item.productImage ||
+                                  (Array.isArray(item.images) &&
+                                    item.images[0]) ||
                                   "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=80&h=80&fit=crop"
                                 }
                                 alt={item.name || item.productName}

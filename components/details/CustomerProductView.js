@@ -1,14 +1,12 @@
-// filepath: components/details/CustomerProductView.js
 "use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import StarRating from "@/components/products/StarRating";
-import EnhancedReviewModal from "@/components/reviews/EnhancedReviewModal";
 import ReviewSection from "@/components/details/ReviewSection";
 
 export default function CustomerProductView({
   product,
-  productId,
   imageData,
   selectedImage,
   setSelectedImage,
@@ -136,9 +134,7 @@ export default function CustomerProductView({
             <p className="text-lg text-gray-600 dark:text-gray-400">
               Produced by{" "}
               <span className="font-semibold text-primary-600 dark:text-primary-400">
-                {product.farmer?.farmName ||
-                  product.farmer?.name ||
-                  "Unknown Farmer"}
+                {product.farmer?.name || "Unknown Farmer"}
               </span>
             </p>
           </div>
