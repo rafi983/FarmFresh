@@ -4,7 +4,7 @@ import Product from "@/models/Product";
 import { getMongooseConnection } from "@/lib/mongoose";
 
 // Track if indexes have been initialized to avoid repeated calls
-let productIndexesInitialized = false;
+let productIndexesInitialized = false; // no longer used but kept for backward compatibility
 
 // Response cache for identical requests (5 minutes)
 const responseCache = new Map();
@@ -32,14 +32,7 @@ export function clearAllProductsCaches() {
 
 // Initialize indexes optimized for MongoDB Atlas performance
 async function initializeProductIndexes(db) {
-  // Only initialize once per application lifecycle
-  if (productIndexesInitialized) return;
-  try {
-    // Ensure mongoose connection & indexes
-    await getMongooseConnection();
-    await Product.init(); // builds declared indexes if not present
-    productIndexesInitialized = true;
-  } catch (error) {}
+  return; // indexing disabled
 }
 
 // Generate cache key for request
@@ -97,7 +90,6 @@ export async function GET(request) {
     const category = qp("category");
     const featured = qp("featured");
     const sortBy = qp("sortBy");
-    const farmerId = qp("farmerId");
     const farmerEmail = qp("farmerEmail");
     const limit = parseInt(qp("limit")) || 50;
     const page = parseInt(qp("page")) || 1;
@@ -116,7 +108,6 @@ export async function GET(request) {
       search,
       category,
       featured,
-      farmerId,
       farmerEmail,
       minPrice,
       maxPrice,
@@ -126,32 +117,16 @@ export async function GET(request) {
 
     // Sorting
     let sortOptions = {};
-    if (search) {
-      sortOptions = { score: { $meta: "textScore" }, createdAt: -1 };
-    } else {
-      switch (sortBy) {
-        case "price-low":
-          sortOptions = { price: 1 };
-          break;
-        case "price-high":
-          sortOptions = { price: -1 };
-          break;
-        case "rating":
-          sortOptions = { averageRating: -1, totalReviews: -1 };
-          break;
-        case "popular":
-          sortOptions = { purchaseCount: -1, averageRating: -1 };
-          break;
-        case "oldest":
-          sortOptions = { createdAt: 1 };
-          break;
-        case "newest":
-        default:
-          sortOptions = { createdAt: -1 };
-      }
-    }
+    if (sortBy === "price-low") sortOptions = { price: 1 };
+    else if (sortBy === "price-high") sortOptions = { price: -1 };
+    else if (sortBy === "rating")
+      sortOptions = { averageRating: -1, totalReviews: -1 };
+    else if (sortBy === "popular")
+      sortOptions = { purchaseCount: -1, averageRating: -1 };
+    else if (sortBy === "oldest") sortOptions = { createdAt: 1 };
+    else sortOptions = { createdAt: -1 };
 
-    const projection = search ? { score: { $meta: "textScore" } } : {};
+    const projection = {}; // removed textScore projection
 
     const startTime = Date.now();
     const [products, totalCount] = await Promise.all([

@@ -1,6 +1,6 @@
 "use client";
 import { useCart } from "@/contexts/CartContext";
-import Toast from "./Toast";
+import Toast from "../Toast";
 
 export default function CartToast() {
   const { cartMessage, clearCartMessage } = useCart();

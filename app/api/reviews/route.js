@@ -8,7 +8,7 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     await getMongooseConnection();
-    const farmerId = searchParams.get("farmerId");
+    const farmerEmail = searchParams.get("farmerEmail");
     const productId = searchParams.get("productId");
     const userId = searchParams.get("userId");
     const page = parseInt(searchParams.get("page")) || 1;
@@ -19,24 +19,16 @@ export async function GET(request) {
     if (productId) filter.productId = productId;
     if (userId) filter.userId = userId;
 
-    // Farmer reviews => gather product ids first
-    if (farmerId) {
+    // Farmer reviews => gather product ids by farmer email
+    if (farmerEmail) {
       const farmerProducts = await Product.find({
-        $or: [
-          { farmerId: farmerId },
-          { "farmer.id": farmerId },
-          { "farmer._id": farmerId },
-          { "farmer.email": farmerId },
-        ],
+        "farmer.email": farmerEmail,
       })
         .select("_id")
         .lean();
       const productIds = farmerProducts.map((p) => p._id.toString());
       if (productIds.length) {
-        filter.$or = [
-          { productId: { $in: productIds } },
-          { farmerId: farmerId },
-        ];
+        filter.$or = [{ productId: { $in: productIds } }];
       } else {
         return NextResponse.json({
           reviews: [],

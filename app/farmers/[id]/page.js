@@ -15,7 +15,7 @@ import { ORDER_STATUS } from "@/components/farmers/constants";
 export default function FarmerPage() {
   const router = useRouter();
   const params = useParams();
-  const farmerId = params.id;
+  const identifier = params.id;
 
   const [farmer, setFarmer] = useState(null);
   const [products, setProducts] = useState([]);
@@ -32,17 +32,31 @@ export default function FarmerPage() {
   };
 
   const fetchFarmerData = useCallback(async () => {
-    if (!farmerId) return;
+    if (!identifier) return;
     try {
       setLoading(true);
       setError(null);
       const timestamp = Date.now();
-      const farmerRes = await fetch(`/api/farmers/${farmerId}?t=${timestamp}`, {
-        headers: { "Cache-Control": "no-cache" },
-      });
+      const farmerRes = await fetch(
+        `/api/farmers/${identifier}?t=${timestamp}`,
+        {
+          headers: { "Cache-Control": "no-cache" },
+        },
+      );
       if (!farmerRes.ok) throw new Error("Farmer not found");
       const farmerData = await farmerRes.json();
+      const farmerEmail = farmerData.farmer?.email || "";
 
+      // Canonical redirect: if path param isn't email but we have one, replace URL
+      if (farmerEmail && identifier !== farmerEmail) {
+        // Avoid redirect loop if identifier already equals decoded email
+        const decoded = decodeURIComponent(identifier);
+        if (decoded !== farmerEmail) {
+          router.replace(`/farmers/${encodeURIComponent(farmerEmail)}`);
+        }
+      }
+
+      // Fetch all products (could be optimized server-side later)
       const productsRes = await fetch(
         `/api/products?limit=1000&t=${timestamp}`,
         { headers: { "Cache-Control": "no-cache" } },
@@ -50,31 +64,23 @@ export default function FarmerPage() {
       const productsJson = await productsRes.json();
       const allProducts = productsJson.products || [];
 
-      const farmerProducts = allProducts.filter((product) => {
-        const productFarmerId =
-          product.farmer?.id || product.farmer?._id || product.farmerId;
-        const productFarmerName = product.farmer?.name || product.farmerName;
-        const farmerName = farmerData.farmer?.name;
-        const farmerEmail = farmerData.farmer?.email;
-        const productFarmerEmail = product.farmer?.email || product.farmerEmail;
-        return (
-          productFarmerId === farmerId ||
-          product.farmer?._id === farmerId ||
-          product.farmerId === farmerId ||
-          (farmerName && productFarmerName === farmerName) ||
-          (farmerEmail && productFarmerEmail === farmerEmail)
-        );
-      });
+      // Email-only product association
+      const farmerProducts = farmerEmail
+        ? allProducts.filter((product) => product.farmer?.email === farmerEmail)
+        : [];
 
+      // Orders filtered by email only
       const ordersRes = await fetch(
-        `/api/orders?farmerId=${farmerId}&farmerEmail=${farmerData.farmer?.email || ""}`,
+        `/api/orders?farmerEmail=${encodeURIComponent(farmerEmail)}`,
         { headers: { "Cache-Control": "no-cache" } },
       );
       const ordersJson = await ordersRes.json();
+      const allOrders = ordersJson.orders || [];
 
       setFarmer(farmerData.farmer);
       setProducts(farmerProducts);
 
+      // Stats calculations
       const totalProducts = farmerProducts.length;
       const activeProducts = farmerProducts.filter((p) => p.stock > 0).length;
       const totalStock = farmerProducts.reduce((s, p) => s + (p.stock || 0), 0);
@@ -99,6 +105,7 @@ export default function FarmerPage() {
         ...new Set(farmerProducts.map((p) => p.category).filter(Boolean)),
       ];
 
+      // Local product-embedded reviews (if any embedded structure exists)
       const productReviews = farmerProducts.flatMap((p) =>
         (p.reviews || []).map((r) => ({
           ...r,
@@ -109,45 +116,50 @@ export default function FarmerPage() {
         })),
       );
 
+      // Separate reviews fetched by farmerEmail only
       let separateReviews = [];
-      try {
-        const reviewsRes = await fetch(`/api/reviews?farmerId=${farmerId}`, {
-          headers: { "Cache-Control": "no-cache" },
-        });
-        if (reviewsRes.ok) {
-          const reviewsJson = await reviewsRes.json();
-          separateReviews = (reviewsJson.reviews || []).map((r) => {
-            const related = farmerProducts.find(
-              (p) => p._id === r.productId || p._id === r.product?._id,
-            );
-            return {
-              ...r,
-              source: "reviews_collection",
-              productName: r.productName || related?.name || "Unknown Product",
-              productId: r.productId || r.product?._id || related?._id,
-              createdAt: r.createdAt || r.date || new Date().toISOString(),
-            };
-          });
+      if (farmerEmail) {
+        try {
+          const reviewsRes = await fetch(
+            `/api/reviews?farmerEmail=${encodeURIComponent(farmerEmail)}`,
+            { headers: { "Cache-Control": "no-cache" } },
+          );
+          if (reviewsRes.ok) {
+            const reviewsJson = await reviewsRes.json();
+            separateReviews = (reviewsJson.reviews || []).map((r) => {
+              const related = farmerProducts.find(
+                (p) => p._id === r.productId || p._id === r.product?._id,
+              );
+              return {
+                ...r,
+                source: "reviews_collection",
+                productName:
+                  r.productName || related?.name || "Unknown Product",
+                productId: r.productId || r.product?._id || related?._id,
+                createdAt: r.createdAt || r.date || new Date().toISOString(),
+              };
+            });
+          }
+        } catch (e) {
+          console.warn("Separate reviews fetch failed", e);
         }
-      } catch (e) {
-        console.warn("Separate reviews fetch failed", e);
       }
 
       const allReviews = [...productReviews, ...separateReviews]
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         .slice(0, 10);
 
-      const farmerOrders = (ordersJson.orders || []).filter(
-        (order) =>
-          order.items &&
-          order.items.some(
-            (item) =>
-              item.farmerId === farmerId ||
-              item.farmer?.id === farmerId ||
-              item.farmer?._id === farmerId ||
-              item.farmerEmail === farmerData.farmer?.email,
-          ),
-      );
+      // Orders already filtered by email at API; still guard by items
+      const farmerOrders = farmerEmail
+        ? allOrders.filter((order) =>
+            order.items?.some(
+              (item) =>
+                item.farmerEmail === farmerEmail ||
+                item.farmer?.email === farmerEmail,
+            ),
+          )
+        : [];
+
       const deliveredOrders = farmerOrders.filter(
         (o) => o.status === ORDER_STATUS.DELIVERED,
       );
@@ -207,7 +219,7 @@ export default function FarmerPage() {
     } finally {
       setLoading(false);
     }
-  }, [farmerId]);
+  }, [identifier, router]);
 
   useEffect(() => {
     fetchFarmerData();
@@ -283,7 +295,7 @@ export default function FarmerPage() {
               <ProductsTab
                 stats={stats}
                 products={products}
-                farmerId={farmerId}
+                farmerEmail={farmer?.email}
               />
             )}
             {activeTab === "reviews" && (
@@ -294,7 +306,11 @@ export default function FarmerPage() {
             )}
           </div>
         </div>
-        <ActionSection farmer={farmer} stats={stats} farmerId={farmerId} />
+        <ActionSection
+          farmer={farmer}
+          stats={stats}
+          farmerEmail={farmer?.email}
+        />
       </div>
       <Footer />
     </>

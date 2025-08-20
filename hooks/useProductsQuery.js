@@ -104,8 +104,6 @@ export function useProductsCache() {
             ) {
               return true;
             }
-
-            // Check by temporary ID (for optimistic updates)
             if (
               newProduct.id &&
               newProduct.id.startsWith("temp_") &&
@@ -113,24 +111,22 @@ export function useProductsCache() {
             ) {
               return true;
             }
-
-            // Check by content similarity (name + farmer + similar timestamp)
+            // Email-only similarity (name + farmer email + time proximity)
+            const newEmail = newProduct.farmer?.email || newProduct.farmerEmail;
+            const existingEmail =
+              existing.farmer?.email || existing.farmerEmail;
             if (
               existing.name === newProduct.name &&
-              existing.farmerId === newProduct.farmerId
+              newEmail &&
+              existingEmail &&
+              newEmail === existingEmail
             ) {
               const existingTime = new Date(existing.createdAt).getTime();
               const newTime = new Date(
                 newProduct.createdAt || new Date(),
               ).getTime();
-              const timeDiff = Math.abs(existingTime - newTime);
-
-              // If created within 10 seconds, likely duplicate
-              if (timeDiff < 10000) {
-                return true;
-              }
+              if (Math.abs(existingTime - newTime) < 10000) return true;
             }
-
             return false;
           });
 

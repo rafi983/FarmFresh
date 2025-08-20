@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Footer from "@/components/Footer";
-import ProductCard from "./ProductCard";
+import ProductCard from "../products/ProductCard";
 
 const FarmerProfileView = ({ farmer, farmerProducts }) => (
   <>

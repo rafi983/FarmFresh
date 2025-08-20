@@ -10,7 +10,6 @@ import { useProductsQuery, useProductsCache } from "@/hooks/useProductsQuery";
 export default function FarmersPage() {
   // UI state
   const [showAllFarmers, setShowAllFarmers] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
 
   // Cache management hooks
   const farmersCache = useFarmersCache();
@@ -60,99 +59,38 @@ export default function FarmersPage() {
   const getStats = () => {
     const totalFarmers = farmers.length;
 
-    // Get farmer identifiers for comprehensive matching
-    const farmerIds = farmers.map((f) => f._id).filter(Boolean);
+    // Only use farmer emails for association per new requirement
     const farmerEmails = farmers.map((f) => f.email).filter(Boolean);
-    const farmerNames = farmers.map((f) => f.name).filter(Boolean);
 
-    // More comprehensive product filtering with detailed matching
+    // Products strictly linked by email only
     const farmerProducts = products.filter((product) => {
-      // Direct farmer ID match (string or ObjectId)
-      if (product.farmerId) {
-        const matches =
-          farmerIds.includes(product.farmerId) ||
-          farmerIds.includes(product.farmerId.toString());
-        if (matches) return true;
-      }
-
-      // Farmer email match
-      if (product.farmerEmail && farmerEmails.includes(product.farmerEmail)) {
-        return true;
-      }
-
-      // Farmer name match
-      if (product.farmerName && farmerNames.includes(product.farmerName)) {
-        return true;
-      }
-
-      // Nested farmer object matches
-      if (product.farmer) {
-        if (product.farmer._id && farmerIds.includes(product.farmer._id)) {
-          return true;
-        }
-        if (
-          product.farmer.email &&
-          farmerEmails.includes(product.farmer.email)
-        ) {
-          return true;
-        }
-        if (product.farmer.name && farmerNames.includes(product.farmer.name)) {
-          return true;
-        }
-      }
-
-      // Additional checks for owner fields
-      if (product.owner && farmerIds.includes(product.owner)) {
-        return true;
-      }
-
-      // Check if product has any farmer reference at all
-      if (product.createdBy && farmerEmails.includes(product.createdBy)) {
-        return true;
-      }
-
-      return false;
+      const email = product.farmer?.email || product.farmerEmail;
+      return email && farmerEmails.includes(email);
     });
 
     const totalProducts = farmerProducts.length;
 
-    // Filter active/available products from farmer products only
     const activeProducts = farmerProducts.filter((product) => {
-      // Skip deleted or inactive products
-      if (product.status === "deleted" || product.status === "inactive") {
-        return false;
+      if (product.status && product.status !== "active") return false;
+      if (product.stock != null && !Number.isNaN(Number(product.stock))) {
+        return Number(product.stock) > 0;
       }
-      const hasStock =
-        product.stock === undefined ||
-        product.stock === null ||
-        product.stock === "" ||
-        (typeof product.stock === "string" && product.stock.trim() === "") ||
-        parseInt(product.stock) > 0;
-
-      return hasStock;
+      return true; // treat undefined/blank stock as available
     });
 
-    // Get unique categories from farmer products only
     const categories = new Set();
-    farmerProducts.forEach((product) => {
-      if (
-        product.category &&
-        typeof product.category === "string" &&
-        product.category.trim()
-      ) {
-        categories.add(product.category.toLowerCase().trim());
+    farmerProducts.forEach((p) => {
+      if (p.category && typeof p.category === "string" && p.category.trim()) {
+        categories.add(p.category.toLowerCase().trim());
       }
     });
-    const categoriesCount = categories.size;
 
-    const stats = {
+    return {
       totalFarmers,
       totalProducts,
       activeProducts: activeProducts.length,
-      categoriesCount,
+      categoriesCount: categories.size,
     };
-
-    return stats;
   };
 
   const loadMoreFarmers = () => {
@@ -161,37 +99,28 @@ export default function FarmersPage() {
 
   // Calculate farmer rating based on their products
   const getFarmerRating = useCallback(
-    (farmerId) => {
-      if (!farmerId || !products.length) return 0;
+    (farmer) => {
+      if (!farmer || !products.length) return 0;
+      const farmerEmail = farmer.email;
+      if (!farmerEmail) return 0;
 
-      const farmer = farmers.find((f) => f._id === farmerId);
-      if (!farmer) return 0;
+      const farmerProducts = products.filter(
+        (p) => p.farmer?.email === farmerEmail || p.farmerEmail === farmerEmail,
+      );
+      if (!farmerProducts.length) return 0;
 
-      // Simple direct matching for farmer products
-      const farmerProducts = products.filter((product) => {
-        return (
-          product.farmerId === farmerId ||
-          product.farmerId === farmerId.toString()
-        );
-      });
-
-      if (farmerProducts.length === 0) return 0;
-
-      // Calculate average rating from products that have ratings
-      const productsWithRatings = farmerProducts.filter(
+      const rated = farmerProducts.filter(
         (p) => p.averageRating && parseFloat(p.averageRating) > 0,
       );
+      if (!rated.length) return 0;
 
-      if (productsWithRatings.length === 0) return 0;
-
-      const totalRating = productsWithRatings.reduce(
-        (sum, product) => sum + parseFloat(product.averageRating),
+      const sum = rated.reduce(
+        (acc, p) => acc + parseFloat(p.averageRating),
         0,
       );
-
-      return Math.round((totalRating / productsWithRatings.length) * 10) / 10;
+      return Math.round((sum / rated.length) * 10) / 10;
     },
-    [farmers, products],
+    [products],
   );
 
   // Display logic for farmers - Sort real farmers first, then hardcoded farmers
@@ -607,7 +536,7 @@ export default function FarmersPage() {
                       <div className="flex items-center">
                         <i className="fas fa-star text-yellow-400 text-sm mr-1"></i>
                         <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                          {getFarmerRating(farmer._id) || "New"}
+                          {getFarmerRating(farmer) || "New"}
                         </span>
                       </div>
                     </div>
@@ -705,20 +634,10 @@ export default function FarmersPage() {
               <div className="text-center mt-12">
                 <button
                   onClick={loadMoreFarmers}
-                  disabled={loadingMore}
-                  className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-lg font-medium transition disabled:opacity-50"
+                  className="bg-primary-600 hover:bg-primary-700 text-white px-8 py-3 rounded-lg font-medium transition"
                 >
-                  {loadingMore ? (
-                    <>
-                      <i className="fas fa-spinner fa-spin mr-2"></i>
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      <i className="fas fa-plus mr-2"></i>
-                      Show More Farmers ({farmers.length - 6} remaining)
-                    </>
-                  )}
+                  <i className="fas fa-plus mr-2"></i>
+                  Show More Farmers ({farmers.length - 6} remaining)
                 </button>
               </div>
             )}

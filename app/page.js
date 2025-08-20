@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import ProductCard from "@/components/ProductCard";
+import ProductCard from "@/components/products/ProductCard";
 import { useHomeQuery } from "@/hooks/useHomeQuery";
 
 export default function Home() {

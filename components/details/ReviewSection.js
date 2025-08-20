@@ -1,7 +1,7 @@
 // filepath: components/details/ReviewSection.js
 "use client";
-import StarRating from "@/components/StarRating";
-import EnhancedReviewModal from "@/components/EnhancedReviewModal";
+import StarRating from "@/components/products/StarRating";
+import EnhancedReviewModal from "@/components/reviews/EnhancedReviewModal";
 
 export default function ReviewSection({
   product,

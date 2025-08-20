@@ -2,8 +2,8 @@ import mongoose, { Schema } from "mongoose";
 
 const ReviewSchema = new Schema(
   {
-    productId: { type: Schema.Types.Mixed, index: true, required: true }, // can be ObjectId or string
-    userId: { type: String, index: true },
+    productId: { type: Schema.Types.Mixed, required: true },
+    userId: { type: String },
     rating: { type: Number, min: 1, max: 5, required: true },
     comment: { type: String, default: "" },
     reviewer: { type: String },
@@ -14,11 +14,6 @@ const ReviewSchema = new Schema(
   },
 );
 
-ReviewSchema.index({ productId: 1, createdAt: -1 });
-ReviewSchema.index({ productId: 1, userId: 1 });
-ReviewSchema.index({ userId: 1 });
-
-// Recompute product rating using simple find instead of aggregation pipeline
 ReviewSchema.statics.recomputeProductRating = async function (productId) {
   const Product = (await import("./Product.js")).default; // dynamic import to avoid circular refs
   const docs = await this.find({ productId }).select("rating").lean();

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-export default function FarmerDetailsHero({ farmer, stats, farmerId }) {
+export default function FarmerDetailsHero({ farmer, stats, farmerEmail }) {
   if (!farmer) return null;
   return (
     <div className="relative overflow-hidden">
@@ -107,7 +107,7 @@ export default function FarmerDetailsHero({ farmer, stats, farmerId }) {
             )}
             <div className="flex flex-wrap gap-6 justify-center lg:justify-start">
               <Link
-                href={`/farmers/${farmerId}`}
+                href={`/farmers/${encodeURIComponent(farmerEmail)}`}
                 className="group bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-10 py-5 rounded-2xl font-bold text-xl transition-all duration-500 border border-emerald-400/30 shadow-2xl transform hover:scale-105"
               >
                 <i className="fas fa-shopping-cart mr-3 group-hover:rotate-12 transition-transform" />

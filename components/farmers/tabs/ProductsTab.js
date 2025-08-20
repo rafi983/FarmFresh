@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-export default function ProductsTab({ stats, products, farmerId }) {
+export default function ProductsTab({ stats, products, farmerEmail }) {
   return (
     <div className="space-y-8">
       <div className="text-center mb-8">
@@ -145,7 +145,7 @@ export default function ProductsTab({ stats, products, farmerId }) {
           </div>
           <div className="text-center mt-8">
             <Link
-              href={`/farmers/${farmerId}/details`}
+              href={`/farmers/${encodeURIComponent(farmerEmail)}/details`}
               className="inline-flex items-center px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
               <i className="fas fa-store mr-3"></i>View All{" "}

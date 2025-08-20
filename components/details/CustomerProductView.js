@@ -2,8 +2,8 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import StarRating from "@/components/StarRating";
-import EnhancedReviewModal from "@/components/EnhancedReviewModal";
+import StarRating from "@/components/products/StarRating";
+import EnhancedReviewModal from "@/components/reviews/EnhancedReviewModal";
 import ReviewSection from "@/components/details/ReviewSection";
 
 export default function CustomerProductView({

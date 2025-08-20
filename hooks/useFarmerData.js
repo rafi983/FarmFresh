@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 
-// Cache to store farmer data and avoid repeated API calls
 const farmerCache = new Map();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 

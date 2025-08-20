@@ -65,8 +65,8 @@ export function useReorder() {
             name: item.productName,
             productName: item.productName,
             price: item.price,
-            farmerId: item.farmerId,
-            farmerName: item.farmerName,
+            // farmerEmail retained only if downstream UI needs attribution
+            farmerEmail: item.farmerEmail,
             image: item.image,
             stock: item.stock,
             category: item.category,

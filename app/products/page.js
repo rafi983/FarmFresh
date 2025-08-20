@@ -9,7 +9,7 @@ import {
   useDeferredValue,
 } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import ProductCard from "../../components/ProductCard";
+import ProductCard from "../../components/products/ProductCard";
 import Loading from "../../components/Loading";
 import Footer from "../../components/Footer";
 import { useUnifiedProductsData } from "@/hooks/useUnifiedProductsData";
@@ -32,8 +32,9 @@ import {
   ProductCardSkeleton,
   FilterSidebarSkeleton,
   HeaderSkeleton,
-  GlobalLoadingSkeleton,
+  GlobalLoadingSkeleton, // (will no longer be used for initial load)
 } from "@/components/products/Skeletons";
+import LegacyProductsLoadingSkeleton from "@/components/products/LegacyProductsLoadingSkeleton";
 import Chip from "@/components/products/Chips";
 
 // Force dynamic rendering for this page
@@ -286,7 +287,8 @@ function ProductsContent() {
     );
   }
 
-  if (loading && allProducts.length === 0) return <GlobalLoadingSkeleton />;
+  if (loading && allProducts.length === 0)
+    return <LegacyProductsLoadingSkeleton />;
 
   return (
     <>

@@ -16,45 +16,66 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ee714c65-dfe8-42d3-bb28-dc515206a667" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.env.local" beforeDir="false" afterPath="$PROJECT_DIR$/.env.local" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/auth/[...nextauth]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/[...nextauth]/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/auth/create-farmer-users/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/create-farmer-users/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/auth/forgot-password/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/forgot-password/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/auth/refresh/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/refresh/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/auth/register/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/register/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/auth/reset-password/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/reset-password/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/auth/users/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/auth/users/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/cart/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/cart/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/categories/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/categories/route.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/analytics/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/analytics/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/api/farmers/[id]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/farmers/[id]/route.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/api/farmers/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/farmers/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/favorites/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/favorites/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/messages/[conversationId]/read/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/messages/[conversationId]/read/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/messages/[conversationId]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/messages/[conversationId]/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/messages/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/messages/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/orders/[orderId]/invoice/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/[orderId]/invoice/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/orders/[orderId]/reorder/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/[orderId]/reorder/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/orders/[orderId]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/[orderId]/route.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/api/orders/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/orders/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/products/[id]/can-review/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/[id]/can-review/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/products/[id]/reviews/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/[id]/reviews/route.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/api/products/[id]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/[id]/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/products/bulk-update/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/bulk-update/route.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/api/products/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/products/route.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/api/reviews/[reviewId]/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/reviews/[reviewId]/route.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/api/reviews/route.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/api/reviews/route.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/bookings/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/bookings/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/details/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/details/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/farmer-orders/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmer-orders/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/farmers/[id]/details/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmers/[id]/details/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/farmers/[id]/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmers/[id]/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/farmers/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/farmers/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/favorites/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/favorites/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/manage/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/manage/page.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/page.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/products/page.js" beforeDir="false" afterPath="$PROJECT_DIR$/app/products/page.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/hooks/useReviewsQuery.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useReviewsQuery.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/reviewUtils.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/reviewUtils.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/providers/Providers.js" beforeDir="false" afterPath="$PROJECT_DIR$/providers/Providers.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/AnalyticsLoadingSkeleton.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/analytics/AnalyticsLoadingSkeleton.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/CartToast.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/cart/CartToast.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/CustomerDetailsLoading.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/details/CustomerDetailsLoading.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/EnhancedReviewModal.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/reviews/EnhancedReviewModal.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/FarmerDetailsLoading.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/farmers/FarmerDetailsLoading.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/FarmerOrdersLoadingSkeleton.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/farmers/FarmerOrdersLoadingSkeleton.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/FarmerProfileView.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/farmers/FarmerProfileView.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/ManagePageLoadingSkeleton.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/dashboard/ManagePageLoadingSkeleton.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/ProductCard.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/products/ProductCard.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/RecentOrdersSection.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/dashboard/RecentOrdersSection.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/ReorderModal.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/orders/ReorderModal.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/StarRating.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/products/StarRating.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/details/CustomerProductView.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/details/CustomerProductView.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/details/FarmerDashboardView.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/details/FarmerDashboardView.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/details/ReviewSection.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/details/ReviewSection.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/farmers/ActionSection.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/farmers/ActionSection.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/farmers/details/FarmerDetailsHero.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/farmers/details/FarmerDetailsHero.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/components/farmers/tabs/ProductsTab.js" beforeDir="false" afterPath="$PROJECT_DIR$/components/farmers/tabs/ProductsTab.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useDashboardData.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useDashboardData.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useFarmerData.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useFarmerData.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useFarmerOrders.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useMessaging.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useOwnership.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useOwnership.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useProducts.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useProductsQuery.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useProductsQuery.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hooks/useReorder.js" beforeDir="false" afterPath="$PROJECT_DIR$/hooks/useReorder.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/api-service.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/api-service.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/atlas-config.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/cache-invalidation.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/cache-invalidation.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/mongodb.js" beforeDir="false" afterPath="$PROJECT_DIR$/lib/mongodb.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/Cart.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/Cart.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/Conversation.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/Conversation.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/Farmer.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/Farmer.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/Favorite.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/Favorite.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/Message.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/Message.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/Order.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/Order.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/Product.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/Product.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/Review.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/Review.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/User.js" beforeDir="false" afterPath="$PROJECT_DIR$/models/User.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -110,6 +131,15 @@
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\ACER\Desktop\FarmFresh\components\cart" />
+      <recent name="C:\Users\ACER\Desktop\FarmFresh\components\details" />
+      <recent name="C:\Users\ACER\Desktop\FarmFresh\components\orders" />
+      <recent name="C:\Users\ACER\Desktop\FarmFresh\components\reviews" />
+      <recent name="C:\Users\ACER\Desktop\FarmFresh\components\products" />
+    </key>
+  </component>
   <component name="RunManager" selected="npm.Next.js: server-side">
     <configuration name="Next.js: debug client-side" type="JavascriptDebugType" uri="http://localhost:3000/">
       <method v="2" />
@@ -183,7 +213,17 @@
       <workItem from="1755276366954" duration="44000" />
       <workItem from="1755338403748" duration="12742000" />
       <workItem from="1755354524361" duration="1125000" />
-      <workItem from="1755358127644" duration="3022000" />
+      <workItem from="1755358127644" duration="3364000" />
+      <workItem from="1755423745582" duration="1702000" />
+      <workItem from="1755540327388" duration="180000" />
+      <workItem from="1755540532716" duration="87000" />
+      <workItem from="1755540639705" duration="89000" />
+      <workItem from="1755540744943" duration="447000" />
+      <workItem from="1755603951003" duration="328000" />
+      <workItem from="1755604300998" duration="21000" />
+      <workItem from="1755606070033" duration="142000" />
+      <workItem from="1755607480387" duration="1022000" />
+      <workItem from="1755686302924" duration="6729000" />
     </task>
     <servers />
   </component>

@@ -2,13 +2,12 @@ import mongoose, { Schema } from "mongoose";
 
 const OrderItemSchema = new Schema(
   {
-    productId: { type: Schema.Types.Mixed, index: true },
+    productId: { type: Schema.Types.Mixed },
     name: String,
     productName: String,
     price: { type: Number, default: 0 },
     quantity: { type: Number, default: 1 },
     subtotal: { type: Number, default: 0 },
-    farmerId: { type: String },
     farmerEmail: { type: String },
     farmerName: { type: String },
     farmer: { type: Schema.Types.Mixed },
@@ -30,9 +29,9 @@ const StatusHistorySchema = new Schema(
 
 const OrderSchema = new Schema(
   {
-    userId: { type: String, index: true },
+    userId: { type: String },
     items: [OrderItemSchema],
-    status: { type: String, index: true },
+    status: { type: String },
     total: { type: Number, default: 0 },
     subtotal: { type: Number, default: 0 },
     deliveryFee: { type: Number, default: 0 },
@@ -46,7 +45,6 @@ const OrderSchema = new Schema(
     deliveryAddress: Schema.Types.Mixed,
     paymentMethod: String,
     statusHistory: [StatusHistorySchema],
-    farmerIds: [String],
     farmerEmails: [String],
   },
   {
@@ -55,61 +53,18 @@ const OrderSchema = new Schema(
   },
 );
 
-// Indexes mirroring existing driver-based indexes
-OrderSchema.index(
-  { userId: 1, createdAt: -1 },
-  { name: "userId_createdAt_idx" },
-);
-OrderSchema.index(
-  { "items.farmerId": 1, status: 1, createdAt: -1 },
-  { name: "items_farmerId_status_date_idx" },
-);
-OrderSchema.index(
-  { "items.farmerEmail": 1, status: 1, createdAt: -1 },
-  { name: "items_farmerEmail_status_date_idx" },
-);
-OrderSchema.index(
-  { farmerIds: 1, createdAt: -1 },
-  { name: "farmerIds_createdAt_idx" },
-);
-OrderSchema.index(
-  { farmerEmails: 1, createdAt: -1 },
-  { name: "farmerEmails_createdAt_idx" },
-);
-OrderSchema.index(
-  { "items.productId": 1, createdAt: -1 },
-  { name: "items_productId_createdAt_idx" },
-);
-OrderSchema.index(
-  { status: 1, createdAt: -1 },
-  { name: "status_createdAt_idx" },
-);
-OrderSchema.index({ createdAt: -1 }, { name: "createdAt_idx" });
-
 OrderSchema.statics.buildFilter = function (params = {}) {
-  const { userId, farmerId, farmerEmail, productId, status } = params;
+  const { userId, farmerEmail, productId, status } = params;
   const query = {};
   if (userId) query.userId = userId;
   if (status) query.status = status;
   if (productId) query["items.productId"] = productId;
-  if (farmerId || farmerEmail) {
-    const farmerConditions = [];
-    if (farmerId) {
-      farmerConditions.push(
-        { "items.farmerId": farmerId },
-        { "items.farmer.id": farmerId },
-        { "items.farmer._id": farmerId },
-        { farmerIds: farmerId },
-      );
-    }
-    if (farmerEmail) {
-      farmerConditions.push(
-        { "items.farmerEmail": farmerEmail },
-        { "items.farmer.email": farmerEmail },
-        { farmerEmails: farmerEmail },
-      );
-    }
-    query.$or = farmerConditions;
+  if (farmerEmail) {
+    query.$or = [
+      { "items.farmerEmail": farmerEmail },
+      { "items.farmer.email": farmerEmail },
+      { farmerEmails: farmerEmail },
+    ];
   }
   return query;
 };

@@ -13,7 +13,7 @@ const CartItemSchema = new Schema(
 
 const CartSchema = new Schema(
   {
-    userId: { type: String, index: true, unique: true },
+    userId: { type: String },
     items: [CartItemSchema],
     total: { type: Number, default: 0 },
   },
@@ -22,9 +22,6 @@ const CartSchema = new Schema(
     versionKey: false,
   },
 );
-
-CartSchema.index({ userId: 1 });
-CartSchema.index({ "items.productId": 1 });
 
 const Cart = mongoose.models.Cart || mongoose.model("Cart", CartSchema);
 export default Cart;

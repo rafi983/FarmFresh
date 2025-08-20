@@ -62,7 +62,6 @@ export async function GET(request) {
 
     const params = {
       userId: searchParams.get("userId"),
-      farmerId: searchParams.get("farmerId"),
       farmerEmail: searchParams.get("farmerEmail"),
       productId: searchParams.get("productId"),
       status: searchParams.get("status"),
@@ -104,17 +103,13 @@ export async function GET(request) {
       Order.countDocuments(query),
     ]);
 
-    const { farmerId, farmerEmail } = params;
-    if (farmerId || farmerEmail) {
+    const { farmerEmail } = params;
+    if (farmerEmail) {
       orders = orders
         .map((order) => {
           const filteredItems = (order.items || []).filter((item) => {
-            const itemFarmerId =
-              item.farmerId || item.farmer?.id || item.farmer?._id;
             const itemFarmerEmail = item.farmerEmail || item.farmer?.email;
-            if (farmerId && itemFarmerId === farmerId) return true;
-            if (farmerEmail && itemFarmerEmail === farmerEmail) return true;
-            return false;
+            return itemFarmerEmail === farmerEmail;
           });
           if (!filteredItems.length) return null;
           const farmerSubtotal = filteredItems.reduce(

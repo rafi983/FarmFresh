@@ -106,48 +106,31 @@ export async function GET(request, { params }) {
     const { id } = await params;
     const url = new URL(request.url);
     const isDashboardContext = url.searchParams.get("dashboard") === "true";
-    const farmerId = url.searchParams.get("farmerId");
+    const farmerEmail = url.searchParams.get("farmerEmail");
     await getMongooseConnection();
 
-    const variants = [id];
-    if (ObjectId.isValid(id)) variants.push(new ObjectId(id));
-
-    const matchConditions = {
-      $or: [
-        { _id: id },
-        ...(ObjectId.isValid(id) ? [{ _id: new ObjectId(id) }] : []),
-        { farmerId: id },
-        { "farmer.id": id },
-        { "farmer._id": id },
-      ],
-    };
-    if (!isDashboardContext && !farmerId) {
-      matchConditions.status = { $nin: ["deleted", "inactive"] };
-    } else {
-      matchConditions.status = { $ne: "deleted" };
-    }
-
-    let targetProduct = await Product.findOne(matchConditions).lean();
-
-    // Farmer details mode
-    if (targetProduct && targetProduct.farmerId === id) {
-      const farmerMatch = { farmerId: id };
-      if (!isDashboardContext && !farmerId) {
-        farmerMatch.status = { $nin: ["deleted", "inactive"] };
-      } else {
-        farmerMatch.status = { $ne: "deleted" };
-      }
-      const farmerProducts = await Product.find(farmerMatch)
+    // Farmer details mode (by email)
+    if (farmerEmail) {
+      const farmerProducts = await Product.find({
+        "farmer.email": farmerEmail,
+        ...(isDashboardContext
+          ? { status: { $ne: "deleted" } }
+          : { status: { $nin: ["deleted", "inactive"] } }),
+      })
         .select(
           "name price image images category stock status farmer isOrganic isFresh",
         )
         .lean();
-      const farmerInfo = targetProduct.farmer || {
+      if (!farmerProducts.length) {
+        return NextResponse.json(
+          { error: "Farmer products not found", farmerEmail },
+          { status: 404 },
+        );
+      }
+      const farmerInfo = farmerProducts[0].farmer || {
         name: "Local Farmer",
         location: "Bangladesh",
         bio: "Dedicated to providing fresh, high-quality produce using sustainable farming practices.",
-        experience: 5,
-        id,
       };
       return NextResponse.json({
         isFarmerDetails: true,
@@ -157,16 +140,30 @@ export async function GET(request, { params }) {
           images: combineProductImages(p),
         })),
         totalProducts: farmerProducts.length,
-        farmerId: id,
+        farmerEmail,
       });
     }
 
+    // Product lookup strictly by _id (string or ObjectId)
+    const matchConditions = {
+      $or: [
+        { _id: id },
+        ...(ObjectId.isValid(id) ? [{ _id: new ObjectId(id) }] : []),
+      ],
+    };
+    if (!isDashboardContext) {
+      matchConditions.status = { $nin: ["deleted", "inactive"] };
+    } else {
+      matchConditions.status = { $ne: "deleted" };
+    }
+    let targetProduct = await Product.findOne(matchConditions).lean();
+
     if (!targetProduct) {
-      // Attempt legacy embedded product lookup
+      // Legacy embedded product lookup fallback
       const container = await Product.findOne({ "products._id": id }).lean();
       if (container?.products) {
         targetProduct = container.products.find(
-          (p) => p._id?.toString() === id || p.farmerId === id,
+          (p) => p._id?.toString() === id,
         );
       }
       if (!targetProduct) {

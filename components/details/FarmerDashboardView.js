@@ -2,8 +2,8 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import StarRating from "@/components/StarRating";
-import RecentOrdersSection from "@/components/RecentOrdersSection";
+import StarRating from "@/components/products/StarRating";
+import RecentOrdersSection from "@/components/dashboard/RecentOrdersSection";
 
 // Farmer dashboard (owner) view extracted from original details/page.js
 export default function FarmerDashboardView({

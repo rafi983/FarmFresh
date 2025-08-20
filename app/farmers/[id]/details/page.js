@@ -13,7 +13,7 @@ import { getDisplayRating } from "@/components/farmers/details/utils";
 export default function FarmerDetailsPage() {
   const router = useRouter();
   const params = useParams();
-  const farmerId = params.id;
+  const identifier = params.id;
 
   const [farmer, setFarmer] = useState(null);
   const [products, setProducts] = useState([]);
@@ -30,7 +30,7 @@ export default function FarmerDetailsPage() {
   useEffect(() => {
     fetchFarmerData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [farmerId]);
+  }, [identifier]);
 
   useEffect(() => {
     applyFilters();
@@ -41,11 +41,19 @@ export default function FarmerDetailsPage() {
     try {
       setLoading(true);
       setError(null);
-      const farmerResponse = await fetch(`/api/farmers/${farmerId}`, {
+      const farmerResponse = await fetch(`/api/farmers/${identifier}`, {
         headers: { "Cache-Control": "no-cache" },
       });
       if (!farmerResponse.ok) throw new Error("Farmer not found");
       const farmerData = await farmerResponse.json();
+      const farmerEmail = farmerData.farmer?.email;
+      // Canonical redirect if identifier isn't the email
+      if (farmerEmail && identifier !== farmerEmail) {
+        const decoded = decodeURIComponent(identifier);
+        if (decoded !== farmerEmail) {
+          router.replace(`/farmers/${encodeURIComponent(farmerEmail)}/details`);
+        }
+      }
       setFarmer(farmerData.farmer);
       setProducts(farmerData.farmer.products || []);
     } catch (err) {
@@ -155,7 +163,11 @@ export default function FarmerDetailsPage() {
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-stone-50 dark:from-gray-900 dark:via-slate-800 dark:to-gray-900">
-        <FarmerDetailsHero farmer={farmer} stats={stats} farmerId={farmerId} />
+        <FarmerDetailsHero
+          farmer={farmer}
+          stats={stats}
+          farmerEmail={farmer?.email}
+        />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center mb-20">
             <h2 className="text-6xl font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent mb-8">

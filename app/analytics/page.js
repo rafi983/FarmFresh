@@ -60,7 +60,7 @@ ChartJS.register(
 );
 
 import Footer from "@/components/Footer";
-import AnalyticsLoadingSkeleton from "@/components/AnalyticsLoadingSkeleton";
+import AnalyticsLoadingSkeleton from "@/components/analytics/AnalyticsLoadingSkeleton";
 import { useOrdersQuery } from "@/hooks/useOrdersQuery";
 
 const COLORS = [

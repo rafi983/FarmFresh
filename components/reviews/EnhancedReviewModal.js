@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import StarRating from "@/components/StarRating";
+import StarRating from "@/components/products/StarRating";
 
 export default function EnhancedReviewModal({
   isOpen,

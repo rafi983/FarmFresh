@@ -22,18 +22,17 @@ function setCache(id, v) {
   if (farmerCache.size > 200) farmerCache.clear();
 }
 
-async function buildFarmerStats(farmerId, farmerDoc) {
-  const idStr = farmerId.toString();
-  const email = farmerDoc?.email;
-  const name = farmerDoc?.name;
-  const orMatch = [
-    { farmerId: idStr },
-    { "farmer._id": farmerId },
-    { "farmer.id": idStr },
-  ];
-  if (email) orMatch.push({ farmerEmail: email }, { "farmer.email": email });
-  if (name) orMatch.push({ "farmer.name": name });
-  const products = await Product.find({ $or: orMatch })
+async function buildFarmerStatsByEmail(email) {
+  if (!email)
+    return {
+      totalProducts: 0,
+      activeProducts: 0,
+      averageRating: 0,
+      totalSales: 0,
+      totalStock: 0,
+      featuredProducts: 0,
+    };
+  const products = await Product.find({ "farmer.email": email })
     .select("stock averageRating purchaseCount featured")
     .lean();
   let totalProducts = products.length;
@@ -65,22 +64,11 @@ async function buildFarmerStats(farmerId, farmerDoc) {
   };
 }
 
-async function fetchFarmerProducts(farmerId, farmerDoc) {
-  const idStr = farmerId.toString();
-  const email = farmerDoc?.email;
-  const name = farmerDoc?.name;
-  const match = {
-    $or: [
-      { farmerId: idStr },
-      { "farmer._id": farmerId },
-      { "farmer.id": idStr },
-    ],
-  };
-  if (email) match.$or.push({ farmerEmail: email });
-  if (name) match.$or.push({ "farmer.name": name });
-  return Product.find(match)
+async function fetchFarmerProductsByEmail(email) {
+  if (!email) return [];
+  return Product.find({ "farmer.email": email })
     .select(
-      "name price stock category image images farmer farmerId farmerEmail averageRating reviewCount purchaseCount status featured createdAt",
+      "name price stock category image images farmer averageRating reviewCount purchaseCount status featured createdAt",
     )
     .lean();
 }
@@ -88,9 +76,12 @@ async function fetchFarmerProducts(farmerId, farmerDoc) {
 export async function GET(_req, { params }) {
   try {
     await getMongooseConnection();
-    const { id } = params;
+    const { id } = params; // id may be farmer _id or email
     if (!id)
-      return NextResponse.json({ error: "Invalid farmer ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid farmer identifier" },
+        { status: 400 },
+      );
 
     const cached = getCache(id);
     if (cached) {
@@ -99,15 +90,19 @@ export async function GET(_req, { params }) {
       return res;
     }
 
-    // Try direct ID (string _id) then ObjectId
-    let farmer = await Farmer.findOne({ _id: id }).lean();
-    if (!farmer && ObjectId.isValid(id))
-      farmer = await Farmer.findById(id).lean();
+    let farmer;
+    if (id.includes("@")) {
+      farmer = await Farmer.findOne({ email: id }).lean();
+    } else {
+      farmer = await Farmer.findOne({ _id: id }).lean();
+      if (!farmer && ObjectId.isValid(id))
+        farmer = await Farmer.findById(id).lean();
+    }
     if (!farmer)
       return NextResponse.json({ error: "Farmer not found" }, { status: 404 });
 
-    const stats = await buildFarmerStats(farmer._id, farmer);
-    const products = await fetchFarmerProducts(farmer._id, farmer);
+    const stats = await buildFarmerStatsByEmail(farmer.email);
+    const products = await fetchFarmerProductsByEmail(farmer.email);
 
     const enhanced = {
       ...farmer,
@@ -190,15 +185,7 @@ export async function PUT(request, { params }) {
     if (body.name) {
       try {
         await Product.updateMany(
-          {
-            $or: [
-              { farmerId: farmer._id.toString() },
-              { "farmer._id": farmer._id },
-              { "farmer.id": farmer._id.toString() },
-              { farmerEmail: farmer.email },
-              { "farmer.email": farmer.email },
-            ],
-          },
+          { "farmer.email": farmer.email },
           {
             $set: {
               "farmer.name": body.name,
@@ -207,7 +194,9 @@ export async function PUT(request, { params }) {
             },
           },
         );
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     }
 
     farmerCache.delete(cacheKey(id));

@@ -48,7 +48,7 @@ function setCachedResponse(cacheKey, data) {
 
 // Enhanced farmer data with product statistics
 async function enhanceFarmersWithStatsMongoose(farmers, includeStats) {
-  if (!includeStats || farmers.length === 0)
+  if (!includeStats || farmers.length === 0) {
     return farmers.map((f) => ({
       ...f,
       profilePicture: f.profilePicture || f.profileImage,
@@ -62,36 +62,16 @@ async function enhanceFarmersWithStatsMongoose(farmers, includeStats) {
         featuredProducts: 0,
       },
     }));
+  }
 
-  const ids = farmers.map((f) => f._id.toString());
   const emails = farmers.map((f) => f.email).filter(Boolean);
-  const names = farmers.map((f) => f.name).filter(Boolean);
-
-  const products = await Product.find({
-    $or: [
-      { farmerId: { $in: ids } },
-      { "farmer._id": { $in: ids } },
-      { "farmer.id": { $in: ids } },
-      { farmerEmail: { $in: emails } },
-      { "farmer.email": { $in: emails } },
-      { "farmer.name": { $in: names } },
-    ],
-  })
-    .select(
-      "farmerId farmer._id farmer.id farmer.email farmer.name farmerEmail stock averageRating purchaseCount featured",
-    )
+  const products = await Product.find({ "farmer.email": { $in: emails } })
+    .select("farmer.email stock averageRating purchaseCount featured")
     .lean();
 
   const statsMap = new Map();
   for (const p of products) {
-    const key = (
-      p.farmerId ||
-      p.farmer?._id?.toString() ||
-      p.farmer?.id ||
-      p.farmerEmail ||
-      p.farmer?.email ||
-      p.farmer?.name
-    )?.toString();
+    const key = p.farmer?.email;
     if (!key) continue;
     if (!statsMap.has(key)) {
       statsMap.set(key, {
@@ -115,34 +95,24 @@ async function enhanceFarmersWithStatsMongoose(farmers, includeStats) {
   }
 
   return farmers.map((f) => {
-    const candidates = [f._id?.toString(), f.email, f.name].filter(Boolean);
-    let stat = null;
-    for (const c of candidates) {
-      if (statsMap.has(c)) {
-        stat = statsMap.get(c);
-        break;
-      }
-    }
-    let computed;
-    if (stat) {
-      computed = {
-        totalProducts: stat.totalProducts,
-        activeProducts: stat.activeProducts,
-        averageRating: stat.ratingCount
-          ? Math.round((stat.ratingSum / stat.ratingCount) * 10) / 10
-          : 0,
-        totalSales: stat.totalSales,
-        featuredProducts: stat.featuredProducts,
-      };
-    } else {
-      computed = {
-        totalProducts: 0,
-        activeProducts: 0,
-        averageRating: 0,
-        totalSales: 0,
-        featuredProducts: 0,
-      };
-    }
+    const stat = statsMap.get(f.email) || null;
+    const computed = stat
+      ? {
+          totalProducts: stat.totalProducts,
+          activeProducts: stat.activeProducts,
+          averageRating: stat.ratingCount
+            ? Math.round((stat.ratingSum / stat.ratingCount) * 10) / 10
+            : 0,
+          totalSales: stat.totalSales,
+          featuredProducts: stat.featuredProducts,
+        }
+      : {
+          totalProducts: 0,
+          activeProducts: 0,
+          averageRating: 0,
+          totalSales: 0,
+          featuredProducts: 0,
+        };
     return {
       ...f,
       profilePicture: f.profilePicture || f.profileImage,

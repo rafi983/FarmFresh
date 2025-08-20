@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { useCart } from "@/contexts/CartContext";
 import StarRating from "./StarRating";
-import MessageButton from "./messaging/MessageButton";
+import MessageButton from "../messaging/MessageButton";
 
 export default function ProductCard({ product, showAddToCart = true }) {
   const { data: session } = useSession();

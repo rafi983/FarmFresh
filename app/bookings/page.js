@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Footer from "@/components/Footer";
-import ReorderModal from "@/components/ReorderModal";
+import ReorderModal from "@/components/orders/ReorderModal";
 import { useReorder } from "@/hooks/useReorder";
 import { useOrdersQuery, useOrdersCache } from "@/hooks/useOrdersQuery";
 import FiltersBar from "@/components/bookings/FiltersBar";

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
-import ManagePageLoadingSkeleton from "@/components/ManagePageLoadingSkeleton";
+import ManagePageLoadingSkeleton from "@/components/dashboard/ManagePageLoadingSkeleton";
 import { useDashboardData } from "@/hooks/useDashboardData";
 
 // Component imports

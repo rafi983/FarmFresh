@@ -4,24 +4,25 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import Footer from "@/components/Footer";
-import FarmerOrdersLoadingSkeleton from "@/components/FarmerOrdersLoadingSkeleton";
+import FarmerOrdersLoadingSkeleton from "@/components/farmers/FarmerOrdersLoadingSkeleton";
 import { debounce } from "@/utils/debounce";
 import { useOrderStatusUpdate } from "@/hooks/useOrderStatusUpdate";
-import { useFarmerOrders } from "@/hooks/useFarmerOrders";
+import { useDashboardData } from "@/hooks/useDashboardData";
 
 export default function FarmerOrders() {
   const { data: session, status } = useSession();
   const { updateOrderStatus, updating } = useOrderStatusUpdate();
 
-  // Use React Query hook for orders data
+  // Replace deprecated useFarmerOrders with dashboard data source
   const {
     orders,
     isLoading: loading,
     error,
     isRefetching: refreshing,
     refetch: refetchOrders,
-    refreshOrders,
-  } = useFarmerOrders();
+    refreshDashboard,
+  } = useDashboardData();
+  const refreshOrders = refreshDashboard; // maintain existing variable naming
 
   // Local UI state
   const [statusFilter, setStatusFilter] = useState("All Orders");
@@ -205,7 +206,7 @@ export default function FarmerOrders() {
 
     const interval = setInterval(() => {
       refreshOrders();
-    }, 30000); // 30 seconds
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [autoRefresh, refreshOrders]);

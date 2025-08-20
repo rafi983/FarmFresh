@@ -145,14 +145,14 @@ export default function AnalyticsLoadingSkeleton() {
                 <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-48 animate-pulse"></div>
               </div>
               <div className="relative h-96 bg-gray-100 dark:bg-gray-700 rounded-2xl overflow-hidden">
-                {/* Chart skeleton with fixed heights to prevent hydration mismatch */}
+                {/* Chart skeleton with animated elements */}
                 <div className="absolute inset-0 flex items-end justify-around p-4">
-                  {[65, 45, 80, 35, 55, 40, 70, 50].map((height, j) => (
+                  {[...Array(8)].map((_, j) => (
                     <div
                       key={j}
                       className="bg-gray-300 dark:bg-gray-600 rounded-t animate-chart-pulse"
                       style={{
-                        height: `${height}%`,
+                        height: `${Math.random() * 60 + 20}%`,
                         width: "8%",
                         animationDelay: `${j * 100}ms`,
                       }}

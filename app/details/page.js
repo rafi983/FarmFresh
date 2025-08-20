@@ -7,15 +7,15 @@ import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { useToast } from "@/contexts/ToastContext";
 import Footer from "@/components/Footer";
-import FarmerProfileView from "@/components/FarmerProfileView";
+import FarmerProfileView from "@/components/farmers/FarmerProfileView";
 import useProductData from "@/hooks/useProductData";
 import useOwnership from "@/hooks/useOwnership";
 import { useReviewsQuery } from "@/hooks/useReviewsQuery";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useProductsCache } from "@/hooks/useProductsQuery";
 import NotFound from "@/components/NotFound";
-import FarmerDetailsLoading from "@/components/FarmerDetailsLoading";
-import CustomerDetailsLoading from "@/components/CustomerDetailsLoading";
+import FarmerDetailsLoading from "@/components/farmers/FarmerDetailsLoading";
+import CustomerDetailsLoading from "@/components/details/CustomerDetailsLoading";
 import {
   TAB_OPTIONS,
   DEFAULT_REVIEW_FORM,

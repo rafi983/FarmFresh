@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-export default function ActionSection({ farmer, stats, farmerId }) {
+export default function ActionSection({ farmer, stats, farmerEmail }) {
   return (
     <div className="bg-gradient-to-r from-green-600 to-emerald-600">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -11,7 +11,7 @@ export default function ActionSection({ farmer, stats, farmerId }) {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Link
-              href={`/farmers/${farmerId}/details`}
+              href={`/farmers/${encodeURIComponent(farmerEmail)}/details`}
               className="group bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-8 rounded-2xl transition-all duration-300 border border-white/30 transform hover:scale-105"
             >
               <i className="fas fa-store text-4xl mb-4 group-hover:scale-110 transition-transform"></i>
