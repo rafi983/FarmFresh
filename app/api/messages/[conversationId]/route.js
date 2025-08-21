@@ -142,8 +142,6 @@ export async function PUT(request, { params }) {
         { $set: { isRead: true, readAt: new Date() } },
       );
     } else if (action === "updateSettings") {
-      // Update user-specific conversation settings
-      // Placeholder for potential future implementation
     }
 
     return NextResponse.json({ success: true });

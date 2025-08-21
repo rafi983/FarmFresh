@@ -659,7 +659,7 @@ export default function OrderCard({
                   {order.status === "mixed" && (
                     <>
                       <i className="fas fa-layer-group mr-2 text-orange-500" />
-                      Track each farmer's progress individually above.
+                      Track each farmer&apos;s progress individually above.
                     </>
                   )}
                 </p>
