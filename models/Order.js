@@ -37,6 +37,13 @@ const OrderSchema = new Schema(
     deliveryFee: { type: Number, default: 0 },
     serviceFee: { type: Number, default: 0 },
     farmerSubtotal: { type: Number, default: 0 },
+    farmerStatuses: { type: Schema.Types.Mixed }, // { [encodedFarmerEmail]: status }
+    farmerStatusesArr: [
+      new Schema(
+        { farmerEmail: String, status: String },
+        { _id: false },
+      ),
+    ],
     customerName: String,
     customerEmail: String,
     customerPhone: String,

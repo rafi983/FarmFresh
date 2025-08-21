@@ -68,7 +68,7 @@ export default function Payment() {
   });
 
   const [editQuantities, setEditQuantities] = useState({});
-  const [removedItems, setRemovedItems] = useState([]);
+  const [, setRemovedItems] = useState([]);
 
   // Extract unique farmer IDs from cart items
   const farmerIds = useMemo(() => {
@@ -220,8 +220,6 @@ export default function Payment() {
   const previousOrdersSnapshotRef = useRef(null);
 
   useEffect(() => {
-    console.log("Payment - Session status:", status, "Session:", session);
-
     if (status === "loading") {
       return;
     }

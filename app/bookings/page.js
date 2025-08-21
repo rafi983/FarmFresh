@@ -12,7 +12,7 @@ import FiltersBar from "@/components/bookings/FiltersBar";
 import OrderCard from "@/components/bookings/OrderCard";
 import StatsCards from "@/components/bookings/StatsCards";
 import PaginationBar from "@/components/bookings/PaginationBar";
-import InitialLoadingScreen from "@/components/bookings/InitialLoadingScreen";
+import InitialLoadingScreen from "@/components/bookings/EmptyState";
 import EmptyState from "@/components/bookings/EmptyState";
 import dynamic from "next/dynamic";
 import Toast from "@/components/Toast";
@@ -31,6 +31,7 @@ function useOrderStats(orders) {
       total: orders.length,
       delivered: orders.filter((o) => o.status === "delivered").length,
       pending: orders.filter((o) => o.status === "pending").length,
+      mixed: orders.filter((o) => o.status === "mixed").length,
       totalSpent: orders.reduce((s, o) => s + (o.total || 0), 0),
     }),
     [orders],
@@ -106,9 +107,15 @@ export default function BookingsPage() {
   const { data: session, status } = useSession();
 
   const userId = useMemo(() => {
+    // Wait for session to be fully loaded before extracting userId
+    if (status === "loading") return null;
+
     const id = session?.user?.userId || session?.user?.id;
-    return status === "authenticated" && id ? id : null;
+    const result = status === "authenticated" && id ? id : null;
+
+    return result;
   }, [session?.user?.userId, session?.user?.id, status]);
+
   const enabled = !!userId && status === "authenticated";
 
   const {
@@ -125,13 +132,13 @@ export default function BookingsPage() {
     refetchOnReconnect: false,
   });
   const ordersCache = useOrdersCache();
-  const orders = useMemo(
-    () =>
-      ordersData?.orders
-        ? ordersData.orders.filter((o) => (o.userId || o.customerId) === userId)
-        : [],
-    [ordersData, userId],
-  );
+  const orders = useMemo(() => {
+    const filteredOrders = ordersData?.orders
+      ? ordersData.orders.filter((o) => (o.userId || o.customerId) === userId)
+      : [];
+
+    return filteredOrders;
+  }, [ordersData, userId]);
   const orderStats = useOrderStats(orders);
   const {
     filteredOrders,

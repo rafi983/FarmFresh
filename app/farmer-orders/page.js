@@ -11,13 +11,15 @@ import { useDashboardData } from "@/hooks/useDashboardData";
 
 export default function FarmerOrders() {
   const { data: session, status } = useSession();
-  const { updateOrderStatus, updating } = useOrderStatusUpdate();
+  const { updateOrderStatus } = useOrderStatusUpdate();
+
+  // Get current farmer's email from session
+  const currentFarmerEmail = session?.user?.email;
 
   // Replace deprecated useFarmerOrders with dashboard data source
   const {
     orders,
     isLoading: loading,
-    error,
     isRefetching: refreshing,
     refetch: refetchOrders,
     refreshDashboard,
@@ -167,23 +169,19 @@ export default function FarmerOrders() {
       );
     }
 
-    // Apply sorting
+    // Apply sorting (use stableFarmerSubtotal when present to avoid flicker)
     filtered.sort((a, b) => {
+      const aVal = a.stableFarmerSubtotal ?? a.farmerSubtotal ?? a.total ?? 0;
+      const bVal = b.stableFarmerSubtotal ?? b.farmerSubtotal ?? b.total ?? 0;
       switch (sortBy) {
         case "newest":
           return new Date(b.createdAt) - new Date(a.createdAt);
         case "oldest":
           return new Date(a.createdAt) - new Date(b.createdAt);
         case "highest-value":
-          return (
-            (b.farmerSubtotal || b.total || 0) -
-            (a.farmerSubtotal || a.total || 0)
-          );
+          return bVal - aVal;
         case "lowest-value":
-          return (
-            (a.farmerSubtotal || a.total || 0) -
-            (b.farmerSubtotal || b.total || 0)
-          );
+          return aVal - bVal;
         case "customer-name":
           return (a.customerName || a.userName || "").localeCompare(
             b.customerName || b.userName || "",
@@ -234,6 +232,7 @@ export default function FarmerOrders() {
 
     try {
       const result = await updateOrderStatus(orderId, newStatus, {
+        farmerEmail: currentFarmerEmail, // Pass the current farmer's email
         estimatedDeliveryDate:
           newStatus === "shipped"
             ? (() => {
@@ -345,6 +344,39 @@ export default function FarmerOrders() {
     });
   };
 
+  // Helper function to get farmer-specific status for mixed orders
+  const getFarmerStatus = (order, farmerEmail) => {
+    // If not a mixed order, return the global status
+    if (order.status !== "mixed") {
+      return order.status;
+    }
+
+    // For mixed orders, extract the farmer-specific status
+    if (order.farmerStatuses && farmerEmail) {
+      // Try both encoded and non-encoded farmer email keys
+      const encodeFarmerKey = (email = "") => email.replace(/\./g, "(dot)");
+      const encodedKey = encodeFarmerKey(farmerEmail);
+
+      const farmerStatus =
+        order.farmerStatuses[encodedKey] ||
+        order.farmerStatuses[farmerEmail] ||
+        "pending";
+
+      console.log("🔍 [FARMER ORDERS] Getting farmer status:", {
+        orderId: order._id?.slice(-8),
+        farmerEmail,
+        encodedKey,
+        farmerStatuses: order.farmerStatuses,
+        resolvedStatus: farmerStatus,
+      });
+
+      return farmerStatus;
+    }
+
+    // Fallback to global status
+    return order.status || "pending";
+  };
+
   const getStatusBadge = (status) => {
     const statusConfig = {
       pending: {
@@ -367,6 +399,10 @@ export default function FarmerOrders() {
         bg: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
         icon: "fas fa-times-circle",
       },
+      mixed: {
+        bg: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+        icon: "fas fa-layer-group",
+      },
     };
 
     const config = statusConfig[status?.toLowerCase()] || statusConfig.pending;
@@ -384,7 +420,10 @@ export default function FarmerOrders() {
   const getOrderActions = (order) => {
     const actions = [];
 
-    switch (order.status.toLowerCase()) {
+    // Get the farmer-specific status for determining actions
+    const farmerStatus = getFarmerStatus(order, currentFarmerEmail);
+
+    switch (farmerStatus.toLowerCase()) {
       case "pending":
         actions.push(
           <button
@@ -445,17 +484,14 @@ export default function FarmerOrders() {
   );
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
 
-  const getOrderSummary = () => {
-    const summary = {
-      total: orders.length,
-      pending: orders.filter((o) => o.status === "pending").length,
-      confirmed: orders.filter((o) => o.status === "confirmed").length,
-      shipped: orders.filter((o) => o.status === "shipped").length,
-      delivered: orders.filter((o) => o.status === "delivered").length,
-      cancelled: orders.filter((o) => o.status === "cancelled").length,
-    };
-    return summary;
-  };
+  const getOrderSummary = () => ({
+    total: orders.length,
+    pending: orders.filter((o) => o.status === "pending").length,
+    confirmed: orders.filter((o) => o.status === "confirmed").length,
+    shipped: orders.filter((o) => o.status === "shipped").length,
+    delivered: orders.filter((o) => o.status === "delivered").length,
+    cancelled: orders.filter((o) => o.status === "cancelled").length,
+  });
 
   if (status === "loading" || loading) {
     return <FarmerOrdersLoadingSkeleton />;
@@ -997,10 +1033,15 @@ export default function FarmerOrders() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-4">
-                        {getStatusBadge(order.status)}
+                        {getStatusBadge(
+                          getFarmerStatus(order, currentFarmerEmail),
+                        )}
                         <span className="text-lg font-bold text-gray-900 dark:text-white">
                           {formatPrice(
-                            order.farmerSubtotal || order.total || 0,
+                            order.stableFarmerSubtotal ||
+                              order.farmerSubtotal ||
+                              order.total ||
+                              0,
                           )}
                         </span>
                       </div>
@@ -1109,11 +1150,22 @@ export default function FarmerOrders() {
                                 <p className="text-sm text-gray-600 dark:text-gray-400">
                                   Unit Price: {formatPrice(item.price)}
                                 </p>
+                                {typeof item.subtotal === "number" &&
+                                  item.subtotal !==
+                                    item.price * item.quantity && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                      Subtotal: {formatPrice(item.subtotal)}
+                                    </p>
+                                  )}
                               </div>
                             </div>
                             <div className="text-right">
                               <p className="font-medium text-gray-900 dark:text-white">
-                                {formatPrice(item.price * item.quantity)}
+                                {formatPrice(
+                                  (item.subtotal ??
+                                    item.price * item.quantity) ||
+                                    0,
+                                )}
                               </p>
                             </div>
                           </div>

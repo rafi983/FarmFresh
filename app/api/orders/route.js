@@ -4,6 +4,10 @@ import Order from "@/models/Order";
 import Product from "@/models/Product";
 import User from "@/models/User";
 
+function encodeFarmerKey(email = "") {
+  return email.replace(/\./g, "(dot)");
+}
+
 // Response cache for identical requests (3 minutes for orders - shorter than products)
 const responseCache = new Map();
 const CACHE_TTL = 3 * 60 * 1000;
@@ -11,7 +15,6 @@ const CACHE_TTL = 3 * 60 * 1000;
 // Export cache clearing function for use by individual order updates
 export function clearOrdersCache() {
   responseCache.clear();
-  console.log("Orders cache cleared");
 }
 
 // Generate cache key for request
@@ -54,6 +57,7 @@ function setCachedResponse(cacheKey, data) {
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
+    const debugMode = searchParams.get("debug") === "1";
     const cacheKey = generateCacheKey(searchParams);
     const cachedResponse = getCachedResponse(cacheKey);
     if (cachedResponse) return NextResponse.json(cachedResponse);
@@ -66,6 +70,7 @@ export async function GET(request) {
       productId: searchParams.get("productId"),
       status: searchParams.get("status"),
     };
+
     const limit = parseInt(searchParams.get("limit")) || 50;
     const page = parseInt(searchParams.get("page")) || 1;
     const skip = (page - 1) * limit;
@@ -74,11 +79,13 @@ export async function GET(request) {
 
     const projection = {
       userId: 1,
+      customerId: 1, // Add this field to projection
       customerName: 1,
       customerEmail: 1,
       customerPhone: 1,
       customerInfo: 1,
       status: 1,
+      farmerStatuses: 1,
       total: 1,
       subtotal: 1,
       deliveryFee: 1,
@@ -103,8 +110,22 @@ export async function GET(request) {
       Order.countDocuments(query),
     ]);
 
+    console.log("📦 [ORDERS API] Raw orders from DB:", {
+      totalFound: orders.length,
+      totalCount,
+      firstFewOrders: orders.slice(0, 3).map((o) => ({
+        id: o._id,
+        userId: o.userId,
+        customerId: o.customerId,
+        status: o.status,
+        farmerStatuses: o.farmerStatuses,
+        total: o.total,
+      })),
+    });
+
     const { farmerEmail } = params;
     if (farmerEmail) {
+      // Farmer view: filter and scope orders to specific farmer
       orders = orders
         .map((order) => {
           const filteredItems = (order.items || []).filter((item) => {
@@ -117,9 +138,101 @@ export async function GET(request) {
               sum + (item.subtotal || item.price * item.quantity || 0),
             0,
           );
-          return { ...order, items: filteredItems, farmerSubtotal };
+          const key = encodeFarmerKey(farmerEmail);
+          const perFarmerStatus =
+            order.farmerStatuses?.[key] ||
+            order.farmerStatusesArr?.find((s) => s.farmerEmail === farmerEmail)
+              ?.status ||
+            order.status ||
+            "pending";
+          return {
+            ...order,
+            items: filteredItems,
+            farmerSubtotal,
+            status: perFarmerStatus,
+            effectiveFarmerStatus: perFarmerStatus,
+            originalStatus: order.status,
+          };
         })
         .filter(Boolean);
+    } else {
+      // Customer/global view: derive mixed status from farmerStatuses if present
+      orders = orders.map((order) => {
+        const originalStatus = order.status;
+        let map = order.farmerStatuses || {};
+
+        // MIGRATION: Initialize farmerStatuses for existing orders that don't have it
+        if (!order.farmerStatuses && order.items?.length > 0) {
+          // Extract unique farmer emails from items
+          const farmerEmails = [
+            ...new Set(
+              order.items
+                .map((item) => item.farmerEmail || item.farmer?.email)
+                .filter(Boolean),
+            ),
+          ];
+
+          // Initialize farmerStatuses with current order status
+          map = {};
+          farmerEmails.forEach((email) => {
+            map[encodeFarmerKey(email)] = originalStatus || "pending";
+          });
+
+          // Update the order in database asynchronously (don't wait for it)
+          Order.updateOne(
+            { _id: order._id },
+            {
+              $set: {
+                farmerStatuses: map,
+                farmerStatusesArr: farmerEmails.map((email) => ({
+                  farmerEmail: email,
+                  status: originalStatus || "pending",
+                })),
+              },
+            },
+          ).catch((err) =>
+            console.error("Failed to update farmerStatuses:", err),
+          );
+        }
+
+        const vals = Object.values(map).filter(Boolean);
+
+        if (vals.length > 0) {
+          const unique = [...new Set(vals)];
+          let derived;
+          if (unique.length === 1) derived = unique[0];
+          else if (unique.every((s) => s === "delivered"))
+            derived = "delivered";
+          else derived = "mixed";
+
+          if (derived && derived !== order.status) {
+            if (debugMode) {
+            }
+            return {
+              ...order,
+              status: derived,
+              farmerStatuses: map,
+              _debugDerived: true,
+            };
+          } else if (debugMode) {
+          }
+        } else if (debugMode) {
+        }
+
+        // Return order with potentially migrated farmerStatuses
+        return { ...order, farmerStatuses: map };
+      });
+    }
+
+    // Collect debug details if requested
+    let debugDetails;
+    if (debugMode) {
+      debugDetails = orders.map((o) => ({
+        id: o._id?.toString?.(),
+        status: o.status,
+        farmerStatuses: o.farmerStatuses,
+        derived: o._debugDerived || false,
+      }));
     }
 
     const queryTime = Date.now() - startTime;
@@ -133,7 +246,8 @@ export async function GET(request) {
         hasNext: page * limit < totalCount,
         hasPrev: page > 1,
       },
-      meta: { queryTime, cached: false },
+      meta: { queryTime, cached: false, debug: !!debugMode },
+      ...(debugMode ? { debugDetails } : {}),
     };
 
     setCachedResponse(cacheKey, response);
@@ -238,6 +352,20 @@ export async function POST(request) {
       ...orderData,
       ...userInfo,
       items: orderData.items,
+      farmerStatuses: (orderData.items || []).reduce((acc, it) => {
+        const fe = it.farmerEmail || it.farmer?.email;
+        if (fe && !acc[encodeFarmerKey(fe)])
+          acc[encodeFarmerKey(fe)] = orderData.status || "pending";
+        return acc;
+      }, {}),
+      farmerStatusesArr: (orderData.items || [])
+        .map((it) => it.farmerEmail || it.farmer?.email)
+        .filter(Boolean)
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .map((fe) => ({
+          farmerEmail: fe,
+          status: orderData.status || "pending",
+        })),
     });
 
     responseCache.clear();

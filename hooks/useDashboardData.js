@@ -57,7 +57,10 @@ export function useDashboardData() {
       };
 
       // Apply local status overrides (prevents optimistic flip then revert)
-      let finalOrders = applyOrderStatusOverrides(dashboardData.orders);
+      let finalOrders = applyOrderStatusOverrides(
+        dashboardData.orders,
+        userIds?.userEmail,
+      );
 
       // Merge with existing cached orders to preserve advanced local statuses
       const cached = queryClient.getQueryData([
@@ -80,9 +83,9 @@ export function useDashboardData() {
           if (!local) return incoming;
           const lr = statusRank[(local.status || "").toLowerCase()] ?? -1;
           const ir = statusRank[(incoming.status || "").toLowerCase()] ?? -1;
-          // If local status has progressed further, keep it and retain farmerSubtotal
+          let merged = incoming;
           if (lr > ir) {
-            return {
+            merged = {
               ...incoming,
               status: local.status,
               farmerSubtotal:
@@ -90,18 +93,41 @@ export function useDashboardData() {
                   ? local.farmerSubtotal
                   : incoming.farmerSubtotal,
             };
+          } else if (
+            lr === ir &&
+            typeof local.farmerSubtotal === "number" &&
+            (incoming.farmerSubtotal == null ||
+              Math.abs(incoming.farmerSubtotal - local.farmerSubtotal) <= 1)
+          ) {
+            merged = { ...incoming, farmerSubtotal: local.farmerSubtotal };
           }
-          // If same status and local has a farmerSubtotal but incoming doesn't or differs by minor rounding noise, keep local
-          if (lr === ir && typeof local.farmerSubtotal === "number") {
-            const incVal = incoming.farmerSubtotal;
-            if (
-              incVal == null ||
-              Math.abs(incVal - local.farmerSubtotal) <= 1
-            ) {
-              return { ...incoming, farmerSubtotal: local.farmerSubtotal };
-            }
+
+          merged.farmerStatuses = {
+            ...(local.farmerStatuses || {}),
+            ...(incoming.farmerStatuses || {}), // Server data overrides cached data
+          };
+
+          const hasRecentOverride =
+            window.farmfreshStatusOverrides &&
+            Object.keys(window.farmfreshStatusOverrides).some((orderId) => {
+              const override = window.farmfreshStatusOverrides[orderId];
+              const isRecent =
+                override && Date.now() - override.timestamp < 3000; // 3 seconds
+              return isRecent && orderId === (incoming._id || incoming.id);
+            });
+
+          // If global status is mixed derive current farmer's scoped status
+          // BUT NOT during active updates to prevent flickering
+          if (
+            merged.status === "mixed" &&
+            userIds?.userEmail &&
+            merged.farmerStatuses?.[userIds.userEmail] &&
+            !hasRecentOverride // Don't override during recent updates
+          ) {
+            merged.status = merged.farmerStatuses[userIds.userEmail];
           }
-          return incoming;
+
+          return merged;
         });
       }
 
@@ -125,6 +151,10 @@ export function useDashboardData() {
             ...o,
             items: mergePreserveMedia(prev?.items, items),
             stableFarmerSubtotal: resolvedStable,
+            farmerStatuses: {
+              ...(o.farmerStatuses || {}),
+              ...(prev?.farmerStatuses || {}),
+            },
           };
         });
       }

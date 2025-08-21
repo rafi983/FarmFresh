@@ -5,6 +5,7 @@ export const ORDER_STATUSES = {
   SHIPPED: "shipped",
   DELIVERED: "delivered",
   CANCELLED: "cancelled",
+  MIXED: "mixed", // added to reflect multi-farmer mixed progression
 };
 
 export const DATE_FILTERS = {

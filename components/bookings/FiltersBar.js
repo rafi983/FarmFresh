@@ -47,6 +47,7 @@ export default function FiltersBar({
             <option value={ORDER_STATUSES.SHIPPED}>Shipped</option>
             <option value={ORDER_STATUSES.DELIVERED}>Delivered</option>
             <option value={ORDER_STATUSES.CANCELLED}>Cancelled</option>
+            <option value={ORDER_STATUSES.MIXED}>Mixed</option>
           </select>
           <select
             value={dateFilter}

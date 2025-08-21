@@ -44,6 +44,11 @@ export const getStatusBadge = (status) => {
       icon: "fas fa-truck",
       pulse: true,
     },
+    mixed: {
+      bg: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border-orange-200",
+      icon: "fas fa-layer-group",
+      pulse: true,
+    },
   };
   const config = statusConfig[status?.toLowerCase()] || statusConfig.pending;
   return (

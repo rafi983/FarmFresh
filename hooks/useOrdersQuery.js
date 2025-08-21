@@ -12,27 +12,34 @@ export function useOrdersQuery(userId, options = {}) {
     queryKey: [...ORDERS_QUERY_KEY, normalizedUserId], // Simplified key structure
     queryFn: async () => {
       if (!normalizedUserId) {
+        console.log("⚠️ [ORDERS QUERY] No userId, returning empty orders");
         return { orders: [] };
       }
 
       // Pass userId as a query parameter directly to match API expectations
-      const response = await fetch(
-        `/api/orders?userId=${encodeURIComponent(normalizedUserId)}&limit=1000`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
+      const url = `/api/orders?userId=${encodeURIComponent(normalizedUserId)}&limit=1000`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+      });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ [ORDERS QUERY] Fetch failed:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+        });
         throw new Error(
           `Failed to fetch orders: ${response.status} ${response.statusText}`,
         );
       }
 
       const data = await response.json();
+
       return data;
     },
     enabled: !!normalizedUserId, // Only run query if userId exists

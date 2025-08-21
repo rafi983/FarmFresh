@@ -4,6 +4,10 @@ import Order from "@/models/Order";
 import Product from "@/models/Product";
 import { ObjectId } from "mongodb";
 
+function encodeFarmerKey(email = "") {
+  return email.replace(/\./g, "(dot)");
+}
+
 export async function GET(request, { params }) {
   try {
     const { orderId } = params;
@@ -44,7 +48,6 @@ export async function PATCH(request, { params }) {
         { status: 400 },
       );
 
-    // Validate ObjectId format
     if (!ObjectId.isValid(orderId))
       return NextResponse.json(
         { error: "Invalid order ID format" },
@@ -56,57 +59,216 @@ export async function PATCH(request, { params }) {
     if (!existingOrder)
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
-    const isBeingCancelled =
-      updateData.status &&
-      ["cancelled", "returned"].includes(updateData.status) &&
-      !["cancelled", "returned"].includes(existingOrder.status);
+    const { status: newStatus, farmerEmail } = updateData;
 
-    const isBeingDelivered =
-      updateData.status === "delivered" && existingOrder.status !== "delivered";
-
-    const bulkOps = [];
-    if (isBeingDelivered && existingOrder.items) {
-      for (const item of existingOrder.items) {
-        if (!item.productId) continue;
-        bulkOps.push({
-          updateOne: {
-            filter: { _id: item.productId },
-            update: {
-              $inc: { purchaseCount: item.quantity },
-              $set: { updatedAt: new Date() },
-            },
-          },
-        });
+    // If farmerEmail missing but order has multiple distinct farmer emails, treat as per-farmer update for the first farmer's segment
+    let inferredFarmerEmail = farmerEmail;
+    if (!inferredFarmerEmail && newStatus) {
+      const distinctFarmers = Array.from(
+        new Set(
+          (existingOrder.items || [])
+            .map((it) => it.farmerEmail || it.farmer?.email)
+            .filter(Boolean),
+        ),
+      );
+      if (distinctFarmers.length > 1) {
+        inferredFarmerEmail = distinctFarmers[0];
       }
     }
-    if (isBeingCancelled && existingOrder.items) {
-      for (const item of existingOrder.items) {
-        if (!item.productId) continue;
-        bulkOps.push({
-          updateOne: {
-            filter: { _id: item.productId },
-            update: {
-              $inc: { stock: item.quantity },
-              $set: { updatedAt: new Date() },
+
+    const effectiveFarmerEmail = inferredFarmerEmail;
+
+    // Build distinct farmer list once
+    const allDistinctFarmers = Array.from(
+      new Set(
+        (existingOrder.items || [])
+          .map((it) => it.farmerEmail || it.farmer?.email)
+          .filter(Boolean),
+      ),
+    );
+
+    let isPerFarmer = Boolean(effectiveFarmerEmail && newStatus);
+
+    // Prefill baseline map so first per-farmer update produces a mixed status afterward
+    if (isPerFarmer) {
+      const baselineMap = { ...(existingOrder.farmerStatuses || {}) };
+      const prevGlobal = existingOrder.status || "pending";
+      let added = false;
+      for (const fe of allDistinctFarmers) {
+        const enc = encodeFarmerKey(fe);
+        if (!baselineMap[enc]) {
+          baselineMap[enc] = prevGlobal;
+          added = true;
+        }
+      }
+      if (added) {
+        // persist baseline before we apply specific farmer change (so derivation sees both differing statuses after update)
+        await Order.updateOne(
+          { _id: orderId },
+          { $set: { farmerStatuses: baselineMap, updatedAt: new Date() } },
+        );
+        // refresh existingOrder snapshot baseline (do not mutate statuses for chosen farmer yet)
+        existingOrder.farmerStatuses = baselineMap;
+      }
+    }
+
+    // If farmerEmail provided, treat as per-farmer status update and do NOT globally change all items
+    isPerFarmer = Boolean(effectiveFarmerEmail && newStatus);
+
+    // Determine items impacted
+    const impactedItems = isPerFarmer
+      ? (existingOrder.items || []).filter(
+          (it) =>
+            (it.farmerEmail || it.farmer?.email) &&
+            (it.farmerEmail || it.farmer?.email) === effectiveFarmerEmail,
+        )
+      : existingOrder.items || [];
+
+    const prevFarmerStatus = isPerFarmer
+      ? existingOrder.farmerStatuses?.[encodeFarmerKey(effectiveFarmerEmail)] ||
+        existingOrder.farmerStatuses?.[effectiveFarmerEmail]
+      : existingOrder.status;
+
+    const isBeingCancelled =
+      newStatus &&
+      ["cancelled", "returned"].includes(newStatus) &&
+      !["cancelled", "returned"].includes(prevFarmerStatus);
+
+    const isBeingDelivered =
+      newStatus === "delivered" && prevFarmerStatus !== "delivered";
+
+    const bulkOps = [];
+    if (impactedItems && impactedItems.length) {
+      if (isBeingDelivered) {
+        for (const item of impactedItems) {
+          if (!item.productId) continue;
+          bulkOps.push({
+            updateOne: {
+              filter: { _id: item.productId },
+              update: {
+                $inc: { purchaseCount: item.quantity },
+                $set: { updatedAt: new Date() },
+              },
             },
-          },
-        });
+          });
+        }
+      } else if (isBeingCancelled) {
+        for (const item of impactedItems) {
+          if (!item.productId) continue;
+          bulkOps.push({
+            updateOne: {
+              filter: { _id: item.productId },
+              update: {
+                $inc: { stock: item.quantity },
+                $set: { updatedAt: new Date() },
+              },
+            },
+          });
+        }
       }
     }
     if (bulkOps.length) await Product.collection.bulkWrite(bulkOps);
 
-    // Status history handling
-    let pushHistory = null;
-    if (updateData.statusHistory) {
-      pushHistory = updateData.statusHistory;
-      delete updateData.statusHistory;
+    // Prepare update operations
+    const updateOps = { $set: { updatedAt: new Date() } };
+    let historyEntry = null;
+
+    if (isPerFarmer) {
+      const encKey = encodeFarmerKey(effectiveFarmerEmail);
+      updateOps.$set[`farmerStatuses.${encKey}`] = newStatus;
+      // Also maintain array form
+      if (!updateOps.$set.farmerStatusesArr) {
+        // rebuild later
+      }
+      historyEntry = {
+        status: newStatus,
+        at: new Date(),
+        note: `Farmer ${effectiveFarmerEmail} set status to ${newStatus}${effectiveFarmerEmail !== farmerEmail && farmerEmail ? " (inferred)" : ""}`,
+      };
+    } else if (newStatus) {
+      updateOps.$set.status = newStatus;
+      historyEntry = {
+        status: newStatus,
+        at: new Date(),
+        note: updateData.statusHistory?.note || "Global update",
+      };
     }
 
-    const updateOps = { $set: { ...updateData, updatedAt: new Date() } };
-    if (pushHistory) updateOps.$push = { statusHistory: pushHistory };
+    if (historyEntry) {
+      updateOps.$push = { statusHistory: historyEntry };
+    }
+
+    // Remove processed keys
+    delete updateData.statusHistory;
+
+    // Apply any remaining direct field sets besides status / farmerEmail
+    Object.entries(updateData).forEach(([k, v]) => {
+      if (["status", "farmerEmail"].includes(k)) return;
+      if (!updateOps.$set[k]) updateOps.$set[k] = v;
+    });
 
     await Order.updateOne({ _id: orderId }, updateOps);
-    const updatedOrder = await Order.findById(orderId).lean();
+    let updatedOrder = await Order.findById(orderId).lean();
+
+    // Handle per-farmer updates and global status derivation in a single operation
+    if (isPerFarmer) {
+      const encKey = encodeFarmerKey(effectiveFarmerEmail);
+      const map = updatedOrder.farmerStatuses || {};
+      if (!map[encKey]) map[encKey] = newStatus;
+
+      let arr = updatedOrder.farmerStatusesArr || [];
+      const idx = arr.findIndex((e) => e.farmerEmail === effectiveFarmerEmail);
+      if (idx >= 0) arr[idx].status = newStatus;
+      else arr.push({ farmerEmail: effectiveFarmerEmail, status: newStatus });
+
+      // Update the map with the new status for this farmer
+      map[encKey] = newStatus;
+
+      // Derive global status from per-farmer statuses
+      const allStatuses = Object.values(map);
+      let derivedStatus;
+      if (allStatuses.length) {
+        const unique = [...new Set(allStatuses)];
+        console.log("🔍 [API DEBUG] Status derivation:", {
+          allStatuses,
+          unique,
+          uniqueLength: unique.length,
+        });
+
+        if (unique.length === 1) {
+          derivedStatus = unique[0];
+        } else if (unique.every((s) => s === "delivered")) {
+          derivedStatus = "delivered";
+        } else {
+          derivedStatus = "mixed";
+        }
+      }
+
+      // Single atomic update for farmer status + global status + array sync
+      const atomicUpdate = {
+        $set: {
+          farmerStatusesArr: arr,
+          [`farmerStatuses.${encKey}`]: newStatus, // Ensure farmer status is properly set
+          updatedAt: new Date(),
+        },
+      };
+
+      // Always update global status for mixed orders to ensure consistency
+      if (derivedStatus) {
+        atomicUpdate.$set.status = derivedStatus;
+        console.log("🔍 [API DEBUG] Setting global status to:", derivedStatus);
+      }
+
+      await Order.updateOne({ _id: orderId }, atomicUpdate);
+
+      // Update local object to reflect changes
+      updatedOrder.farmerStatusesArr = arr;
+      updatedOrder.farmerStatuses = map;
+      if (derivedStatus) {
+        updatedOrder.status = derivedStatus;
+      }
+    }
+
     updatedOrder.statusHistory = Array.isArray(updatedOrder.statusHistory)
       ? updatedOrder.statusHistory
       : [];
@@ -120,6 +282,7 @@ export async function PATCH(request, { params }) {
       message: "Order updated successfully",
       order: updatedOrder,
       stockRestored: isBeingCancelled || undefined,
+      perFarmer: isPerFarmer || undefined,
     });
   } catch (error) {
     console.error("Update order error (mongoose):", error);
