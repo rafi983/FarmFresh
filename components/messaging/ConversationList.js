@@ -124,6 +124,7 @@ export default function ConversationList({
                     {/* Enhanced avatar */}
                     <div className="relative">
                       {conversation.otherParticipant?.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={conversation.otherParticipant.image}
                           alt={conversation.otherParticipant.name}

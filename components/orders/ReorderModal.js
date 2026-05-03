@@ -353,6 +353,7 @@ export default function ReorderModal({
                         className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800 hover:shadow-md transition-shadow"
                       >
                         <div className="flex items-center space-x-4">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={
                               item.image ||

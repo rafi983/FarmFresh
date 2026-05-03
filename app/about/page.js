@@ -218,13 +218,13 @@ export default function About() {
               <i className="fas fa-envelope mr-2"></i>
               Contact Us
             </a>
-            <a
+            <Link
               href="/farmers"
               className="inline-flex items-center justify-center px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition"
             >
               <i className="fas fa-users mr-2"></i>
               Join as Farmer
-            </a>
+            </Link>
           </div>
         </div>
       </div>

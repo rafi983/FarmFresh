@@ -100,9 +100,12 @@ export function GlobalLoadingSkeleton() {
   );
 }
 
-export default {
+const skeletonsExport = {
   ProductCardSkeleton,
   FilterSidebarSkeleton,
   HeaderSkeleton,
   GlobalLoadingSkeleton,
 };
+
+export default skeletonsExport;
+

@@ -115,6 +115,7 @@ function MessageBubble({
         <div className="flex-shrink-0 mr-3">
           {showAvatar ? (
             otherParticipant?.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={otherParticipant.image}
                 alt={otherParticipant.name}
@@ -267,6 +268,7 @@ function MessageBubble({
             <>
               {message.type === "image" && message.fileUrl && (
                 <div className="mb-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={message.fileUrl}
                     alt="Shared image"
