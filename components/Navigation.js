@@ -114,25 +114,16 @@ export default function Navigation() {
       // Close the user menu first
       setShowUserMenu(false);
 
-      // Clear any existing modals or intercepted routes by going to home first
-      router.replace("/");
-
-      // Small delay to ensure navigation completes before sign out
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
       // Sign out from NextAuth and clear context
       await signOut({ redirect: false });
       logout();
 
-      // Ensure we stay on home page and refresh
+      // Navigate client-side to home without hard refresh
       router.replace("/");
-
-      // Force a hard refresh to clear any modal states
-      window.location.href = "/";
     } catch (error) {
       console.error("Logout error:", error);
-      // Even if there's an error, still redirect to home
-      window.location.href = "/";
+      // Fallback to client-side navigation
+      router.replace("/");
     }
   };
 

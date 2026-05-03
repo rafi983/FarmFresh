@@ -7,6 +7,23 @@ import Order from "@/models/Order";
 import Review from "@/models/Review";
 import User from "@/models/User";
 
+function clearProductsListCache() {
+  try {
+    const productsRoute = require("../route");
+    if (productsRoute?.responseCache) {
+      productsRoute.responseCache.clear();
+    }
+    if (productsRoute?.clearProductsCache) {
+      productsRoute.clearProductsCache();
+    }
+    if (productsRoute?.clearAllProductsCaches) {
+      productsRoute.clearAllProductsCaches();
+    }
+  } catch (error) {
+    console.log("Products cache clearing note:", error.message);
+  }
+}
+
 // Replace calculateProductPerformanceOptimized to use Mongoose
 async function calculateProductPerformanceOptimizedMongoose(productId) {
   try {
@@ -271,6 +288,7 @@ export async function PUT(request, { params }) {
     });
     if (!updated)
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    clearProductsListCache();
     return NextResponse.json({
       success: true,
       message: "Product updated successfully",
@@ -315,6 +333,7 @@ export async function DELETE(request, { params }) {
     }
     await Product.deleteOne({ _id: id });
     await User.updateMany({ favorites: id }, { $pull: { favorites: id } });
+    clearProductsListCache();
     return NextResponse.json({
       message: "Product deleted successfully",
       deletedProductId: id,
