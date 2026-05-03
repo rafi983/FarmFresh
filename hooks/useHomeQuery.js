@@ -1,4 +1,3 @@
-import { apiService } from "@/lib/api-service";
 import { useQuery } from "@tanstack/react-query";
 
 // Query keys for home page data
@@ -12,70 +11,33 @@ export function useHomeQuery(options = {}) {
     queryKey: HOME_QUERY_KEY,
     queryFn: async () => {
       try {
-        // Fetch all home page data in parallel
-        const [featuredData, categoriesResponse] = await Promise.all([
-          // Get featured products with smaller limit for home page
-          apiService.getProducts({
-            sortBy: "popular",
-            limit: 8,
-          }),
-          // Get real categories data with counts from API
-          fetch("/api/categories", {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }).then((res) => res.json()),
-        ]);
+        const response = await fetch("/api/home", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
 
-        // Process featured products
-        let products = featuredData.products || [];
-        if (
-          products.length === 0 ||
-          !products.some((p) => p.purchaseCount > 0)
-        ) {
-          // Fallback to newest products if no popular ones
-          const fallbackData = await apiService.getProducts({
-            sortBy: "newest",
-            limit: 8,
-          });
-          products = fallbackData.products || [];
+        if (!response.ok) {
+          throw new Error("Failed to fetch home data");
         }
 
-        // Process categories with real database counts
-        const realCategories = categoriesResponse.categories || [];
-
-        // Debug: Log the actual category data from API
-        console.log("🔍 Categories from API:", realCategories);
-
-        // Use the category data directly from API (which now includes emojis)
-        const categoryData = realCategories.map((cat) => ({
-          name: cat.name,
-          icon: cat.icon, // Use emoji from API directly
-          bgColor: cat.bgColor,
-          count: cat.count,
-          // Add emoji field for backward compatibility
-          emoji: cat.icon, // Since API now returns emoji in icon field
-        }));
-
-        // Sort by count (highest first) and limit to top 6 for display
-        const sortedCategories = categoryData
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 6);
-
-        return {
-          featuredProducts: products,
-          categories: realCategories,
-          categoryData: sortedCategories,
-        };
+        return await response.json();
       } catch (error) {
         console.error("Error fetching home data:", error);
 
-        // Return fallback data structure in case of error
         return {
           featuredProducts: [],
           categories: [],
           categoryData: [],
+          categoryOptions: ["All Categories"],
+          highlights: [],
+          farmerSpotlights: [],
+          testimonials: [],
+          trustMetrics: [],
+          heroStats: [],
+          seasonalBox: null,
+          stats: {},
         };
       }
     },

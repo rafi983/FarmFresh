@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ProductCard from "@/components/products/ProductCard";
 import { useHomeQuery } from "@/hooks/useHomeQuery";
@@ -12,22 +12,20 @@ export default function Home() {
   const router = useRouter();
 
   // Use React Query for consistent data fetching like bookings page
-  const { data: homeData, isLoading: loading, error } = useHomeQuery();
+  const { data: homeData, isLoading: loading } = useHomeQuery();
 
   // Extract data from React Query response with fallbacks
   const featuredProducts = homeData?.featuredProducts || [];
-  const categories = homeData?.categories || [];
   const categoryData = homeData?.categoryData || [];
-
-  const categoryOptions = [
-    "All Categories",
-    "Vegetables",
-    "Fruits",
-    "Grains",
-    "Dairy",
-    "Honey",
-    "Herbs",
-  ];
+  const categoryOptions = homeData?.categoryOptions?.length
+    ? homeData.categoryOptions
+    : ["All Categories"];
+  const highlights = homeData?.highlights || [];
+  const farmerSpotlights = homeData?.farmerSpotlights || [];
+  const testimonials = homeData?.testimonials || [];
+  const trustMetrics = homeData?.trustMetrics || [];
+  const heroStats = homeData?.heroStats || [];
+  const topSellingFarmer = homeData?.topSellingFarmer || null;
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -135,19 +133,19 @@ export default function Home() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-8 max-w-md mx-auto">
-              <div key="farmers-stat" className="text-center">
-                <div className="text-3xl font-bold">500+</div>
-                <div className="text-green-200">Local Farmers</div>
-              </div>
-              <div key="products-stat" className="text-center">
-                <div className="text-3xl font-bold">2000+</div>
-                <div className="text-green-200">Fresh Products</div>
-              </div>
-              <div key="customers-stat" className="text-center">
-                <div className="text-3xl font-bold">10k+</div>
-                <div className="text-green-200">Happy Customers</div>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl mx-auto">
+              {heroStats.length > 0 ? (
+                heroStats.map((stat) => (
+                  <div key={stat.label} className="text-center">
+                    <div className="text-3xl font-bold">{stat.value}</div>
+                    <div className="text-green-200">{stat.label}</div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full text-center text-green-200">
+                  Loading community stats...
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -179,7 +177,7 @@ export default function Home() {
                       className={`${classes.bg} ${classes.hover} rounded-2xl p-6 text-center transition`}
                     >
                       {/* Use emoji directly for better visibility */}
-                      <div className="text-3xl mb-3">{category.emoji}</div>
+                      <div className="text-3xl mb-3">{category.icon}</div>
                       <h3 className="font-semibold text-gray-900 dark:text-white">
                         {category.name}
                       </h3>
@@ -200,6 +198,44 @@ export default function Home() {
                 <p className="text-gray-600 dark:text-gray-400">
                   No categories available at the moment.
                 </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Highlights */}
+      <section className="py-16 bg-gray-50 dark:bg-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+              Market Highlights
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Trending categories and fresh picks happening right now.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {highlights.length > 0 ? (
+              highlights.map((highlight) => (
+                <div
+                  key={highlight.title}
+                  className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-primary-100 dark:bg-primary-900 flex items-center justify-center mb-4 text-2xl">
+                    <span>{highlight.icon}</span>
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                    {highlight.title}
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {highlight.description}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center text-gray-600 dark:text-gray-400">
+                Highlights will appear once new listings are available.
               </div>
             )}
           </div>
@@ -261,53 +297,200 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Why Choose Us */}
+      {/* Farmer Spotlight */}
+      <section className="py-16 bg-white dark:bg-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                Farmer Spotlight
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 max-w-2xl">
+                Meet the growers bringing you seasonal goodness each week.
+              </p>
+            </div>
+            <Link
+              href="/farmers"
+              className="text-primary-600 dark:text-primary-400 font-medium hover:text-primary-700 dark:hover:text-primary-300"
+            >
+              Explore Farmers <i className="fas fa-arrow-right ml-1"></i>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {farmerSpotlights.length > 0 ? (
+              farmerSpotlights.map((farmer) => (
+                <div
+                  key={farmer.name}
+                  className="rounded-2xl border border-gray-100 dark:border-gray-700 p-6 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900"
+                >
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-14 h-14 rounded-2xl bg-primary-600 text-white flex items-center justify-center text-lg font-semibold">
+                      {farmer.initials}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {farmer.name}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {farmer.location}
+                      </p>
+                    </div>
+                  </div>
+                  {farmer.specialty && (
+                    <p className="text-gray-700 dark:text-gray-300 mb-4">
+                      {farmer.specialty}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                    <span>Top Rated</span>
+                    <span className="text-primary-600 dark:text-primary-400 font-semibold">
+                      <i className="fas fa-star mr-1"></i>
+                      {farmer.rating}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center text-gray-600 dark:text-gray-400">
+                Farmer spotlights will appear soon.
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Top Selling Farmer */}
+      {topSellingFarmer && (
+        <section className="py-16 bg-gray-50 dark:bg-gray-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-10 items-center">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                  Top Selling Farm
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  {topSellingFarmer.name} is leading the marketplace right now.
+                </p>
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-14 h-14 rounded-2xl bg-primary-600 text-white flex items-center justify-center text-lg font-semibold">
+                    {topSellingFarmer.initials}
+                  </div>
+                  <div>
+                    <div className="text-xl font-semibold text-gray-900 dark:text-white">
+                      {topSellingFarmer.name}
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {topSellingFarmer.location}
+                    </div>
+                  </div>
+                </div>
+                {topSellingFarmer.specialty && (
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Specialties: {topSellingFarmer.specialty}
+                  </p>
+                )}
+              </div>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    Average Rating
+                  </span>
+                  <span className="text-primary-600 dark:text-primary-400 font-semibold">
+                    <i className="fas fa-star mr-1"></i>
+                    {topSellingFarmer.rating}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Explore their products and support the top performing farm.
+                </p>
+                <div className="mt-6">
+                  <Link
+                    href="/farmers"
+                    className="inline-flex items-center text-primary-600 dark:text-primary-400 font-medium hover:text-primary-700 dark:hover:text-primary-300"
+                  >
+                    Visit Farmer Profile
+                    <i className="fas fa-arrow-right ml-2"></i>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Community Metrics */}
       <section className="py-16 bg-white dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-              Why Choose FarmFresh?
+              Community Metrics
             </h2>
             <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-              We connect you directly with local farmers for the freshest
-              produce
+              Live signals from our marketplace and growing community.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div key="fast-delivery" className="text-center">
-              <div className="bg-primary-100 dark:bg-primary-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="fas fa-truck text-2xl text-primary-600 dark:text-primary-400"></i>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {trustMetrics.length > 0 ? (
+              trustMetrics.map((metric) => (
+                <div
+                  key={metric.label}
+                  className="text-center border border-gray-100 dark:border-gray-700 rounded-2xl p-6"
+                >
+                  <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                    {metric.value}
+                  </div>
+                  <div className="text-gray-600 dark:text-gray-400 text-sm">
+                    {metric.label}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center text-gray-600 dark:text-gray-400">
+                Metrics will appear once new data is available.
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                Fast Delivery
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                Fresh produce delivered within 24 hours of harvest
-              </p>
-            </div>
-            <div key="quality-guaranteed" className="text-center">
-              <div className="bg-primary-100 dark:bg-primary-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="fas fa-shield-alt text-2xl text-primary-600 dark:text-primary-400"></i>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-16 bg-gray-50 dark:bg-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+              Loved by Local Shoppers
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Real stories from customers who shop fresh every week.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {testimonials.length > 0 ? (
+              testimonials.map((testimonial) => (
+                <div
+                  key={`${testimonial.name}-${testimonial.title}`}
+                  className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm"
+                >
+                  <p className="text-gray-700 dark:text-gray-300 mb-6">
+                    “{testimonial.quote}”
+                  </p>
+                  <div>
+                    <div className="font-semibold text-gray-900 dark:text-white">
+                      {testimonial.name}
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {testimonial.title}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center text-gray-600 dark:text-gray-400">
+                Customer stories will appear once reviews are submitted.
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                Quality Guaranteed
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                100% organic and pesticide-free produce
-              </p>
-            </div>
-            <div key="support-local" className="text-center">
-              <div className="bg-primary-100 dark:bg-primary-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="fas fa-handshake text-2xl text-primary-600 dark:text-primary-400"></i>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                Support Local
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                Direct support to local farmers and communities
-              </p>
-            </div>
+            )}
           </div>
         </div>
       </section>
