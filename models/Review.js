@@ -5,7 +5,13 @@ const ReviewSchema = new Schema(
     productId: { type: Schema.Types.Mixed, required: true },
     userId: { type: String },
     rating: { type: Number, min: 1, max: 5, required: true },
+    title: { type: String, default: "" },
     comment: { type: String, default: "" },
+    pros: { type: String, default: "" },
+    cons: { type: String, default: "" },
+    wouldRecommend: { type: Boolean, default: true },
+    isAnonymous: { type: Boolean, default: false },
+    tags: { type: [String], default: [] },
     reviewer: { type: String },
   },
   {

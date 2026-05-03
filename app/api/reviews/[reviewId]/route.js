@@ -17,6 +17,8 @@ export async function PUT(request, { params }) {
       isAnonymous,
       tags,
       userId,
+      userName,
+      userEmail,
     } = body;
 
     if (!rating || !comment || !userId) {
@@ -52,6 +54,11 @@ export async function PUT(request, { params }) {
     if (wouldRecommend !== undefined) updateDoc.wouldRecommend = wouldRecommend;
     if (isAnonymous !== undefined) updateDoc.isAnonymous = isAnonymous;
     if (tags !== undefined) updateDoc.tags = tags;
+    if (isAnonymous !== undefined || userName || userEmail) {
+      updateDoc.reviewer = isAnonymous
+        ? "Anonymous"
+        : userName || userEmail || existing.reviewer || "Anonymous";
+    }
 
     await Review.updateOne({ _id: reviewId }, { $set: updateDoc });
 

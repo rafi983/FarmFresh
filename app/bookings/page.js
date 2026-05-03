@@ -12,7 +12,7 @@ import FiltersBar from "@/components/bookings/FiltersBar";
 import OrderCard from "@/components/bookings/OrderCard";
 import StatsCards from "@/components/bookings/StatsCards";
 import PaginationBar from "@/components/bookings/PaginationBar";
-import InitialLoadingScreen from "@/components/bookings/EmptyState";
+import InitialLoadingScreen from "@/components/bookings/InitialLoadingScreen";
 import EmptyState from "@/components/bookings/EmptyState";
 import dynamic from "next/dynamic";
 import Toast from "@/components/Toast";

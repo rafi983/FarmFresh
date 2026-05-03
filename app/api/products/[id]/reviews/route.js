@@ -22,7 +22,9 @@ export async function GET(request, { params }) {
 
     // Fetch all (bounded by reasonable expectations); for very large counts consider cursor-based pagination
     let allReviews = await Review.find({ productId: { $in: variants } })
-      .select("rating comment createdAt reviewer userId productId")
+      .select(
+        "rating title comment pros cons wouldRecommend isAnonymous tags createdAt reviewer userId productId",
+      )
       .sort({ createdAt: -1 })
       .lean();
 
@@ -89,7 +91,8 @@ export async function GET(request, { params }) {
 export async function POST(request, { params }) {
   try {
     const { id } = params;
-    const { rating, comment, userId } = await request.json();
+    const { rating, comment, userId, userName, userEmail, isAnonymous, title, pros, cons, wouldRecommend, tags } =
+      await request.json();
     if (!rating || !comment || !userId) {
       return NextResponse.json(
         { error: "Rating, comment, and user ID are required" },
@@ -135,12 +138,23 @@ export async function POST(request, { params }) {
       );
     }
 
+    const reviewerName = isAnonymous
+      ? "Anonymous"
+      : userName || userEmail || "Anonymous";
+
     const reviewDoc = await Review.create({
       productId: id,
       userId,
       rating: Number(rating),
+      title: title || "",
       comment,
-      reviewer: "Anonymous",
+      pros: pros || "",
+      cons: cons || "",
+      wouldRecommend:
+        typeof wouldRecommend === "boolean" ? wouldRecommend : true,
+      isAnonymous: !!isAnonymous,
+      tags: Array.isArray(tags) ? tags : [],
+      reviewer: reviewerName,
     });
 
     const { averageRating, totalReviews } =

@@ -399,7 +399,7 @@ function ProductDetailsContent() {
       if (!confirm("Are you sure you want to delete this review?")) return;
       setIsDeletingReview(true);
       try {
-        await deleteReview(reviewId);
+        await deleteReview({ reviewId, userId: currentUserId });
         addToast({ message: "Review deleted", type: "success" });
         if (
           userExistingReview &&
@@ -415,7 +415,7 @@ function ProductDetailsContent() {
         setIsDeletingReview(false);
       }
     },
-    [deleteReview, addToast, userExistingReview, checkUserPurchase],
+    [deleteReview, addToast, userExistingReview, checkUserPurchase, currentUserId],
   );
 
   // Farmer-specific handlers
