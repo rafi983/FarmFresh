@@ -256,7 +256,7 @@ export default function EditProduct({ params }) {
 
       console.log("🔄 [Edit] Applying optimistic cache update...");
       queryClient.setQueryData(
-        ["dashboard", userIds.userId, userIds.userEmail],
+        ["dashboard", userIds.userEmail],
         (oldData) => {
           if (!oldData) return oldData;
 
@@ -339,7 +339,7 @@ export default function EditProduct({ params }) {
         setTimeout(async () => {
           // Use gentle invalidation that doesn't immediately refetch (same as bulk update)
           queryClient.invalidateQueries({
-            queryKey: ["dashboard", userIds.userId, userIds.userEmail],
+            queryKey: ["dashboard", userIds.userEmail],
             exact: true,
             refetchType: "none", // Don't refetch immediately - keep optimistic updates
           });
@@ -364,7 +364,7 @@ export default function EditProduct({ params }) {
           "🔄 [Edit] Reverting optimistic updates due to API error...",
         );
         queryClient.invalidateQueries({
-          queryKey: ["dashboard", userIds.userId, userIds.userEmail],
+          queryKey: ["dashboard", userIds.userEmail],
           exact: true,
         });
         queryClient.invalidateQueries({
@@ -387,7 +387,7 @@ export default function EditProduct({ params }) {
 
       console.log("🔄 [Edit] Reverting optimistic updates due to error...");
       queryClient.invalidateQueries({
-        queryKey: ["dashboard", userIds.userId, userIds.userEmail],
+        queryKey: ["dashboard", userIds.userEmail],
         exact: true,
       });
       queryClient.invalidateQueries({
