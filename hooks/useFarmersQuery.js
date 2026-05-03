@@ -1,5 +1,5 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiService } from "@/lib/api-service";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // Query keys for React Query
 export const FARMERS_QUERY_KEY = ["farmers"];
@@ -12,10 +12,11 @@ export function useFarmersQuery(options = {}) {
       const data = await apiService.getFarmers();
       return data;
     },
-    staleTime: 1 * 60 * 1000, // Reduced to 1 minute for faster updates
-    gcTime: 5 * 60 * 1000, // Reduced to 5 minutes
+    staleTime: 0,
+    gcTime: 0,
     refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    refetchOnMount: "always",
+    refetchOnReconnect: true,
     retry: 2,
     ...options,
   });

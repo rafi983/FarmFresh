@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiService } from "@/lib/api-service";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export function useUnifiedProductsData(filters = {}) {
   const queryClient = useQueryClient();
@@ -23,10 +23,11 @@ export function useUnifiedProductsData(filters = {}) {
         pagination: productsData?.pagination || {},
       };
     },
-    staleTime: 30 * 1000, // Keep data fresh for 30 seconds to allow optimistic updates
-    gcTime: 5 * 60 * 1000, // Cache for 5 minutes
-    refetchOnMount: false, // Don't refetch when component mounts - use cache
-    refetchOnWindowFocus: false, // Don't refetch when window gets focus - use cache
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     retry: 3,
     retryDelay: 1000,
   });

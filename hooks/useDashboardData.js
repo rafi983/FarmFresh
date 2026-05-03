@@ -1,21 +1,21 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSession } from "next-auth/react";
 import { apiService } from "@/lib/api-service";
+import {
+    computeFarmerScopedData,
+    mergePreserveMedia,
+} from "@/lib/order-farmer-utils";
 import { applyOrderStatusOverrides } from "@/lib/order-status-overrides";
 import {
-  computeFarmerScopedData,
-  mergePreserveMedia,
-} from "@/lib/order-farmer-utils";
-import {
-  updateProductAcrossCaches,
-  bulkUpdateProductsAcrossCaches,
-  addOptimisticProduct,
-  replaceTempProduct,
-  removeProductAcrossCaches,
-  invalidateProductsAndDashboard,
+    addOptimisticProduct,
+    bulkUpdateProductsAcrossCaches,
+    invalidateProductsAndDashboard,
+    removeProductAcrossCaches,
+    replaceTempProduct,
+    updateProductAcrossCaches,
 } from "@/lib/product-cache-utils";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 
 export function useDashboardData() {
   const { data: session } = useSession();
@@ -166,10 +166,11 @@ export function useDashboardData() {
         meta: dashboardData.meta || {},
       };
     },
-    staleTime: 30 * 1000, // Keep data fresh for 30 seconds to allow optimistic updates
-    gcTime: 5 * 60 * 1000, // Cache for 5 minutes
-    refetchOnMount: false, // Don't refetch when component mounts - use cache
-    refetchOnWindowFocus: false, // Don't refetch when window gets focus - use cache
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     retry: 3,
     retryDelay: 1000,
   });
@@ -233,7 +234,7 @@ export function useDashboardData() {
         updateData,
       );
       if (apiService.clearProductsCache) apiService.clearProductsCache();
-      setTimeout(() => invalidateProductsAndDashboard(queryClient), 5000);
+      await invalidateProductsAndDashboard(queryClient);
       return result;
     } catch (error) {
       console.error("❌ [Dashboard] Bulk product update failed:", error);
@@ -273,7 +274,7 @@ export function useDashboardData() {
       }
 
       if (apiService.clearProductsCache) apiService.clearProductsCache();
-      setTimeout(() => invalidateProductsAndDashboard(queryClient), 5000);
+      await invalidateProductsAndDashboard(queryClient);
       return { success: true };
     } catch (error) {
       console.error("❌ [Dashboard] Product deletion failed:", error);

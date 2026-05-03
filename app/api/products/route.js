@@ -1,14 +1,13 @@
-import { NextResponse } from "next/server";
+import { getMongooseConnection } from "@/lib/mongoose";
 import { enhanceProductsWithRatings } from "@/lib/reviewUtils";
 import Product from "@/models/Product";
-import { getMongooseConnection } from "@/lib/mongoose";
+import { NextResponse } from "next/server";
 
 // Track if indexes have been initialized to avoid repeated calls
 let productIndexesInitialized = false; // no longer used but kept for backward compatibility
 
-// Response cache for identical requests (5 minutes)
+// Kept for backward compatibility with modules importing this symbol
 const responseCache = new Map();
-const CACHE_TTL = 5 * 60 * 1000;
 
 // Export the response cache for access by bulk-update route
 export { responseCache };
@@ -35,54 +34,9 @@ async function initializeProductIndexes(db) {
   return; // indexing disabled
 }
 
-// Generate cache key for request
-function generateCacheKey(searchParams) {
-  const params = {};
-  searchParams.forEach((value, key) => {
-    params[key] = value;
-  });
-  return JSON.stringify(params);
-}
-
-// Get cached response if available and not expired
-function getCachedResponse(cacheKey) {
-  const cached = responseCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data;
-  }
-  responseCache.delete(cacheKey);
-  return null;
-}
-
-// Set response in cache
-function setCachedResponse(cacheKey, data) {
-  responseCache.set(cacheKey, {
-    data,
-    timestamp: Date.now(),
-  });
-
-  // Clear cache if it gets too large to prevent memory issues
-  if (responseCache.size > 50) {
-    const now = Date.now();
-    for (const [key, value] of responseCache.entries()) {
-      if (now - value.timestamp >= CACHE_TTL) {
-        responseCache.delete(key);
-      }
-    }
-  }
-}
-
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const cacheKey = generateCacheKey(searchParams);
-    const cachedResponse = getCachedResponse(cacheKey);
-    if (cachedResponse) {
-      const response = NextResponse.json(cachedResponse);
-      response.headers.set("X-Cache", "HIT");
-      response.headers.set("Cache-Control", "public, max-age=300");
-      return response;
-    }
 
     // Parse params
     const qp = (k) => searchParams.get(k);
@@ -167,10 +121,11 @@ export async function GET(request) {
       },
     };
 
-    setCachedResponse(cacheKey, responseData);
     const response = NextResponse.json(responseData);
-    response.headers.set("X-Cache", "MISS");
-    response.headers.set("Cache-Control", "public, max-age=300");
+    response.headers.set("X-Cache", "BYPASS");
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
     response.headers.set("X-Generated-At", new Date().toISOString());
     return response;
   } catch (error) {

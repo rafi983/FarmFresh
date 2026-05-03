@@ -1,28 +1,28 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Footer from "@/components/Footer";
-import ReorderModal from "@/components/orders/ReorderModal";
-import { useReorder } from "@/hooks/useReorder";
-import { useOrdersQuery, useOrdersCache } from "@/hooks/useOrdersQuery";
-import FiltersBar from "@/components/bookings/FiltersBar";
-import OrderCard from "@/components/bookings/OrderCard";
-import StatsCards from "@/components/bookings/StatsCards";
-import PaginationBar from "@/components/bookings/PaginationBar";
-import InitialLoadingScreen from "@/components/bookings/InitialLoadingScreen";
-import EmptyState from "@/components/bookings/EmptyState";
-import dynamic from "next/dynamic";
 import Toast from "@/components/Toast";
-import { formatPrice } from "@/components/bookings/helpers";
+import EmptyState from "@/components/bookings/EmptyState";
+import FiltersBar from "@/components/bookings/FiltersBar";
+import InitialLoadingScreen from "@/components/bookings/InitialLoadingScreen";
+import OrderCard from "@/components/bookings/OrderCard";
+import PaginationBar from "@/components/bookings/PaginationBar";
+import StatsCards from "@/components/bookings/StatsCards";
 import {
-  ORDER_STATUSES,
-  DATE_FILTERS,
-  SORT_OPTIONS,
-  VIEW_MODES,
+    DATE_FILTERS,
+    ORDER_STATUSES,
+    SORT_OPTIONS,
+    VIEW_MODES,
 } from "@/components/bookings/constants";
+import { formatPrice } from "@/components/bookings/helpers";
+import ReorderModal from "@/components/orders/ReorderModal";
+import { useOrdersCache, useOrdersQuery } from "@/hooks/useOrdersQuery";
+import { useReorder } from "@/hooks/useReorder";
+import { useSession } from "next-auth/react";
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 // Stats hook
 function useOrderStats(orders) {
@@ -125,11 +125,11 @@ export default function BookingsPage() {
     refetch: refetchOrders,
   } = useOrdersQuery(userId, {
     enabled,
-    staleTime: 15 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
   const ordersCache = useOrdersCache();
   const orders = useMemo(() => {
@@ -213,7 +213,7 @@ export default function BookingsPage() {
           throw new Error(err.message || "Failed to cancel");
         }
         if (userId) ordersCache.invalidateOrders(userId);
-        setTimeout(() => refetchOrders(), 100);
+        await refetchOrders();
         showToast("Order cancelled", "success");
       } catch (e) {
         showToast(e.message, "error");

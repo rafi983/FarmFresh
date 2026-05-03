@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
 import { apiService } from "@/lib/api-service";
+import { useQuery } from "@tanstack/react-query";
 
 // Query keys for home page data
 export const HOME_QUERY_KEY = ["home"];
@@ -12,7 +12,7 @@ export function useHomeQuery(options = {}) {
     queryKey: HOME_QUERY_KEY,
     queryFn: async () => {
       try {
-        // Fetch all home page data in parallel using cached API service
+        // Fetch all home page data in parallel
         const [featuredData, categoriesResponse] = await Promise.all([
           // Get featured products with smaller limit for home page
           apiService.getProducts({
@@ -79,10 +79,11 @@ export function useHomeQuery(options = {}) {
         };
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes cache
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     ...options,
   });
 }

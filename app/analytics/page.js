@@ -1,50 +1,50 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  ComposedChart,
-  FunnelChart,
-  Funnel,
-  LabelList,
-  ScatterChart,
-  Scatter,
-  Line,
+    Area,
+    AreaChart,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    ComposedChart,
+    Funnel,
+    FunnelChart,
+    LabelList,
+    Legend,
+    Line,
+    ResponsiveContainer,
+    Scatter,
+    ScatterChart,
+    Tooltip,
+    XAxis,
+    YAxis,
 } from "recharts";
 
 // Nivo imports
-import { ResponsiveHeatMap } from "@nivo/heatmap";
-import { ResponsiveTreeMap } from "@nivo/treemap";
-import { ResponsiveRadar } from "@nivo/radar";
-import { ResponsiveLine } from "@nivo/line";
 import { ResponsiveBar } from "@nivo/bar";
+import { ResponsiveHeatMap } from "@nivo/heatmap";
+import { ResponsiveLine } from "@nivo/line";
+import { ResponsiveRadar } from "@nivo/radar";
+import { ResponsiveTreeMap } from "@nivo/treemap";
 
 // Chart.js imports
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip as ChartTooltip,
-  Legend as ChartLegend,
-  ArcElement,
-  RadialLinearScale,
-  BarElement,
+    ArcElement,
+    BarElement,
+    CategoryScale,
+    Chart as ChartJS,
+    Legend as ChartLegend,
+    Tooltip as ChartTooltip,
+    LinearScale,
+    LineElement,
+    PointElement,
+    RadialLinearScale,
+    Title,
 } from "chart.js";
-import { Doughnut, PolarArea, Bubble } from "react-chartjs-2";
+import { Bubble, Doughnut, PolarArea } from "react-chartjs-2";
 
 ChartJS.register(
   CategoryScale,
@@ -96,7 +96,11 @@ export default function CustomerAnalytics() {
     error: ordersError,
   } = useOrdersQuery(userId, {
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   const [timeRange, setTimeRange] = useState("all");
