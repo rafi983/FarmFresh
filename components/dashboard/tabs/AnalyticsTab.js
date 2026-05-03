@@ -13,6 +13,11 @@ import {
   Tooltip,
   Legend,
   Filler,
+  LineController,
+  BarController,
+  RadarController,
+  PolarAreaController,
+  BubbleController,
 } from "chart.js";
 import { Line, Bar, Radar, PolarArea, Bubble, Chart } from "react-chartjs-2";
 
@@ -29,19 +34,24 @@ ChartJS.register(
   Tooltip,
   Legend,
   Filler,
+  LineController,
+  BarController,
+  RadarController,
+  PolarAreaController,
+  BubbleController
 );
 
 export default function AnalyticsTab({
-  analytics,
-  orders,
-  products,
+  analytics = {},
+  orders = [],
+  products = [],
   formatPrice,
   formatDate,
 }) {
   // Calculate category statistics
   const categoryStats = useMemo(() => {
     // Only use DELIVERED orders for revenue calculations
-    const deliveredOrders = orders.filter(
+    const deliveredOrders = (orders || []).filter(
       (order) => order.status === "delivered",
     );
 
@@ -49,7 +59,7 @@ export default function AnalyticsTab({
     const allProducts = new Map();
 
     // Add products from the products array
-    products.forEach((product) => {
+    (products || []).forEach((product) => {
       allProducts.set(product._id, {
         ...product,
         source: "products_array",
@@ -80,10 +90,10 @@ export default function AnalyticsTab({
     const allProductsArray = Array.from(allProducts.values());
 
     console.log(`🔍 TOTAL PRODUCTS FOUND: ${allProductsArray.length}`);
-    console.log("  From products array:", products.length);
+    console.log("  From products array:", (products || []).length);
     console.log(
       "  From order items (missing):",
-      allProductsArray.length - products.length,
+      allProductsArray.length - (products || []).length,
     );
 
     // Group all products by category

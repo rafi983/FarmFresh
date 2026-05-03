@@ -56,6 +56,13 @@ Create a `.env.local` file in the project root and provide the following values:
 
 > Keep `.env.local` private and rotate any exposed secrets.
 
+## Test Credentials
+
+For testing purposes, you can use the following sample accounts:
+
+- **Farmer:** `kazi@gmail.com` | Password: `123456`
+- **Customer:** `shakila@gmail.com` | Password: `123456`
+
 ## Project Structure
 
 ```
