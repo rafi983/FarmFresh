@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 // API functions
 const fetchReviews = async (productId, page = 1, userId = null) => {
@@ -18,7 +18,15 @@ const fetchReviews = async (productId, page = 1, userId = null) => {
   }
 
   const url = `/api/products/${validProductId}/reviews?page=${page}${userId ? `&userId=${userId}` : ""}`;
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    method: "GET",
+    cache: "no-store",
+    headers: {
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+    },
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch reviews");
   }
@@ -95,8 +103,11 @@ export const useReviewsQuery = (productId, userId = null) => {
     queryKey: ["reviews", productId, userId, page],
     queryFn: () => fetchReviews(productId, 1, userId),
     enabled: !!productId,
-    staleTime: 5 * 60 * 1000,
-    cacheTime: 10 * 60 * 1000,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 
   useEffect(() => {

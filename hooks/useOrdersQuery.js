@@ -21,8 +21,12 @@ export function useOrdersQuery(userId, options = {}) {
 
       const response = await fetch(url, {
         method: "GET",
+        cache: "no-store",
         headers: {
           "Content-Type": "application/json",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
         },
       });
 
@@ -43,11 +47,11 @@ export function useOrdersQuery(userId, options = {}) {
       return data;
     },
     enabled: !!normalizedUserId, // Only run query if userId exists
-    staleTime: 10 * 60 * 1000, // Increase to 10 minutes for bookings page
-    gcTime: 30 * 60 * 1000, // Increase to 30 minutes for better caching
-    refetchOnWindowFocus: false,
-    refetchOnMount: false, // Don't refetch on component mount if data exists
-    refetchOnReconnect: false, // Don't refetch on network reconnect
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
+    refetchOnReconnect: true,
     retry: 2,
     ...options,
   });
