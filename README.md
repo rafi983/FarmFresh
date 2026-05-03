@@ -1,36 +1,123 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# FarmFresh
+
+FarmFresh is a full-stack marketplace that connects customers with local farmers. It includes product browsing, farmer profiles, ordering, reviews, favorites, messaging, and a farmer dashboard experience, all powered by Next.js, MongoDB, and Tailwind CSS.
+
+## Features
+
+- Customer and farmer authentication with NextAuth.
+- Product catalog with categories, reviews, and ratings.
+- Farmer profiles with listings and performance insights.
+- Cart, checkout, and order management flows.
+- Favorites and saved items.
+- Messaging between customers and farmers.
+- Analytics and dashboards for farmer operations.
+
+## Tech Stack
+
+- **Framework:** Next.js (App Router), React 18
+- **Styling:** Tailwind CSS
+- **Data:** MongoDB + Mongoose
+- **Auth:** NextAuth
+- **Data fetching:** React Query (@tanstack/react-query)
+- **Email:** Resend
+- **Charts:** Chart.js, Recharts, Nivo
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies and run the dev server:
 
-```bash
+```powershell
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+```powershell
+npm run dev
+npm run build
+npm run start
+npm run lint
+```
 
-## Learn More
+## Environment Variables
 
-To learn more about Next.js, take a look at the following resources:
+Create a `.env.local` file in the project root and provide the following values:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `NEXTAUTH_URL`
+- `NEXTAUTH_SECRET`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `MONGODB_URI`
+- `JWT_SECRET`
+- `RESEND_API_KEY`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+> Keep `.env.local` private and rotate any exposed secrets.
 
-## Deploy on Vercel
+## Project Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+app/                # App Router pages and API routes
+  api/              # REST endpoints (auth, products, orders, etc.)
+components/         # Shared UI components
+contexts/           # React context providers
+hooks/              # React Query and domain hooks
+lib/                # API helpers, DB, cache, utils
+models/             # Mongoose models
+providers/          # App-wide providers
+utils/              # Small utilities
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## Key Pages
+
+- `/` Home page with highlights, featured products, and top farmer.
+- `/products` Product listing with search and filters.
+- `/farmers` Farmer listing and profiles.
+- `/cart` Cart and checkout flow.
+- `/orders` Orders management.
+- `/messages` Messaging inbox.
+- `/profile` User profile.
+- `/dashboard` Farmer dashboard and analytics.
+
+## API Routes (App Router)
+
+- `GET /api/home` Aggregated data for the home page.
+- `GET/POST /api/products` Product search and creation.
+- `GET/POST /api/farmers` Farmer listing and updates.
+- `GET/POST /api/orders` Order creation and status updates.
+- `GET/POST /api/reviews` Reviews and rating updates.
+- `GET /api/categories` Category counts for the home and filters.
+- `GET/POST /api/cart` Cart operations.
+- `GET/POST /api/favorites` Favorites management.
+- `GET/POST /api/messages` Messaging endpoints.
+- `GET/POST /api/auth/*` Auth handlers (NextAuth).
+
+## Data Models
+
+- `User`
+- `Farmer`
+- `Product`
+- `Order`
+- `Review`
+- `Cart`
+- `Favorite`
+- `Conversation`
+- `Message`
+
+## Notes
+
+- Some API routes use lightweight in-memory caching for repeated requests.
+- Linting uses `next lint` with the project ESLint config.
+
+## Deployment
+
+Build and start the app:
+
+```powershell
+npm run build
+npm run start
+```
+
+Deploy to any Node.js hosting that supports Next.js. Vercel provides first-class support.
