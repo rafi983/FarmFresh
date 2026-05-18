@@ -1,9 +1,9 @@
 // filepath: components/details/FarmerDashboardView.js
 "use client";
-import Link from "next/link";
-import Image from "next/image";
-import StarRating from "@/components/products/StarRating";
 import RecentOrdersSection from "@/components/dashboard/RecentOrdersSection";
+import StarRating from "@/components/products/StarRating";
+import Image from "next/image";
+import Link from "next/link";
 
 // Farmer dashboard (owner) view extracted from original details/page.js
 export default function FarmerDashboardView({
@@ -30,8 +30,8 @@ export default function FarmerDashboardView({
   return (
     <>
       {/* Farmer Breadcrumb */}
-      <nav className="mb-8">
-        <ol className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+      <nav className="mb-6 sm:mb-8 overflow-x-auto pb-1">
+        <ol className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-max">
           <li>
             <Link href="/manage" className="hover:text-primary-600">
               <i className="fas fa-tachometer-alt mr-1"></i>
@@ -51,8 +51,8 @@ export default function FarmerDashboardView({
 
       {/* Customer View Notice */}
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-start sm:items-center">
             <i className="fas fa-info-circle text-blue-600 dark:text-blue-400 mr-2"></i>
             <span className="text-blue-800 dark:text-blue-200">
               You are viewing this as the product owner.
@@ -69,15 +69,15 @@ export default function FarmerDashboardView({
       </div>
 
       {/* Product Management Header */}
-      <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl shadow-lg p-8 mb-8 text-white">
-        <div className="flex items-center justify-between">
+      <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl shadow-lg p-5 sm:p-8 mb-8 text-white">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Product Management</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Product Management</h1>
             <p className="text-green-100">
               Manage your product listing and inventory
             </p>
           </div>
-          <div className="text-right">
+          <div className="text-left sm:text-right">
             <div className="text-sm text-green-100 mb-1">Product Status</div>
             <div
               className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${product.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
@@ -115,7 +115,7 @@ export default function FarmerDashboardView({
                     />
                   </div>
                   {allImages.length > 1 && (
-                    <div className="grid grid-cols-5 gap-2 max-w-md">
+                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-w-md">
                       {allImages.map((image, index) => (
                         <button
                           key={index}
@@ -327,7 +327,7 @@ export default function FarmerDashboardView({
                 <button
                   onClick={handleUpdateProduct}
                   disabled={isManagingProduct || (!stockUpdate && !priceUpdate)}
-                  className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
                 >
                   {isManagingProduct ? (
                     <i className="fas fa-spinner fa-spin mr-2" />
@@ -339,7 +339,7 @@ export default function FarmerDashboardView({
                 <button
                   onClick={handleAddImages}
                   disabled={isManagingProduct}
-                  className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
                 >
                   <i className="fas fa-images mr-2" />
                   Add Images
@@ -347,7 +347,7 @@ export default function FarmerDashboardView({
                 <button
                   onClick={handleToggleStatus}
                   disabled={isManagingProduct}
-                  className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-yellow-500 hover:bg-yellow-600 text-white disabled:opacity-50"
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium bg-yellow-500 hover:bg-yellow-600 text-white disabled:opacity-50"
                 >
                   <i className="fas fa-sync mr-2" />
                   {product.status === "active" ? "Deactivate" : "Activate"}
@@ -355,7 +355,7 @@ export default function FarmerDashboardView({
                 <button
                   onClick={handleDeleteProduct}
                   disabled={isManagingProduct}
-                  className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+                  className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
                 >
                   <i className="fas fa-trash mr-2" />
                   Delete

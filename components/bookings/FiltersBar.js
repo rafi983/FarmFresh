@@ -1,9 +1,8 @@
-import React from "react";
 import {
-  ORDER_STATUSES,
-  DATE_FILTERS,
-  SORT_OPTIONS,
-  VIEW_MODES,
+    DATE_FILTERS,
+    ORDER_STATUSES,
+    SORT_OPTIONS,
+    VIEW_MODES,
 } from "./constants";
 
 export default function FiltersBar({
@@ -22,8 +21,8 @@ export default function FiltersBar({
 }) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-6 mb-8">
-      <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-        <div className="flex-1 max-w-md">
+      <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
+        <div className="w-full lg:flex-1 lg:max-w-md min-w-0">
           <div className="relative">
             <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -35,11 +34,11 @@ export default function FiltersBar({
             />
           </div>
         </div>
-        <div className="flex flex-wrap gap-3 items-center">
+        <div className="w-full lg:w-auto grid grid-cols-1 sm:grid-cols-2 xl:flex gap-3 items-stretch xl:items-center">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
           >
             <option value={ORDER_STATUSES.ALL}>{ORDER_STATUSES.ALL}</option>
             <option value={ORDER_STATUSES.PENDING}>Pending</option>
@@ -52,7 +51,7 @@ export default function FiltersBar({
           <select
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
-            className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
           >
             <option value={DATE_FILTERS.ALL}>All Time</option>
             <option value={DATE_FILTERS.TODAY}>Today</option>
@@ -62,14 +61,14 @@ export default function FiltersBar({
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
-            className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
           >
             <option value={SORT_OPTIONS.NEWEST}>Newest First</option>
             <option value={SORT_OPTIONS.OLDEST}>Oldest First</option>
             <option value={SORT_OPTIONS.HIGHEST}>Highest Value</option>
             <option value={SORT_OPTIONS.LOWEST}>Lowest Value</option>
           </select>
-          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
+          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-xl p-1 justify-center">
             <button
               onClick={() => setViewMode(VIEW_MODES.CARDS)}
               className={`px-4 py-2 rounded-lg ${viewMode === VIEW_MODES.CARDS ? "bg-white dark:bg-gray-600 text-blue-600 shadow-sm" : "text-gray-600 dark:text-gray-400"}`}
@@ -86,7 +85,7 @@ export default function FiltersBar({
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl disabled:opacity-50 flex items-center"
+            className="w-full sm:w-auto px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl disabled:opacity-50 flex items-center justify-center"
           >
             <i
               className={`fas fa-sync-alt mr-2 ${refreshing ? "animate-spin" : ""}`}

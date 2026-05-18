@@ -55,7 +55,7 @@ export default function ReviewSection({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
           Customer Reviews ({product.reviewCount || product.totalReviews || 0})
         </h2>
@@ -65,7 +65,7 @@ export default function ReviewSection({
           !alreadyReviewed && (
             <button
               onClick={() => setShowReviewForm(true)}
-              className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition"
+              className="w-full sm:w-auto bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium transition"
             >
               <i className="fas fa-plus mr-2"></i>
               Write Review
@@ -85,7 +85,7 @@ export default function ReviewSection({
                 });
                 setShowReviewForm(true);
               }}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
             >
               <i className="fas fa-edit mr-2"></i>
               Edit Your Review
@@ -141,16 +141,16 @@ export default function ReviewSection({
       </div>
 
       {/* Review Summary */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 mb-8 shadow-lg border border-gray-100 dark:border-gray-700">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 mb-8 shadow-lg border border-gray-100 dark:border-gray-700">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
           {/* Overall Rating Section */}
           <div className="text-center">
             <div className="mb-4">
-              <div className="text-5xl font-bold text-primary-600 dark:text-primary-400 mb-2">
+              <div className="text-4xl sm:text-5xl font-bold text-primary-600 dark:text-primary-400 mb-2">
                 {displayRating.toFixed(1)}
               </div>
               <StarRating rating={displayRating} size="lg" />
-              <p className="text-gray-600 dark:text-gray-400 mt-3 text-lg font-medium">
+              <p className="text-gray-600 dark:text-gray-400 mt-3 text-base sm:text-lg font-medium">
                 Based on{" "}
                 <span className="text-primary-600 dark:text-primary-400 font-bold">
                   {actualReviewCount}
@@ -224,11 +224,11 @@ export default function ReviewSection({
           reviews.map((review, index) => (
             <div
               key={`${review._id}-${review.userId}-${index}`}
-              className="group bg-gradient-to-br from-white via-gray-50 to-white dark:from-gray-800 dark:via-gray-850 dark:to-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700 hover:border-primary-200 dark:hover:border-primary-800"
+              className="group bg-gradient-to-br from-white via-gray-50 to-white dark:from-gray-800 dark:via-gray-850 dark:to-gray-800 rounded-2xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-700 hover:border-primary-200 dark:hover:border-primary-800"
               style={{ animationDelay: `${index * 100}ms` }}
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center space-x-4">
+              <div className="flex items-start justify-between mb-4 gap-3">
+                <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
                   <div className="relative">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 dark:from-primary-500 dark:to-primary-700 flex items-center justify-center shadow-lg">
                       <span className="text-white font-bold text-lg">
@@ -242,15 +242,15 @@ export default function ReviewSection({
                     </div>
                   </div>
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h4 className="font-semibold text-gray-900 dark:text-white text-lg">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1">
+                      <h4 className="font-semibold text-gray-900 dark:text-white text-base sm:text-lg">
                         {review.reviewer || "Anonymous"}
                       </h4>
                       <span className="px-2 py-1 bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 text-xs font-medium rounded-full">
                         Verified Buyer
                       </span>
                     </div>
-                    <div className="flex items-center space-x-3">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                       <div className="flex items-center space-x-1">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <span
@@ -277,7 +277,7 @@ export default function ReviewSection({
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="flex items-center space-x-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300">
                   {session?.user?.name === review.reviewer ||
                   session?.user?.userId === review.userId ||
                   session?.user?.id === review.userId ? (
@@ -319,12 +319,12 @@ export default function ReviewSection({
               </div>
               <div className="relative">
                 <div className="absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-primary-400 to-primary-600 rounded-full opacity-20"></div>
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed pl-6 text-base">
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed pl-4 sm:pl-6 text-sm sm:text-base">
                   &ldquo;{review.comment}&rdquo;
                 </p>
               </div>
-              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm text-gray-500 dark:text-gray-400">
                   <span className="flex items-center space-x-1">
                     <i className="fas fa-heart text-red-400"></i>
                     <span>Helpful</span>

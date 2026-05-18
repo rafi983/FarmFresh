@@ -1,14 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTheme } from "@/contexts/ThemeContext";
-import { useFavorites } from "@/contexts/FavoritesContext";
 import { useCart } from "@/contexts/CartContext";
+import { useFavorites } from "@/contexts/FavoritesContext";
 import { useMessaging } from "@/contexts/MessagingContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { signOut } from "next-auth/react";
-import { useState, useEffect } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function Navigation() {
   const { user, isAuthenticated, logout, updateUser } = useAuth();
@@ -17,6 +17,7 @@ export default function Navigation() {
   const { cartItems, cartCount } = useCart();
   const { totalUnreadCount } = useMessaging();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [updatedUserName, setUpdatedUserName] = useState(user?.name || "");
   const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname();
@@ -78,6 +79,11 @@ export default function Navigation() {
     fetchUpdatedUserName();
   }, [user?.email, user?.userType]);
 
+  useEffect(() => {
+    setShowMobileMenu(false);
+    setShowUserMenu(false);
+  }, [pathname]);
+
   // Pages that should have simplified navigation (no search/cart)
   const simplifiedPages = [
     "/login",
@@ -130,17 +136,17 @@ export default function Navigation() {
   return (
     <nav className="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-16 gap-2 sm:gap-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-3">
+          <Link href="/" className="flex items-center space-x-2 sm:space-x-3 min-w-0">
             <div className="bg-primary-500 p-2 rounded-lg">
               <i className="fas fa-seedling text-white text-xl"></i>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">
                 FarmFresh
               </h1>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
+              <p className="hidden sm:block text-xs text-gray-600 dark:text-gray-400 truncate">
                 Local Farmer Booking
               </p>
             </div>
@@ -250,7 +256,7 @@ export default function Navigation() {
           )}
 
           {/* Right side icons and user menu */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             {/* Cart and Favorites (only for authenticated users and not on simplified pages) */}
             {shouldShowSearchAndCart && isAuthenticated && (
               <>
@@ -444,7 +450,7 @@ export default function Navigation() {
                     )}
                   </div>
                 ) : (
-                  <div className="flex items-center space-x-3">
+                  <div className="hidden sm:flex items-center space-x-3">
                     <Link
                       href="/login"
                       className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
@@ -463,11 +469,78 @@ export default function Navigation() {
             )}
 
             {/* Mobile menu button */}
-            <button className="lg:hidden text-gray-700 dark:text-gray-300">
-              <i className="fas fa-bars text-xl"></i>
+            <button
+              className="lg:hidden text-gray-700 dark:text-gray-300 w-9 h-9 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => setShowMobileMenu((prev) => !prev)}
+              aria-label="Toggle mobile menu"
+              aria-expanded={showMobileMenu}
+            >
+              <i className={`fas ${showMobileMenu ? "fa-times" : "fa-bars"} text-xl`}></i>
             </button>
           </div>
         </div>
+
+        {showMobileMenu && (
+          <div className="lg:hidden border-t border-gray-200 dark:border-gray-700 py-4 space-y-4">
+            {shouldShowSearchAndCart && (
+              <div className="px-1">
+                <div className="relative w-full">
+                  <input
+                    type="text"
+                    placeholder={getSearchPlaceholder()}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i className="fas fa-search text-gray-400"></i>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {shouldShowNavLinks && (
+              <div className="flex flex-col gap-1">
+                <Link href="/" className="px-2 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">Home</Link>
+                <Link href="/products" className="px-2 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">Products</Link>
+                <Link href="/farmers" className="px-2 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">Farmers</Link>
+                {isAuthenticated && user?.userType === "farmer" && (
+                  <>
+                    <Link href="/create" className="px-2 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">Add Product</Link>
+                    <Link href="/manage" className="px-2 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">Manage Products</Link>
+                  </>
+                )}
+                {isAuthenticated && user?.userType !== "farmer" && (
+                  <Link href="/bookings" className="px-2 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">My Orders</Link>
+                )}
+                <Link href="/about" className="px-2 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">About</Link>
+              </div>
+            )}
+
+            {shouldShowSearchAndCart && isAuthenticated && (
+              <div className="grid grid-cols-3 gap-2">
+                <Link href="/messages" className="px-3 py-2 rounded-lg text-center border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700">Messages</Link>
+                <Link href="/favorites" className="px-3 py-2 rounded-lg text-center border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700">Favorites</Link>
+                <Link href="/cart" className="px-3 py-2 rounded-lg text-center border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700">Cart</Link>
+              </div>
+            )}
+
+            {shouldShowUserAuth && !isAuthenticated && (
+              <div className="flex items-center gap-2 pt-1">
+                <Link
+                  href="/login"
+                  className="flex-1 text-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600"
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/register"
+                  className="flex-1 text-center bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition"
+                >
+                  Sign Up
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </nav>
   );

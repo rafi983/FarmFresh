@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
-import StarRating from "@/components/products/StarRating";
 import ReviewSection from "@/components/details/ReviewSection";
+import StarRating from "@/components/products/StarRating";
+import Image from "next/image";
+import Link from "next/link";
 
 export default function CustomerProductView({
   product,
@@ -48,8 +48,8 @@ export default function CustomerProductView({
   return (
     <>
       {/* Breadcrumb */}
-      <nav className="mb-8">
-        <ol className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+      <nav className="mb-6 sm:mb-8 overflow-x-auto pb-1">
+        <ol className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-max">
           <li>
             <Link href="/" className="hover:text-primary-600">
               Home
@@ -74,7 +74,7 @@ export default function CustomerProductView({
         </ol>
       </nav>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
         {/* Product Images */}
         <div className="space-y-4">
           <div className="aspect-square bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg">
@@ -89,7 +89,7 @@ export default function CustomerProductView({
             />
           </div>
           {imageData.allImages.length > 1 && (
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
               {imageData.allImages.map((image, index) => (
                 <button
                   key={index}
@@ -128,10 +128,10 @@ export default function CustomerProductView({
           </div>
 
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
               {product.name}
             </h1>
-            <p className="text-lg text-gray-600 dark:text-gray-400">
+            <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400">
               Produced by{" "}
               <span className="font-semibold text-primary-600 dark:text-primary-400">
                 {product.farmer?.name || "Unknown Farmer"}
@@ -164,17 +164,17 @@ export default function CustomerProductView({
             })()}
           </div>
 
-          <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <div>
-                <span className="text-3xl font-bold text-primary-600 dark:text-primary-400">
+                <span className="text-2xl sm:text-3xl font-bold text-primary-600 dark:text-primary-400">
                   {formatPrice(product.price)}
                 </span>
-                <span className="text-lg text-gray-500 dark:text-gray-400">
+                <span className="text-base sm:text-lg text-gray-500 dark:text-gray-400">
                   /{product.unit || "kg"}
                 </span>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Available Stock
                 </p>
@@ -293,14 +293,14 @@ export default function CustomerProductView({
       </div>
 
       {/* Tabs Section */}
-      <div className="mt-16">
+      <div className="mt-12 sm:mt-16">
         <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="flex space-x-8">
+          <nav className="flex space-x-5 sm:space-x-8 overflow-x-auto whitespace-nowrap pb-1">
             {TAB_OPTIONS.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === tab ? "border-primary-500 text-primary-600 dark:text-primary-400" : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}
+                className={`shrink-0 py-3 sm:py-4 px-1 border-b-2 font-medium text-sm ${activeTab === tab ? "border-primary-500 text-primary-600 dark:text-primary-400" : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}
               >
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
               </button>
@@ -424,8 +424,8 @@ export default function CustomerProductView({
           {activeTab === "farmer" && (
             <div>
               <h3 className="text-xl font-semibold mb-6">About the Farmer</h3>
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg">
-                <div className="flex items-start gap-4">
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 shadow-lg">
+                <div className="flex flex-col sm:flex-row items-start gap-4">
                   <div className="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center flex-shrink-0">
                     <i className="fas fa-user text-2xl text-primary-600 dark:text-primary-400"></i>
                   </div>
@@ -472,12 +472,12 @@ export default function CustomerProductView({
       </div>
 
       {relatedProducts.length > 0 && (
-        <div className="mt-16 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700">
-          <div className="text-center mb-10">
+        <div className="mt-12 sm:mt-16 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 rounded-2xl p-4 sm:p-8 shadow-lg border border-gray-100 dark:border-gray-700">
+          <div className="text-center mb-8 sm:mb-10">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full mb-4 shadow-lg">
               <i className="fas fa-box-open text-2xl text-white"></i>
             </div>
-            <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-3">
               Related Products
             </h3>
             <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
@@ -488,7 +488,7 @@ export default function CustomerProductView({
               <span>{relatedProducts.length} products found</span>
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-8">
             {relatedProducts.map((relatedProduct) => (
               <div
                 key={relatedProduct._id}

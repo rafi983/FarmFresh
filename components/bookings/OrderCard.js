@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo } from "react";
-import { formatPrice, formatDate, getStatusBadge } from "./helpers";
+import { useCallback, useMemo } from "react";
+import { formatDate, formatPrice, getStatusBadge } from "./helpers";
 
 const PROGRESS_STEPS = [
   {
@@ -205,7 +205,7 @@ export default function OrderCard({
                   {formatDate(order.createdAt)}
                 </p>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 {getStatusBadge(order.status)}
                 <div className="text-right">
                   <div className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -232,7 +232,8 @@ export default function OrderCard({
 
               {/* Single progress bar for non-mixed orders */}
               {order.status !== "mixed" && (
-                <div className="relative p-6">
+                <div className="relative overflow-x-auto pb-2">
+                  <div className="relative p-4 sm:p-6 min-w-[720px] sm:min-w-0">
                   {/* Enhanced Progress Track */}
                   <div className="relative">
                     {/* Background Track */}
@@ -277,7 +278,7 @@ export default function OrderCard({
                           >
                             {/* Step Circle with Enhanced Design */}
                             <div
-                              className={`relative w-16 h-16 rounded-full flex items-center justify-center border-3 transition-all duration-500 transform hover:scale-110 ${
+                              className={`relative w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center border-3 transition-all duration-500 transform hover:scale-110 ${
                                 cancelled && i === currentIndex
                                   ? "bg-gradient-to-br from-red-100 to-red-200 border-red-400 text-red-700 shadow-lg shadow-red-200/50"
                                   : isCompleted
@@ -307,7 +308,7 @@ export default function OrderCard({
                                   cancelled && i === currentIndex
                                     ? "fas fa-times"
                                     : step.icon
-                                } text-xl transition-transform duration-300 group-hover:scale-110`}
+                                } text-base sm:text-xl transition-transform duration-300 group-hover:scale-110`}
                               />
 
                               {/* Completion Checkmark Overlay */}
@@ -384,6 +385,7 @@ export default function OrderCard({
                       })}
                     </div>
                   </div>
+                  </div>
                 </div>
               )}
 
@@ -396,7 +398,7 @@ export default function OrderCard({
                       className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-600 shadow-lg hover:shadow-xl transition-all duration-300"
                     >
                       {/* Farmer Header */}
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
                         <div className="flex items-center space-x-3">
                           <div className="relative">
                             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-lg ring-4 ring-blue-100 dark:ring-blue-900">
@@ -470,7 +472,8 @@ export default function OrderCard({
                       </div>
 
                       {/* Enhanced Farmer Progress Bar */}
-                      <div className="relative p-4">
+                      <div className="relative overflow-x-auto pb-2">
+                        <div className="relative p-4 min-w-[620px] sm:min-w-0">
                         {/* Background Track */}
                         <div className="absolute top-6 left-6 right-6 h-1.5 bg-gradient-to-r from-gray-200 via-gray-200 to-gray-200 dark:from-gray-600 dark:to-gray-600 rounded-full shadow-inner"></div>
 
@@ -506,7 +509,7 @@ export default function OrderCard({
                               >
                                 {/* Enhanced Step Circle */}
                                 <div
-                                  className={`relative w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-500 transform hover:scale-110 ${
+                                  className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border-2 transition-all duration-500 transform hover:scale-110 ${
                                     isCompleted
                                       ? `${palette.base} shadow-lg ${palette.glow}`
                                       : isActive
@@ -528,7 +531,7 @@ export default function OrderCard({
                                   }}
                                 >
                                   <i
-                                    className={`${step.icon} text-lg transition-transform duration-300 group-hover:scale-110`}
+                                    className={`${step.icon} text-sm sm:text-lg transition-transform duration-300 group-hover:scale-110`}
                                   />
 
                                   {/* Completion Checkmark */}
@@ -590,6 +593,7 @@ export default function OrderCard({
                               </div>
                             );
                           })}
+                        </div>
                         </div>
                       </div>
 
@@ -761,13 +765,13 @@ export default function OrderCard({
                 neutral
               />
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 w-full lg:w-auto">
               <button
                 onClick={() => {
                   setSelectedOrder(order);
                   setShowOrderDetails(true);
                 }}
-                className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg"
+                className="w-full sm:w-auto justify-center flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all duration-200 transform hover:scale-105 shadow-lg"
               >
                 <i className="fas fa-eye mr-2" /> View Details
               </button>
@@ -775,19 +779,19 @@ export default function OrderCard({
                 <>
                   <button
                     onClick={() => handleDownloadReceipt(order)}
-                    className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg"
+                    className="w-full sm:w-auto justify-center flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg"
                   >
                     <i className="fas fa-download mr-2" /> Receipt
                   </button>
                   <a
                     href={`/review?orderId=${order._id}`}
-                    className="flex items-center px-4 py-2 border border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900 rounded-lg font-medium transition-all duration-200"
+                    className="w-full sm:w-auto justify-center flex items-center px-4 py-2 border border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900 rounded-lg font-medium transition-all duration-200"
                   >
                     <i className="fas fa-star mr-2" /> Review
                   </a>
                   <button
                     onClick={() => handleReorder(order)}
-                    className="flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition-all duration-200"
+                    className="w-full sm:w-auto justify-center flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg font-medium transition-all duration-200"
                   >
                     <i className="fas fa-redo mr-2" /> Reorder
                   </button>
@@ -796,20 +800,20 @@ export default function OrderCard({
               {(order.status === "pending" || order.status === "confirmed") && (
                 <button
                   onClick={() => handleCancelOrder(order._id)}
-                  className="flex items-center px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded-lg font-medium transition-all duration-200"
+                  className="w-full sm:w-auto justify-center flex items-center px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded-lg font-medium transition-all duration-200"
                 >
                   <i className="fas fa-times mr-2" /> Cancel Order
                 </button>
               )}
               {order.status === "shipped" && (
-                <button className="flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg">
+                <button className="w-full sm:w-auto justify-center flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg">
                   <i className="fas fa-map-marker-alt mr-2" /> Track Order
                 </button>
               )}
               {hasDeliveredItems && (
                 <button
                   onClick={handleReorderDeliveredItems}
-                  className="flex items-center px-4 py-2 border border-green-300 text-green-600 hover:bg-green-50 dark:hover:bg-green-900 rounded-lg font-medium transition-all duration-200"
+                  className="w-full sm:w-auto justify-center flex items-center px-4 py-2 border border-green-300 text-green-600 hover:bg-green-50 dark:hover:bg-green-900 rounded-lg font-medium transition-all duration-200"
                 >
                   <i className="fas fa-redo mr-2" />
                   {order.status === "delivered"

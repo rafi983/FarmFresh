@@ -437,12 +437,12 @@ export default function BookingsPage() {
                 </li>
               </ol>
             </nav>
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
               <div className="mb-6 lg:mb-0">
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-3">
+                <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent mb-3">
                   My Orders
                 </h1>
-                <p className="text-gray-600 dark:text-gray-400 text-lg">
+                <p className="text-gray-600 dark:text-gray-400 text-base sm:text-lg">
                   Track and manage your orders • {orderStats.total} total orders
                 </p>
               </div>
