@@ -1,28 +1,59 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import Footer from "@/components/Footer";
+import NotFound from "@/components/NotFound";
+import CustomerDetailsLoading from "@/components/details/CustomerDetailsLoading";
+import CustomerProductView from "@/components/details/CustomerProductView";
+import FarmerDashboardView from "@/components/details/FarmerDashboardView";
+import {
+    DEFAULT_REVIEW_FORM,
+    formatPrice,
+    TAB_OPTIONS,
+} from "@/components/details/constants";
+import FarmerDetailsLoading from "@/components/farmers/FarmerDetailsLoading";
+import FarmerProfileView from "@/components/farmers/FarmerProfileView";
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { useToast } from "@/contexts/ToastContext";
-import Footer from "@/components/Footer";
-import FarmerProfileView from "@/components/farmers/FarmerProfileView";
-import useProductData from "@/hooks/useProductData";
-import useOwnership from "@/hooks/useOwnership";
-import { useReviewsQuery } from "@/hooks/useReviewsQuery";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import useOwnership from "@/hooks/useOwnership";
+import useProductData from "@/hooks/useProductData";
 import { useProductsCache } from "@/hooks/useProductsQuery";
-import NotFound from "@/components/NotFound";
-import FarmerDetailsLoading from "@/components/farmers/FarmerDetailsLoading";
-import CustomerDetailsLoading from "@/components/details/CustomerDetailsLoading";
-import {
-  TAB_OPTIONS,
-  DEFAULT_REVIEW_FORM,
-  formatPrice,
-} from "@/components/details/constants";
-import FarmerDashboardView from "@/components/details/FarmerDashboardView";
-import CustomerProductView from "@/components/details/CustomerProductView";
+import { useReviewsQuery } from "@/hooks/useReviewsQuery";
+import { useSession } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+
+function normalizeImageSrc(input) {
+  if (typeof input !== "string") return null;
+
+  const src = input.trim();
+  if (!src) return null;
+
+  const lowered = src.toLowerCase();
+  if (
+    lowered === "null" ||
+    lowered === "undefined" ||
+    lowered === "[object object]"
+  ) {
+    return null;
+  }
+
+  if (
+    src.startsWith("http://") ||
+    src.startsWith("https://") ||
+    src.startsWith("/") ||
+    src.startsWith("data:image/")
+  ) {
+    return src;
+  }
+
+  if (src.startsWith("www.")) {
+    return `https://${src}`;
+  }
+
+  return null;
+}
 
 // Force dynamic rendering for this page
 export const dynamic = "force-dynamic";
@@ -111,9 +142,11 @@ function ProductDetailsContent() {
       allImages.push(...product.images);
     }
 
+    const validImages = [...new Set(allImages.map(normalizeImageSrc).filter(Boolean))];
+
     return {
-      allImages: [...new Set(allImages)], // Remove duplicates
-      hasMultipleImages: allImages.length > 1,
+      allImages: validImages,
+      hasMultipleImages: validImages.length > 1,
     };
   }, [product]);
 

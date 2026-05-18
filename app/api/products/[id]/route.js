@@ -1,11 +1,42 @@
-import { NextResponse } from "next/server";
-import { ObjectId } from "mongodb";
-import { enhanceProductsWithRatings } from "@/lib/reviewUtils";
 import { getMongooseConnection } from "@/lib/mongoose";
-import Product from "@/models/Product";
+import { enhanceProductsWithRatings } from "@/lib/reviewUtils";
 import Order from "@/models/Order";
+import Product from "@/models/Product";
 import Review from "@/models/Review";
 import User from "@/models/User";
+import { ObjectId } from "mongodb";
+import { NextResponse } from "next/server";
+
+function normalizeImageSrc(input) {
+  if (typeof input !== "string") return null;
+
+  const src = input.trim();
+  if (!src) return null;
+
+  const lowered = src.toLowerCase();
+  if (
+    lowered === "null" ||
+    lowered === "undefined" ||
+    lowered === "[object object]"
+  ) {
+    return null;
+  }
+
+  if (
+    src.startsWith("http://") ||
+    src.startsWith("https://") ||
+    src.startsWith("/") ||
+    src.startsWith("data:image/")
+  ) {
+    return src;
+  }
+
+  if (src.startsWith("www.")) {
+    return `https://${src}`;
+  }
+
+  return null;
+}
 
 function clearProductsListCache() {
   try {
@@ -257,7 +288,7 @@ function combineProductImages(product) {
     imageArray.push(...product.images);
   }
 
-  return [...new Set(imageArray.filter((img) => img && img.trim()))];
+  return [...new Set(imageArray.map(normalizeImageSrc).filter(Boolean))];
 }
 
 // PUT - Update a product
