@@ -23,11 +23,13 @@ export function useUnifiedProductsData(filters = {}) {
         pagination: productsData?.pagination || {},
       };
     },
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    staleTime: 30 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: true,
+    refetchInterval: 30 * 1000,
+    refetchIntervalInBackground: false,
     retry: 3,
     retryDelay: 1000,
   });

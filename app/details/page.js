@@ -6,9 +6,9 @@ import CustomerDetailsLoading from "@/components/details/CustomerDetailsLoading"
 import CustomerProductView from "@/components/details/CustomerProductView";
 import FarmerDashboardView from "@/components/details/FarmerDashboardView";
 import {
-    DEFAULT_REVIEW_FORM,
-    formatPrice,
-    TAB_OPTIONS,
+  DEFAULT_REVIEW_FORM,
+  formatPrice,
+  TAB_OPTIONS,
 } from "@/components/details/constants";
 import FarmerDetailsLoading from "@/components/farmers/FarmerDetailsLoading";
 import FarmerProfileView from "@/components/farmers/FarmerProfileView";
@@ -99,7 +99,7 @@ function ProductDetailsContent() {
   const isOwner = useOwnership(product, session, viewMode);
 
   // Add dashboard data hook for optimistic caching
-  const { updateProductInCache } = useDashboardData();
+  const { updateProductInCache, refreshDashboard } = useDashboardData();
   const { updateProductInCache: updateProductsCache } = useProductsCache();
 
   // Core UI states
@@ -522,6 +522,11 @@ function ProductDetailsContent() {
         }
 
         addToast({ message: "Product updated", type: "success" });
+
+        if (refreshDashboard) {
+          await refreshDashboard();
+        }
+
         // Refresh the product details to sync with server
         await fetchProductDetails();
         setStockUpdate("");
@@ -568,6 +573,7 @@ function ProductDetailsContent() {
     updateProductInCache,
     updateProductsCache,
     fetchProductDetails,
+    refreshDashboard,
   ]);
 
   // Handle adding images to product
@@ -671,6 +677,9 @@ function ProductDetailsContent() {
 
       if (response.ok) {
         addToast({ message: `Product ${actionText}d`, type: "success" });
+        if (refreshDashboard) {
+          await refreshDashboard();
+        }
         fetchProductDetails();
       } else {
         const error = await response.json();
@@ -682,7 +691,7 @@ function ProductDetailsContent() {
     } finally {
       setIsManagingProduct(false);
     }
-  }, [isOwner, product?.status, productId, fetchProductDetails]);
+  }, [isOwner, product?.status, productId, fetchProductDetails, refreshDashboard]);
 
   // Handle deleting product
   const handleDeleteProduct = useCallback(async () => {

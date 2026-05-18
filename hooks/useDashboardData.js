@@ -346,6 +346,29 @@ export function useDashboardData() {
         "dashboard",
         userIds?.userEmail,
       ]);
+
+      if (apiService.clearProductsCache) {
+        apiService.clearProductsCache();
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["products"],
+          exact: false,
+          refetchType: "active",
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["home"],
+          exact: false,
+          refetchType: "active",
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["farmers"],
+          exact: false,
+          refetchType: "active",
+        }),
+      ]);
+
       return { success: true, productId: realProductId, product: finalProduct };
     } catch (error) {
       console.error("❌ Error in addProduct:", error);

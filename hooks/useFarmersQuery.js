@@ -12,11 +12,13 @@ export function useFarmersQuery(options = {}) {
       const data = await apiService.getFarmers();
       return data;
     },
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnMount: "always",
+    staleTime: 30 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
     refetchOnReconnect: true,
+    refetchInterval: 30 * 1000,
+    refetchIntervalInBackground: false,
     retry: 2,
     ...options,
   });
